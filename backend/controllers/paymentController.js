@@ -1,8 +1,7 @@
 import catchAsyncErrors from "../middlewares/catchAsyncErrors.js";
 import Stripe from "stripe";
 import ErrorHandler from "../utils/errorHandler.js";
-// ❌ FIX 1: Remove import of a frontend component
-// import PaymentMethod from "../../frontend/src/components/cart/PaymentMethod.jsx";
+
 // ✅ Use 'Order' model naming convention
 import Order from "../models/orders.js"; 
 

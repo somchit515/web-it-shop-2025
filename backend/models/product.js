@@ -34,7 +34,7 @@ const productSchema = new mongoose.Schema({
     ],
     category: {
         type: String,
-        required: [true, "ກະລູນາປ້ອນໝວດໝູ່ສິນຄ້າ"],
+        required: [true, "ກະລຸນາປ້ອນໝວດໝູ່ສິນຄ້າ"],
         enum: {
             values: [
                 "laptops",
