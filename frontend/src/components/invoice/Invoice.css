@@ -1,0 +1,195 @@
+/* --- Standard Styles (Original Code) --- */
+
+.clearfix:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+.order-invoice a {
+  color: #5d6975;
+  text-decoration: underline;
+}
+
+.order-invoice header {
+  padding: 10px 0;
+  margin-bottom: 30px;
+}
+
+#logo {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+#logo img {
+  width: 180px;
+}
+
+.order-invoice h1 {
+  border-top: 1px solid #5d6975;
+  border-bottom: 1px solid #5d6975;
+  color: #5d6975;
+  font-size: 2.4em;
+  line-height: 1.4em;
+  font-weight: normal;
+  text-align: center;
+  margin: 0 0 20px 0;
+  background: url(../../../public/images/dimension.png);
+}
+
+#project {
+  float: left;
+}
+
+#project span {
+  color: #5d6975;
+  text-align: right;
+  width: 52px;
+  margin-right: 10px;
+  display: inline-block;
+  font-size: 0.8em;
+}
+
+#company {
+  float: right;
+  text-align: right;
+}
+
+#project div,
+#company div {
+  white-space: nowrap;
+}
+
+.order-invoice table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin-bottom: 20px;
+}
+
+.order-invoice table tr:nth-child(2n-1) td {
+  background: #f5f5f5;
+}
+
+.order-invoice table th,
+.order-invoice table td {
+  text-align: center;
+}
+
+.order-invoice table th {
+  padding: 5px 20px;
+  color: #5d6975;
+  border-bottom: 1px solid #c1ced9;
+  white-space: nowrap;
+  font-weight: normal;
+}
+
+.order-invoice table .service,
+.order-invoice table .desc {
+  text-align: left;
+}
+
+.order-invoice table td {
+  padding: 20px;
+  text-align: right;
+}
+
+.order-invoice table td.service,
+.order-invoice table td.desc {
+  vertical-align: top;
+}
+
+.order-invoice table td.unit,
+.order-invoice table td.qty,
+.order-invoice table td.total {
+  font-size: 1.2em;
+}
+
+.order-invoice table td.grand {
+  border-top: 1px solid #5d6975;
+}
+
+#notices .notice {
+  color: #5d6975;
+  font-size: 1.2em;
+}
+
+.order-invoice footer {
+  color: #5d6975;
+  width: 100%;
+  height: 30px;
+  border-top: 1px solid #c1ced9;
+  padding: 8px 0;
+  text-align: center;
+}
+
+/* ------------------------------------------------ */
+/* --- Print-Specific Styles (FIXED) --- */
+/* ------------------------------------------------ */
+
+@media print {
+    /* Hides the print button row */
+    .order-invoice > .row.d-flex.justify-content-center.mb-5 {
+        display: none !important;
+    }
+
+    /* Hides all elements on the page */
+    body * {
+        visibility: hidden;
+    }
+
+    /* Makes the invoice and its content visible */
+    #order_invoice, 
+    #order_invoice * {
+        visibility: visible;
+    }
+    
+    /* Positions the invoice at the top of the print page */
+    #order_invoice {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%; 
+        /* ✅ FIX 2: Set padding to a standard 0 or minimal amount (e.g., 20px) 
+           instead of 50px to prevent excessive margin on the printout. */
+        padding: 20px !important; 
+        border: none !important;
+    }
+
+    /* Ensures table layout is maintained in print */
+    .order-invoice table {
+        width: 100%;
+        border-collapse: collapse; 
+        border-spacing: 0;
+        background-color: #ffffff; 
+    }
+    
+    /* Ensures table cells have visible borders in print */
+    .order-invoice table th,
+    .order-invoice table td {
+        border: 1px solid #c1ced9;
+        padding: 8px 10px;
+        text-align: center;
+    }
+    
+    .order-invoice table .service,
+    .order-invoice table .desc {
+        text-align: left;
+    }
+    
+    .order-invoice table td.grand {
+        border-top: 2px solid #5d6975;
+    }
+    
+    /* Ensures striped row background is printed */
+    .order-invoice table tr:nth-child(2n-1) td {
+        background: #f5f5f5 !important;
+        -webkit-print-color-adjust: exact; 
+        /* ✅ FIX 1: Replaced deprecated 'color-adjust' with modern 'print-color-adjust' */
+        print-color-adjust: exact; 
+    }
+    
+    .order-invoice table td.total {
+        text-align: right;
+    }
+}
