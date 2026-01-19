@@ -3,7 +3,7 @@ import { setIsAuthenticate, setUser, clearUser } from "../features/userSlice";
 
 export const userApi = createApi({
   reducerPath: "userApi",
-  baseQuery: fetchBaseQuery({ baseUrl: "/api/v1" }),
+  baseQuery: fetchBaseQuery({ baseUrl: "https://ithub-sy2u.onrender.com/api/v1" }),
   tagTypes: ["User", "Users"],
 
   endpoints: (builder) => ({
