@@ -1,24 +1,33 @@
-// backend/middlewares/multer.js
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
-import multer from 'multer';
+// โฟลเดอร์เก็บไฟล์
+const uploadDir = path.join(process.cwd(), "public", "uploads", "avatars");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-// 1. Configure Storage (Example: in memory storage for Cloudinary upload)
-const storage = multer.memoryStorage();
-
-// 2. Create the upload instance
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 1024 * 1024 * 5, // Limit to 5MB (optional)
-    },
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only images are allowed!'), false);
-        }
-    }
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    const name = `${Date.now()}-${Math.random().toString(36).slice(2,9)}${ext}`;
+    cb(null, name);
+  },
 });
 
-// 3. Export the instance
-export { upload };
+// optional: filter เพื่อรับเฉพาะ image
+const fileFilter = (req, file, cb) => {
+  if (/image\/(png|jpe?g|webp|gif)/.test(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only image files are allowed"), false);
+  }
+};
+
+export const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5 MB
+});

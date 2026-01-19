@@ -1,129 +1,276 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import MetaData from '../layout/MetaData';   
-import { Link } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import MetaData from '../layout/MetaData';
+import { Link, useNavigate } from 'react-router-dom';
 import CheckoutStep from './CheckoutStep';
+import { motion } from 'framer-motion';
+import '../cart/ConfirmOrder.css';
 
 function ConfirmOrder() {
+  const navigate = useNavigate();
 
-    const navigate = useNavigate();
+  // Safely select state slices with sensible defaults
+  const { user } = useSelector((state) => state.auth || {});
+  const { shippingInfo = {} } = useSelector((state) => state.shipping || {});
+  const { cartItems = [] } = useSelector((state) => state.cart || {});
 
-    // 🛑 FIX 1 & 2: Get user from 'auth' and shippingInfo from 'shipping' slice
-    const { user } = useSelector((state) => state.auth);
-    const { shippingInfo } = useSelector((state) => state.shipping);
-    const { cartItems } = useSelector((state) => state.cart);
+  // ------------------- CALCULATIONS -------------------
+  const itemsPrice = cartItems.reduce(
+    (acc, item) => acc + Number(item.price || 0) * Number(item.quantity || 0),
+    0
+  );
 
-    // ------------------- CALCULATIONS -------------------
-    
-    // 1. Calculate items price (Subtotal)
-    const itemsPrice = cartItems.reduce(
-        (acc, item) => acc + item.price * item.quantity, 
-        0
-    );
+  const shippingPrice = itemsPrice > 1000 ? 0 : 10;
+  const taxPrice = 0.10 * itemsPrice;
+  const totalPrice = itemsPrice + shippingPrice + taxPrice;
 
-    // 2. Calculate shipping price (Example: ₭10 for items under ₭1000, free otherwise)
-    const shippingPrice = itemsPrice > 1000 ? 0 : 10; 
+  // NEW: Shipping carrier info
+  const shippingCarrier = shippingInfo.shippingCarrier || 'ບໍ່ໄດ້ເລືອກ';
+  const branch = shippingInfo.branch || 'ບໍ່ໄດ້ເລືອກ';
 
-    // 3. Calculate tax (Example: 10% VAT)
-    const taxPrice = 0.10 * itemsPrice;
+  // Format as: ₭ 7,000,000.00
+  const formatKip = (amount) => {
+    const num = Number(amount || 0);
+    return `₭ ${num.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
 
-    // 4. Calculate total price
-    const totalPrice = itemsPrice + shippingPrice + taxPrice;
+  const proceedToPaymentHandler = () => {
+    // navigate to your payment method page
+    navigate('/payment_method');
+  };
 
-    // Utility function for formatting to Laotian Kip (₭)
-    const formatKip = (amount) => `₭${amount.toFixed(2)}`;
+  // NEW: Edit handlers
+  const handleEditShipping = () => {
+    navigate('/shipping');
+  };
 
+  const handleEditCart = () => {
+    navigate('/cart');
+  };
 
+  return (
+    <>
+      <MetaData title={'ຢືນຢັນການສັ່ງຊື້'} />
 
+      {/* Show shipping + confirm steps as active (adjust as needed) */}
+      <CheckoutStep shipping={true} confirmOrder={true} />
 
-    const proceedTopaymentHandler = () => {
-        navigate('/payment');
-        };
+      <div className="confirm-order-container">
+        <div className="confirm-order-content">
+          {/* Page Header */}
+          <div className="page-header">
+            <h1>ຢືນຢັນການສັ່ງຊື້</h1>
+            <p className="subtitle">ກະລຸນາກວດສອບຂໍ້ມູນການສັ່ງຊື້ຂອງທ່ານອີກຄັ້ງ</p>
+          </div>
 
-    // ------------------- RENDER -------------------
-
-    return (
-
-        <>
-            <MetaData title={'ຢືນຢັນການສັ່ງຊື້'} />
-
-            <CheckoutStep shipping  ConfirmOrder/>
-            
-            <div className="row d-flex justify-content-between">
-                <div className="col-12 col-lg-8 mt-5 order-confirm">
-                    
-                    {/* Shipping Info Section */}
-                    <h4 className="mb-3">ຂໍ້ມູນຂົນສົ່ງ</h4>
-                    <p><b>Name:</b> {user?.name || "Guest"}</p>
-                    {/* 🛑 FIX 3: Use phoneNo instead of phone */}
-                    <p><b>Phone:</b> {shippingInfo.phoneNo}</p>
-                    <p className="mb-4">
-                        <b>Address:</b> {shippingInfo.address}, {shippingInfo.city},{" "}
-                        {shippingInfo.province} {shippingInfo.zipCode} {shippingInfo.country}
-                    </p> 
-
-                    <hr />
-
-                    {/* Cart Items Section */}
-                    {/* 🛑 FIX 4: Move header outside the map */}
-                    <h4 className="mt-4">ກະຕ່າສິນຄ້າຂອງທ່ານ:</h4>
-                    <hr />
-
-                    {cartItems.map((item) => (
-                        <div key={item.product} className="cart-item my-1">
-                            <div className="row">
-                                <div className="col-4 col-lg-2">
-                                    <img
-                                        src={item.image}
-                                        alt={item.name}
-                                        height="45"
-                                        width="65"
-                                    />
-                                </div>
-
-                                <div className="col-5 col-lg-6">
-                                    <Link to={`/product/${item.product}`}>{item.name}</Link>
-                                </div>
-
-                                <div className="col-4 col-lg-4 mt-4 mt-lg-0">
-                                    <p>
-                                        {item.quantity} x {formatKip(item.price)} = 
-                                        <b>{formatKip(item.quantity * item.price)}</b>
-                                    </p>
-                                </div>
-                            </div>
-                            <hr /> {/* HR is placed inside the map, after each item */}
-                        </div>
-                    ))}
-                    
+          <div className="order-content-grid">
+            {/* Left Column - Shipping & Items */}
+            <div className="order-main-column">
+              {/* Shipping Info Section */}
+              <motion.div 
+                className="info-card shipping-card"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="card-header">
+                  <div className="header-icon">📍</div>
+                  <div className="header-content">
+                    <h3>ຂໍ້ມູນຂົນສົ່ງ</h3>
+                    <p>ຂໍ້ມູນຜູ້ຮັບແລະທີ່ຢູ່ຈັດສົ່ງ</p>
+                  </div>
+                  <button className="edit-btn" onClick={handleEditShipping}>
+                    ແກ້ໄຂ
+                  </button>
                 </div>
 
-                {/* Order Summary Section */}
-                <div className="col-12 col-lg-3 my-4">
-                    <div id="order_summary">
-                        <h4>ລວມອໍເດີທັງໝົດ</h4>
-                        <hr />
-                        {/* 🛑 FIX 5: Use calculated dynamic values */}
-                        <p>ຜົນລວມຍ່ອຍ: <span className="order-summary-values">{formatKip(itemsPrice)}</span></p>
-                        <p>ຄ່າຂົນສົ່ງ: <span className="order-summary-values">{formatKip(shippingPrice)}</span></p>
-                        <p>ອມພ (VAT/Tax): <span className="order-summary-values">{formatKip(taxPrice)}</span></p>
-
-                        <hr />
-
-                        <p><b>ລວມລາຄາທັງໝົດ:</b> <span className="order-summary-values"><b>{formatKip(totalPrice)}</b></span></p>
-
-                        <hr />
-                        <Link to="/payment_method" id="checkout_btn" className="btn btn-primary w-100"
-                        onClick={proceedTopaymentHandler}>
-                            ດຳເນີນການຊຳລະ
-                        </Link>
+                <div className="shipping-details">
+                  <div className="detail-row">
+                    <span className="detail-label">ຊື່ຜູ້ຮັບ:</span>
+                    <span className="detail-value">{user?.name || "Guest"}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">ເບີໂທ:</span>
+                    <span className="detail-value">{shippingInfo.phoneNo || '-'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">ທີ່ຢູ່:</span>
+                    <span className="detail-value">
+                      {shippingInfo.address || '-'}
+                      {shippingInfo.city ? `, ${shippingInfo.city}` : ''}
+                      {shippingInfo.province ? `, ${shippingInfo.province}` : ''}
+                      {shippingInfo.zipCode ? ` ${shippingInfo.zipCode}` : ''}
+                      {shippingInfo.country ? `, ${shippingInfo.country}` : ''}
+                    </span>
+                  </div>
+                  
+                  {/* NEW: Shipping Carrier Info */}
+                  <div className="shipping-carrier-info">
+                    <div className="detail-row">
+                      <span className="detail-label">ຜູ້ຂົນສົ່ງ:</span>
+                      <span className="detail-value">{shippingCarrier}</span>
                     </div>
+                    <div className="detail-row">
+                      <span className="detail-label">ສາຂາ:</span>
+                      <span className="detail-value">{branch}</span>
+                    </div>
+                  </div>
                 </div>
+              </motion.div>
+
+              {/* Cart Items Section */}
+              <motion.div 
+                className="info-card items-card"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+              >
+                <div className="card-header">
+                  <div className="header-icon">🛒</div>
+                  <div className="header-content">
+                    <h3>ລາຍການສິນຄ້າ</h3>
+                    <p>{cartItems.length} ລາຍການໃນກະຕ່າ</p>
+                  </div>
+                  <button className="edit-btn" onClick={handleEditCart}>
+                    ແກ້ໄຂ
+                  </button>
+                </div>
+
+                <div className="cart-items-list">
+                  {cartItems.map((item) => (
+                    <motion.div 
+                      key={item.product} 
+                      className="cart-item"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="item-image">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="product-img"
+                        />
+                      </div>
+
+                      <div className="item-details">
+                        <Link to={`/product/${item.product}`} className="item-name">
+                          {item.name}
+                        </Link>
+                        <div className="item-meta">
+                          <span className="item-price">{formatKip(item.price)} ຕໍ່ຊິ້ນ</span>
+                          <span className="item-quantity">ຈຳນວນ: {item.quantity}</span>
+                        </div>
+                      </div>
+
+                      <div className="item-total">
+                        <span className="total-label">ລວມ</span>
+                        <span className="total-price">
+                          {formatKip(Number(item.quantity || 0) * Number(item.price || 0))}
+                        </span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
             </div>
 
-        </>
-    );
+            {/* Right Column - Order Summary */}
+            <div className="order-summary-column">
+              <motion.div 
+                className="order-summary-card"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+              >
+                <div className="summary-header">
+                  <h3>ສະຫຼຸບການສັ່ງຊື້</h3>
+                </div>
+
+                <div className="summary-content">
+                  <div className="price-breakdown">
+                    <div className="price-row">
+                      <span className="price-label">ລາຄາສິນຄ້າ</span>
+                      <span className="price-value">{formatKip(itemsPrice)}</span>
+                    </div>
+                    
+                    <div className="price-row">
+                      <span className="price-label">ຄ່າຂົນສົ່ງ</span>
+                      <span className="price-value">
+                        {shippingPrice === 0 ? (
+                          <span className="free-shipping">ຟຣີ</span>
+                        ) : (
+                          formatKip(shippingPrice)
+                        )}
+                      </span>
+                    </div>
+                    
+                    <div className="price-row">
+                      <span className="price-label">ພາສີ (10%)</span>
+                      <span className="price-value">{formatKip(taxPrice)}</span>
+                    </div>
+
+                    <div className="price-row discount-row">
+                      <span className="price-label">ສ່ວນລົດຄ່າຂົນສົ່ງ</span>
+                      <span className="price-value">
+                        {itemsPrice > 1000 ? '-₭ 10.00' : '-₭ 0.00'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="summary-divider"></div>
+
+                  <div className="total-row">
+                    <span className="total-label">ລວມທັງໝົດ</span>
+                    <span className="total-value">{formatKip(totalPrice)}</span>
+                  </div>
+
+                  <div className="savings-info">
+                    {itemsPrice > 1000 && (
+                      <div className="savings-badge">
+                        <span>🎉 ທ່ານປະຫຍັດຄ່າຂົນສົ່ງ {formatKip(10)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <button 
+                    id="checkout_btn" 
+                    className="checkout-button" 
+                    onClick={proceedToPaymentHandler}
+                  >
+                    <span className="button-text">ດຳເນີນການຊຳລະ</span>
+                    <span className="button-icon">💳</span>
+                  </button>
+
+                  <div className="security-info">
+                    <div className="security-badge">
+                      <span className="lock-icon">🔒</span>
+                      <span>ການຊຳລະປອດໄພ 100%</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Support Info */}
+              <div className="support-card">
+                <h4>ຕ້ອງການຄວາມຊ່ວຍເຫຼືອ?</h4>
+                <p>ຕິດຕໍ່ພວກເຮົາ:</p>
+                <div className="contact-info">
+                  <span>📞 021-xxx-xxx</span>
+                  <span>📧 support@ishop.la</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      
+    </>
+  );
 }
 
 export default ConfirmOrder;

@@ -1,66 +1,99 @@
-import React from 'react'
+import React from 'react';
 import StarRatings from "react-star-ratings";
 
 function ListReviews({ reviews }) {
-    // If there are no reviews, we might want to show a message
     if (!reviews || reviews.length === 0) {
         return (
             <div className="reviews w-75 mt-5">
-                <h3 className="mb-3">ຄວາມຄິດເຫັນອື່ນໆ:</h3> {/* Other Reviews */}
-                <p>No reviews yet.</p>
+                <h3 className="mb-3">ຄວາມຄິດເຫັນອື່ນໆ:</h3>
+                <p className="text-muted">ຍັງບໍ່ມີຄວາມຄິດເຫັນ</p>
             </div>
         );
     }
 
     return (
         <>
-            {/* Increased top margin (mt-5) is good for separation */}
+            <style>{`
+                .review-card {
+                  background: rgba(255,255,255,0.06);
+                  border-radius: 12px;
+                  padding: 16px 18px;
+                  margin-bottom: 18px;
+                  backdrop-filter: blur(6px);
+                  border: 1px solid rgba(255,255,255,0.08);
+                  transition: all .15s ease;
+                }
+                .review-card:hover {
+                  transform: translateY(-2px);
+                  box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+                }
+                .review_user {
+                  font-size: 0.95rem;
+                  color: #c69a3d;
+                }
+                .review_comment {
+                  font-size: 0.95rem;
+                  color: #e6eef7;
+                }
+                .review-date {
+                  font-size: 0.8rem;
+                  color: #9aa6b2;
+                }
+            `}</style>
+
             <div className="reviews w-75 mt-5">
-                <h3 className="mb-3">ຄວາມຄິດເຫັນອື່ນໆ:</h3> {/* Other Reviews */}
+                <h3 className="mb-3">ຄວາມຄິດເຫັນອື່ນໆ:</h3>
                 <hr />
 
                 {reviews.map((review) => (
-                    <div key={review._id} className="review-card py-3"> {/* Added py-3 for vertical padding */}
-                        <div className="row">
-                            {/* Avatar column: Used col-auto to keep it small, added me-3 for right margin */}
-                            <div className="col-auto me-3">
+                    <div key={review._id} className="review-card">
+                        <div className="row align-items-center">
+                            
+                            {/* Avatar */}
+                            <div className="col-auto">
                                 <img
-                                    // Dynamically set the avatar URL or use a default
                                     src={
                                         review?.user?.avatar?.url
                                             ? review.user.avatar.url
-                                            : "../images/default_avatar.jpg"
+                                            : "/images/default_avatar.png"
                                     }
                                     alt={review.user?.name || "User"}
-                                    width="50"
-                                    height="50"
-                                    className="rounded-circle"
+                                    width="55"
+                                    height="55"
+                                    className="rounded-circle shadow-sm"
+                                    style={{ objectFit: "cover" }}
                                 />
                             </div>
 
-                            {/* Content column: Used col to take remaining space */}
+                            {/* Content */}
                             <div className="col">
-                                <div className="star-ratings mb-1"> {/* Added mb-1 for margin below stars */}
-                                    <StarRatings
-                                        rating={review.rating || 0}
-                                        starRatedColor="#ffb229"
-                                        numberOfStars={5}
-                                        name="rating"
-                                        starDimension="18px"
-                                        starSpacing="1px"
-                                    />
-                                </div>
+                                <StarRatings
+                                    rating={review.rating || 0}
+                                    starRatedColor="#ffb229"
+                                    numberOfStars={5}
+                                    name="rating"
+                                    starDimension="18px"
+                                    starSpacing="1px"
+                                />
 
-                                {/* Displaying user name from the nested 'user' object */}
-                                <p className="review_user mb-1">
+                                <p className="review_user mt-1 mb-1">
                                     ໂດຍ: <strong>{review.user?.name}</strong>
                                 </p>
-                                {/* Displaying the review comment */}
-                                <p className="review_comment mb-0">{review.comment}</p>
+
+                                <p className="review_comment mb-1">{review.comment}</p>
+
+                                {/* DATE if exists */}
+                                {review.createdAt && (
+                                    <p className="review-date">
+                                        {new Date(review.createdAt).toLocaleDateString("lo-LA", {
+                                            year: "numeric",
+                                            month: "short",
+                                            day: "numeric"
+                                        })}
+                                    </p>
+                                )}
                             </div>
                         </div>
-
-                        <hr className="mt-3" /> {/* Added margin to the separator */}
                     </div>
                 ))}
             </div>

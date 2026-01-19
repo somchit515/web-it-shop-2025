@@ -8,7 +8,6 @@ const CustomPagination = ({ resPerPage, filteredProductsCount }) => {
   let [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Get the current page from the search parameters or default to 1
   const page = Number(searchParams.get("page")) || 1;
 
   useEffect(() => {
@@ -18,31 +17,78 @@ const CustomPagination = ({ resPerPage, filteredProductsCount }) => {
   const setCurrentPageNo = (pageNumber) => {
     setCurrentPage(pageNumber);
 
-    // Update the search parameters
     searchParams.set("page", pageNumber);
-
-    // Construct the new path with the updated search parameters
     const path = `${window.location.pathname}?${searchParams.toString()}`;
     navigate(path);
   };
 
   return (
-    <div className="d-flex justify-content-center my-5">
-    {filteredProductsCount > resPerPage && (
-      <Pagination
-        activePage={currentPage}
-        itemsCountPerPage={resPerPage}
-        totalItemsCount={filteredProductsCount}
-        onChange={setCurrentPageNo}
-        nextPageText={"Next"}
-        prevPageText={"Prev"}
-        firstPageText={"First"}
-        lastPageText={"Last"}
-        itemClass="page-item"
-        linkClass="page-link"
-      />
-    )}
-  </div>
+    <>
+      {/* 🎨 Custom Styling */}
+      <style>{`
+        .pagination {
+          display: flex;
+          gap: 6px;
+        }
+
+        .page-item {
+          border-radius: 8px;
+          overflow: hidden;
+        }
+
+        .page-link {
+          color: #0f63ff;
+          border: 1px solid #d1d5db;
+          padding: 8px 14px;
+          border-radius: 8px;
+          font-weight: 500;
+          transition: all .2s ease;
+        }
+
+        .page-link:hover {
+          background: #0f63ff;
+          color: white !important;
+          border-color: #0f63ff;
+        }
+
+        .active .page-link {
+          background: linear-gradient(90deg, #0f63ff, #0b53e6);
+          border-color: #0f63ff;
+          color: white !important;
+          font-weight: 600;
+        }
+
+        .page-item:first-child .page-link,
+        .page-item:last-child .page-link {
+          font-size: 0.85rem;
+          padding: 8px 12px;
+        }
+
+        @media (max-width: 480px) {
+          .page-link {
+            padding: 6px 10px;
+            font-size: 0.8rem;
+          }
+        }
+      `}</style>
+
+      <div className="d-flex justify-content-center my-5">
+        {filteredProductsCount > resPerPage && (
+          <Pagination
+            activePage={currentPage}
+            itemsCountPerPage={resPerPage}
+            totalItemsCount={filteredProductsCount}
+            onChange={setCurrentPageNo}
+            nextPageText={"ຖັດໄປ ›"}
+            prevPageText={"‹ ກ່ອນໜ້າ"}
+            firstPageText={"« ທຳອິດ"}
+            lastPageText={"ສຸດທ້າຍ »"}
+            itemClass="page-item"
+            linkClass="page-link"
+          />
+        )}
+      </div>
+    </>
   );
 };
 

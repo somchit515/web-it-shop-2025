@@ -10,27 +10,39 @@ import {
   getProductsDetails,
   newProduct,
   updateProduct,
+  uploadProductImages,
+  deleteProductImage,
+  getBestSellingProducts,
+  getProductsByCategory,
+  getAllCategories
 } from "../controllers/productControllers.js";
 import { authorizeRoles, isAuthenticatedUser } from "../middlewares/auth.js";
 const router = express.Router();
 
 router
   .route("/products")
-  .get( getProducts);
+  .get(getProducts);
 router
   .route("/admin/products")
-  .post(isAuthenticatedUser, authorizeRoles("admin"), newProduct);
+  .post(isAuthenticatedUser, authorizeRoles("admin", "superAdmin"), newProduct);
 
-  router
+router
   .route("/admin/products")
-  .get(isAuthenticatedUser, authorizeRoles("admin"), getAdminProducts);
+  .get(isAuthenticatedUser, authorizeRoles("admin", "superAdmin"), getAdminProducts);
 router.route("/products/:id").get(getProductsDetails);
+
+router
+  .route('/admin/products/:id/upload_images') // หรืออาจจะเป็นชื่ออื่น แต่ต้องตรงกับ Frontend
+  .put(isAuthenticatedUser, authorizeRoles("admin", "superAdmin"), uploadProductImages);
+router
+  .route('/admin/products/:id/delete_image')
+  .put(isAuthenticatedUser, authorizeRoles("admin", "superAdmin"), deleteProductImage);
 router
   .route("/admin/products/:id")
-  .put(isAuthenticatedUser, authorizeRoles("admin"), updateProduct);
+  .put(isAuthenticatedUser, authorizeRoles("admin", "superAdmin"), updateProduct);
 router
   .route("/admin/products/:id")
-  .delete(isAuthenticatedUser, authorizeRoles("admin"), deleteProduct);
+  .delete(isAuthenticatedUser, authorizeRoles("admin", "superAdmin"), deleteProduct);
 
 router
   .route("/reviews")
@@ -38,14 +50,31 @@ router
   .put(isAuthenticatedUser, createProductReview);
 
 
-  
+
 router
-.route("/admin/reviews")
-.delete(isAuthenticatedUser,authorizeRoles("admin"), deleteReview);
-  
+  .route("/admin/reviews")
+  .delete(isAuthenticatedUser, authorizeRoles( "superAdmin"), deleteReview);
+
 router
-.route("/can_review")
-.get(isAuthenticatedUser, canUserReview);
+  .route("/can_review")
+  .get(isAuthenticatedUser, canUserReview);
+
+
+  // เส้นทาง API สำหรับสินค้าขายดี
+router
+.route("/best-selling")
+.get(getBestSellingProducts);
+
+// เส้นทาง API สำหรับสินค้าตามหมวดหมู่
+router
+.route("/category/:category")
+.get(getProductsByCategory);
+
+// เส้นทาง API สำหรับรายการหมวดหมู่ทั้งหมด
+router
+.route("/categories")
+.get(getAllCategories);
+
 
 
 

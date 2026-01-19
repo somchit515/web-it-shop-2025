@@ -1,30 +1,29 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-// 🛑 FIX: ต้อง Import clearUser และควรลบ setLoading (ถ้าไม่จำเป็นจริงๆ)
 import { setIsAuthenticate, setUser, clearUser } from "../features/userSlice";
-
-
 
 export const userApi = createApi({
   reducerPath: "userApi",
   baseQuery: fetchBaseQuery({ baseUrl: "/api/v1" }),
-  tagTypes: ['User'],
+  tagTypes: ["User", "Users"],
 
   endpoints: (builder) => ({
+    // ============================
+    // 🔹 USER ENDPOINTS
+    // ============================
     getMe: builder.query({
       query: () => `/me`,
       transformResponse: (result) => result.user,
-      providesTags: ['User'],
+      providesTags: ["User"],
+
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
           dispatch(setUser(data));
           dispatch(setIsAuthenticate(true));
         } catch (error) {
-          // CRITICAL FIX: เมื่อ getMe ล้มเหลว (401 Unauthorized), ต้องล้างสถานะ
           dispatch(clearUser());
-          console.log("GetMe failed, user logged out on frontend.");
         }
-      }
+      },
     }),
 
     updateProfile: builder.mutation({
@@ -33,10 +32,10 @@ export const userApi = createApi({
           url: "/me/update",
           method: "PUT",
           body,
-        }
+        };
       },
-      invalidatesTags: ["User"]
-    }), // 👈 ✅ FIX: ต้องมีคอมมา (,) เพื่อแยก Property ใน Object
+      invalidatesTags: ["User"],
+    }),
 
     uploadAvatar: builder.mutation({
       query(body) {
@@ -44,42 +43,116 @@ export const userApi = createApi({
           url: "/me/Upload_Avatar",
           method: "PUT",
           body,
-        }
+        };
       },
-      invalidatesTags: ["User"]
+      invalidatesTags: ["User"],
     }),
-    UpdatePassword: builder.mutation({
+
+    updatePassword: builder.mutation({
       query(body) {
         return {
           url: "/me/password/update",
           method: "PUT",
           body,
-        }
+        };
       },
-      invalidatesTags: ["User"]
+      invalidatesTags: ["User"],
     }),
-    ForgotPassword: builder.mutation({
+
+    forgotPassword: builder.mutation({
       query(body) {
         return {
           url: "/password/forgot",
           method: "POST",
           body,
-        }
+        };
       },
-      invalidatesTags: ["User"]
     }),
-    ResetPassword: builder.mutation({
-      query({token,body}) {
+
+    resetPassword: builder.mutation({
+      query({ token, body }) {
         return {
           url: `/password/reset/${token}`,
           method: "PUT",
           body,
-        }
+        };
       },
-      invalidatesTags: ["User"]
-    })
-  }),
-});
+    }),
 
+    // ============================
+    // 🔹 ADMIN ENDPOINTS
+    // ============================
 
-export const { useGetMeQuery, useUpdateProfileMutation, useUploadAvatarMutation, useUpdatePasswordMutation, useForgotPasswordMutation, useResetPasswordMutation } = userApi;
+    getAdminUsers: builder.query({
+      query: () => `/admin/users`,
+      providesTags: (result) =>
+        result?.users
+          ? [
+              ...result.users.map((u) => ({ type: "Users", id: u._id })),
+              { type: "Users", id: "LIST" },
+            ]
+          : [{ type: "Users", id: "LIST" }],
+    }),
+
+    getUsersDetails: builder.query({
+      query: (id) => `/admin/users/${id}`,
+      providesTags: (result, error, id) => [{ type: "Users", id }],
+    }),
+
+    updateUser: builder.mutation({
+      query({ id, body }) {
+        return {
+          url: `/admin/users/${id}`,
+          method: "PUT",
+          body: body,
+        };
+      },
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Users", id },
+        { type: "Users", id: "LIST" },
+      ],
+    }),
+
+    deleteUser: builder.mutation({
+      query: (id) => ({
+        url: `/admin/users/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, id) => [
+        { type: "Users", id },
+        { type: "Users", id: "LIST" },
+      ],
+    }),
+
+    // ✅ CREATE USER ENDPOINT (แก้ไข Syntax ให้ถูกต้อง)
+    createUser: builder.mutation({
+      query: (body) => ({
+        url: "/admin/users",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Users"],
+    }),
+  }), // ✅ ปิด endpoints: (builder) => ({...}) ตรงนี้
+}); // ✅ ปิด createApi({...}) ตรงนี้
+
+// =====================
+// EXPORT HOOKS
+// =====================
+
+export const {
+  // USER HOOKS
+  useGetMeQuery,
+  useUpdateProfileMutation,
+  useUploadAvatarMutation,
+  useUpdatePasswordMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
+
+  // ADMIN HOOKS
+  useGetAdminUsersQuery,
+  useGetUsersDetailsQuery,
+  useUpdateUserMutation,
+  useDeleteUserMutation,
+  useCreateUserMutation, // ✅ Hook สำหรับสร้างผู้ใช้ใหม่
+} = userApi;

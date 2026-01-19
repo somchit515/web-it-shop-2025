@@ -1,183 +1,453 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import toast from 'react-hot-toast';
-import MetaData from '../layout/MetaData'; 
-import { saveShippingInfo } from '../redux/features/shippingSlice'; 
-// 💡 Correctly importing the object containing all countries
-import { countries as countryData } from 'countries-list'; 
-import CheckoutStep from './CheckoutStep';
+import React, { useState } from "react";
+import MetaData from "../layout/MetaData";
+import CheckoutStep from "./CheckoutStep";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import { saveShippingInfo } from "../redux/features/shippingSlice";
+import { countries as countryData } from "countries-list";
+import "./Shipping.css";
 
+/* ----------  shipping carriers  ---------- */
+const SHIPPING_CARRIERS = [
+  {
+    name: "ອານຸສິດຂົນສົ່ງດ່ວນ",
+    code: "ANUSIT",
+    logo: "/images/carriers/Anusith.png",
+    description: "ບໍລິການຂົນສົ່ງດ່ວນທົ່ວລາວ",
+    deliveryTime: "1-2 ມື້",
+  },
+  {
+    name: "ມີໄຊຂົນສົ່ງດ່ວນ",
+    code: "MAISAY",
+    logo: "/images/carriers/mixay.png",
+    description: "ຂົນສົ່ງທົ່ວປະເທດ ລາຄາຖືກ",
+    deliveryTime: "2-3 ມື້",
+  },
+  {
+    name: "ຢູນິເທວ ຂົນສົ່ງ",
+    code: "UNITED",
+    logo: "/images/carriers/unitel.png",
+    description: "ບໍລິການຂົນສົ່ງສາກົນ",
+    deliveryTime: "3-7 ມື້",
+  },
+  {
+    name: "ອື່ນໆ (ຮັບສິນຄ້າທີ່ຫນ້າຮ້ານ)",
+    code: "OTHER_DOMESTIC",
+    logo: "/images/logo.png",
+    description: "ຜູ້ໃຫ້ບໍລິການອື່ນໆ",
+    deliveryTime: "ແປງໄປຕາມຜູ້ໃຫ້ບໍລິການ",
+  },
+];
 
-// ----------------- Data Transformation -----------------
-// Convert the countries-list object into an array of { code, name } objects for easy mapping
-const countries = Object.values(countryData)
-    // Map over the country objects to create a simple array for the dropdown
-    .map(country => ({
-        code: country.code,
-        name: country.name // The full English name of the country
-    }))
-    // Optional: Sort the list alphabetically by name
-    .sort((a, b) => a.name.localeCompare(b.name));
+/* ----------  country list  ---------- */
+const baseCountries = Object.entries(countryData)
+  .map(([code, info]) => ({ code, name: info.name }))
+  .sort((a, b) => a.name.localeCompare(b.name));
 
+const countries = [
+  { code: "LA", name: "Laos" },
+  ...baseCountries.filter((c) => c.code !== "LA"),
+];
 
-function Shipping() {
-    // console.log(countries); // You can check the sorted array here
+/* ----------  Sub-components (Defined outside to prevent re-mounting)  ---------- */
 
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
-    
-    // The useSelector hook MUST be called inside the component function!
-    const { shippingInfo } = useSelector((state) => state.shipping); 
-    
-    // Set initial state from Redux/Local Storage data
-    const [address, setAddress] = React.useState(shippingInfo.address || "");
-    const [province, setProvince] = React.useState(shippingInfo.province || ""); 
-    const [city, setCity] = React.useState(shippingInfo.city || "");
-    const [phoneNo, setPhoneNo] = React.useState(shippingInfo.phoneNo || "");
-    const [zipCode, setZipCode] = React.useState(shippingInfo.zipCode || "");
-    // Use the stored country name, or default to "Laos" if not found
-    const [country, setCountry] = React.useState(shippingInfo.country || "Laos"); 
+const BranchSelection = ({ branch, setBranch }) => {
+  return (
+    <div className="branch-selection-box" style={{ marginTop: '20px', padding: '15px', background: '#f9fafb', borderRadius: '12px', border: '1px dashed #d1d5db' }}>
+      <div className="branch-header" style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+        <div className="branch-icon" style={{ fontSize: '20px', marginRight: '10px' }}>📍</div>
+        <div>
+          <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>ລະບຸສາຂາ ຫຼື ໝາຍເຫດການຈັດສົ່ງ</h4>
+          <p className="optional-badge" style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>ບໍ່ບັງຄັບ - ພິມຂໍ້ມູນທີ່ຕ້ອງການລະບຸໄດ້ທີ່ນີ້</p>
+        </div>
+      </div>
+      <textarea
+        id="branch_field"
+        className="form-control-branch"
+        rows="3"
+        value={branch}
+        onChange={(e) => setBranch(e.target.value)}
+        placeholder="ຕົວຢ່າງ: ສາຂາຕະຫຼາດເຊົ້າ, ຝາກໄວ້ທີ່ປ້ອມຍาม, ຫຼື ຂໍ້ມູນອື່ນໆ..."
+        style={{ 
+          width: '100%', 
+          padding: '12px', 
+          borderRadius: '8px', 
+          border: '1px solid #d1d5db',
+          fontSize: '14px',
+          outline: 'none',
+          transition: 'border-color 0.2s',
+          resize: 'vertical'
+        }}
+        onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+      />
+      <div className="branch-helper" style={{ marginTop: '8px', fontSize: '12px', color: '#9ca3af', display: 'flex', alignItems: 'center' }}>
+        💡 ທ່ານສາມາດລະບຸສາຂາຂົນສົ່ງທີ່ສະດວກ ຫຼື ຂໍ້ຄວາມເພີ່ມເຕີມເຖິງຜູ້ຂາຍໄດ້
+      </div>
+    </div>
+  );
+};
 
-    // ----------------- Handlers -----------------
+/* ----------  main component  ---------- */
+export default function Shipping() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { shippingInfo = {} } = useSelector((state) => state.shipping || {});
 
-    const submitHandler = (e) => {
-        e.preventDefault();
+  /* form fields */
+  const [address, setAddress] = useState(shippingInfo.address || "");
+  const [province, setProvince] = useState(shippingInfo.province || "");
+  const [city, setCity] = useState(shippingInfo.city || "");
+  const [phoneNo, setPhoneNo] = useState(shippingInfo.phoneNo || "");
+  const [zipCode, setZipCode] = useState(shippingInfo.zipCode || "");
+  const [country, setCountry] = useState(shippingInfo.country || "Laos");
 
-        // Basic validation
-        if (phoneNo.length < 9 || phoneNo.length > 15) {
-            return toast.error("ເບີໂທບໍ່ຖືກຕ້ອງ");
-        }
-        
-        const data = {
-            address,
-            province, 
-            city,
-            phoneNo,
-            zipCode,
-            country,
-        };
+  const [shippingCarrier, setShippingCarrier] = useState(
+    shippingInfo.shippingCarrierCode || SHIPPING_CARRIERS[0].code
+  );
+  const [branch, setBranch] = useState(shippingInfo.branch || "");
 
-        // Save the shipping data to Redux and Local Storage
-        dispatch(saveShippingInfo(data));
+  const [step, setStep] = useState(1);
 
-        // Navigate to the next checkout step
-        navigate("/confirm_order");
-    };
+  const currentCarrier =
+    SHIPPING_CARRIERS.find((c) => c.code === shippingCarrier) ||
+    SHIPPING_CARRIERS[0];
 
-    // ----------------- Component Render -----------------
+  /* ----------  helpers  ---------- */
+  const isPhoneValid = (p) => {
+    if (!p) return false;
+    const normalized = p.trim();
+    const re = /^\+856(20|30)\d{6,8}$/;
+    return re.test(normalized);
+  };
 
-    return (
-        <>
-            <MetaData title={'ຂໍ້ມູນຂົນສົ່ງ'} />
-            <CheckoutStep  shipping />
-            
-            <div className="row wrapper mb-5">
-                <div className="col-10 col-lg-5">
-                    <form
-                        className="shadow rounded bg-body"
-                        onSubmit={submitHandler}
-                    >
-                        <h2 className="mb-4">ຂໍ້ມູນຂົນສົ່ງ</h2>
-                        
-                        {/* Address Field */}
-                        <div className="mb-3">
-                            <label htmlFor="address_field" className="form-label">ທີ່ຢູ່</label>
-                            <input
-                                type="text"
-                                id="address_field"
-                                className="form-control"
-                                name="address"
-                                value={address}
-                                onChange={(e) => setAddress(e.target.value)}
-                                required
-                            />
-                        </div>
+  const handlePhoneChange = (e) => {
+    let value = String(e.target.value || "").replace(/\s+/g, "");
+    if (/^0(20|30)\d*$/.test(value)) value = "+856" + value.substring(1);
+    if (/^(20|30)\d*$/.test(value)) value = "+856" + value;
+    if (/^856(20|30)\d*$/.test(value)) value = "+" + value;
+    value = value.replace(/(?!^\+)[^\d]/g, "");
+    if (value.length > 16) value = value.slice(0, 16);
+    setPhoneNo(value);
+  };
 
-                        {/* Province (ແຂວງ) */}
-                        <div className="mb-3">
-                            <label htmlFor="province_field" className="form-label">ແຂວງ</label>
-                            <input
-                                type="text"
-                                id="province_field"
-                                className="form-control"
-                                name="province"
-                                value={province}
-                                onChange={(e) => setProvince(e.target.value)}
-                                required
-                            />
-                        </div>
+  const phoneHelper = () => {
+    if (!phoneNo) return "ຮູບແບບ: +85620xxxxxxx ຫຼື +85630xxxxxxx";
+    return isPhoneValid(phoneNo)
+      ? "✅ ເບີຖືກຕ້ອງ"
+      : "❌ ບໍ່ຖືກ: +85620xxxxxxx ຫຼື +85630xxxxxxx";
+  };
 
-                        {/* City Field */}
-                        <div className="mb-3">
-                            <label htmlFor="city_field" className="form-label">ເມືອງ</label>
-                            <input
-                                type="text"
-                                id="city_field"
-                                className="form-control"
-                                name="city"
-                                value={city}
-                                onChange={(e) => setCity(e.target.value)}
-                                required
-                            />
-                        </div>
+  const isFormValid = () =>
+    address.trim().length > 0 &&
+    province.trim().length > 0 &&
+    city.trim().length > 0 &&
+    isPhoneValid(phoneNo) &&
+    country.trim().length > 0 &&
+    shippingCarrier.trim().length > 0;
 
-                        {/* Phone Number Field */}
-                        <div className="mb-3">
-                            <label htmlFor="phone_field" className="form-label">ເບີໂທ</label>
-                            <input
-                                type="tel"
-                                id="phone_field"
-                                className="form-control"
-                                name="phoneNo"
-                                value={phoneNo}
-                                onChange={(e) => setPhoneNo(e.target.value)}
-                                required
-                            />
-                        </div>
+  const submitHandler = (e) => {
+    e.preventDefault();
+    if (!isPhoneValid(phoneNo))
+      return toast.error(
+        "ເບີໂທຕ້ອງເປັນ +85620xxxxxxx ຫຼື +85630xxxxxxx (6–8 ຕົວໜ່ວຍຫຼັງ)"
+      );
+    if (!isFormValid())
+      return toast.error("ກະລຸນາຕື່ມຂໍ້ມູນທັງໝົດ");
 
-                        {/* Zip Code Field */}
-                        <div className="mb-3">
-                            <label htmlFor="zip_code_field" className="form-label">ລະຫັດໄປສະນີ</label>
-                            <input
-                                type="number"
-                                id="zip_code_field"
-                                className="form-control"
-                                name="zipCode"
-                                value={zipCode}
-                                onChange={(e) => setZipCode(e.target.value)}
-                                required
-                            />
-                        </div>
+    dispatch(
+      saveShippingInfo({
+        address: address.trim(),
+        province: province.trim(),
+        city: city.trim(),
+        phoneNo: phoneNo.trim(),
+        zipCode: zipCode.trim(),
+        country: country.trim(),
+        shippingCarrier: currentCarrier.name,
+        shippingCarrierCode: shippingCarrier,
+        branch: branch.trim(),
+      })
+    );
+    toast.success("ບັນທຶກຂໍ້ມູນການຂົນສົ່ງສຳເລັດ");
+    navigate("/confirm_order");
+  };
 
-                        {/* Country Field */}
-                        <div className="mb-3">
-                            <label htmlFor="country_field" className="form-label">ປະເທດ</label>
-                            <select
-                                id="country_field"
-                                className="form-select"
-                                name="country"
-                                value={country}
-                                onChange={(e) => setCountry(e.target.value)}
-                                required
-                            >
-                                {/* Mapping over the full, sorted country list */}
-                                {countries.map((country) => (
-                                    <option key={country.code} value={country.name}>
-                                        {country.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+  /* ----------  UI components  ---------- */
+  const ProgressBar = () => (
+    <div className="progress-container">
+      <div className="progress-step">
+        <div className={`step-number ${step >= 1 ? "active" : ""}`}>1</div>
+        <div className="step-label">ທີ່ຢູ່</div>
+      </div>
+      <div className="progress-line" />
+      <div className="progress-step">
+        <div className={`step-number ${step >= 2 ? "active" : ""}`}>2</div>
+        <div className="step-label">ຜູ້ຂົນສົ່ງ</div>
+      </div>
+      <div className="progress-line" />
+      <div className="progress-step">
+        <div className={`step-number ${step >= 3 ? "active" : ""}`}>3</div>
+        <div className="step-label">ຢືນຢັນ</div>
+      </div>
+    </div>
+  );
 
-                        <button id="shipping_btn" type="submit" className="btn w-100 py-2">
-                            CONTINUE
-                        </button>
-                    </form>
-                </div>
+  const CarrierSelection = () => (
+    <div className="carrier-selection">
+      <h3>ເລືອກຜູ້ໃຫ້ບໍລິການຂົນສົ່ງ</h3>
+      <div className="carrier-cards">
+        {SHIPPING_CARRIERS.filter(
+          (c) => country === "Laos" || c.code === "INTERNATIONAL"
+        ).map((c) => (
+          <div
+            key={c.code}
+            className={`carrier-card ${
+              shippingCarrier === c.code ? "selected" : ""
+            }`}
+            onClick={() => setShippingCarrier(c.code)}
+          >
+            <div className="carrier-logo">
+              <img src={c.logo} alt={c.name} />
             </div>
-        </>
-    )
-}
+            <div className="carrier-info">
+              <h4>{c.name}</h4>
+              <p>{c.description}</p>
+              <span className="delivery-time">🚚 {c.deliveryTime}</span>
+            </div>
+            <div className="carrier-radio" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
-export default Shipping;
+  /* ----------  render  ---------- */
+  return (
+    <>
+      <MetaData title={"ຂໍ້ມູນຂົນສົ່ງ"} />
+      <CheckoutStep shipping />
+
+      <div className="shipping-root">
+        <div className="shipping-wrap">
+          <ProgressBar />
+
+          <form className="card-form" onSubmit={submitHandler} noValidate>
+            {step === 1 && (
+              <>
+                <div className="section-header">
+                  <h3>ຂໍ້ມູນທີ່ຢູ່</h3>
+                  <p>ກະລຸນາປ້ອນຂໍ້ມູນທີ່ຢູ່ຂອງທ່ານ</p>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label className="form-label">ທີ່ຢູ່</label>
+                  <input
+                    className="form-control"
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="ບ້ານເລກທີ່, ຖະໜົນ, ບ້ານ"
+                    required
+                  />
+                </div>
+
+                <div className="form-row">
+                  <div>
+                    <label className="form-label">ແຂວງ</label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      value={province}
+                      onChange={(e) => setProvince(e.target.value)}
+                      placeholder="ເຊັ່ນ: ວຽງຈັນ, ສະຫວັນນະເຂດ"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">ເມືອງ</label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="ເຊັ່ນ: ໄຊທານີ, ຫຼວງພະບາງ"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div>
+                    <label className="form-label">ເບີໂທ</label>
+                    <input
+                      className={`form-control ${
+                        phoneNo && !isPhoneValid(phoneNo) ? "is-invalid" : ""
+                      }`}
+                      type="tel"
+                      value={phoneNo}
+                      onChange={handlePhoneChange}
+                      placeholder="+85620xxxxxxx ຫຼື +85630xxxxxxx"
+                      required
+                    />
+                    <div
+                      className="phone-hint"
+                      style={{
+                        color:
+                          phoneNo && !isPhoneValid(phoneNo)
+                            ? "var(--error)"
+                            : "var(--muted)",
+                      }}
+                    >
+                      {phoneHelper()}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="form-label">ລະຫັດໄປສະນີ (ຖ້າມີ)</label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      value={zipCode}
+                      onChange={(e) => setZipCode(e.target.value)}
+                      placeholder="ລະຫັດໄປສະນີ"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label className="form-label">ປະເທດ</label>
+                  <select
+                    className="form-select"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    required
+                  >
+                    {countries.map((c) => (
+                      <option key={c.code} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="submit-row">
+                  <button
+                    type="button"
+                    className="btn-primary-custom"
+                    onClick={() => setStep(2)}
+                    disabled={
+                      !address ||
+                      !province ||
+                      !city ||
+                      !isPhoneValid(phoneNo)
+                    }
+                  >
+                    ຕໍ່ໄປ ▶
+                  </button>
+                </div>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <div className="section-header">
+                  <h3>ເລືອກຜູ້ຂົນສົ່ງ</h3>
+                  <p>ເລືອກຜູ້ໃຫ້ບໍລິການຂົນສົ່ງທີ່ທ່ານຕ້ອງການ</p>
+                </div>
+
+                <CarrierSelection />
+                
+                {/* Fixed: BranchSelection is now a stable component reference */}
+                <BranchSelection branch={branch} setBranch={setBranch} />
+
+                <div className="submit-row">
+                  <button
+                    type="button"
+                    className="btn-primary-custom"
+                    style={{ marginRight: 12, background: "#6b7280" }}
+                    onClick={() => setStep(1)}
+                  >
+                    ◀ ກັບຄືນ
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary-custom"
+                    onClick={() => setStep(3)}
+                    disabled={!shippingCarrier}
+                  >
+                    ຕໍ່ໄປ ▶
+                  </button>
+                </div>
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <div className="section-header">
+                  <h3>ຢືນຢັນຂໍ້ມູນ</h3>
+                  <p>ກະລຸນາກວດສອບຂໍ້ມູນຂອງທ່ານອີກຄັ້ງ</p>
+                </div>
+
+                <div className="review-section">
+                  <div className="review-card">
+                    <h4>ທີ່ຢູ່ຈັດສົ່ງ</h4>
+                    <div className="review-item">
+                      <span className="review-label">ທີ່ຢູ່:</span>
+                      <span>{address}</span>
+                    </div>
+                    <div className="review-item">
+                      <span className="review-label">ເມືອງ:</span>
+                      <span>{city}</span>
+                    </div>
+                    <div className="review-item">
+                      <span className="review-label">ແຂວງ:</span>
+                      <span>{province}</span>
+                    </div>
+                    <div className="review-item">
+                      <span className="review-label">ລະຫັດໄປສະນີ:</span>
+                      <span>{zipCode || "-"}</span>
+                    </div>
+                    <div className="review-item">
+                      <span className="review-label">ເບີໂທ:</span>
+                      <span>{phoneNo}</span>
+                    </div>
+                  </div>
+
+                  <div className="review-card">
+                    <h4>ຜູ້ຂົນສົ່ງ</h4>
+                    <div className="review-item">
+                      <span className="review-label">ຜູ້ໃຫ້ບໍລິການ:</span>
+                      <span>{currentCarrier.name}</span>
+                    </div>
+                    <div className="review-item">
+                      <span className="review-label">ສາຂາ/ໝາຍເຫດ:</span>
+                      <span>{branch || "-"}</span>
+                    </div>
+                    <div className="review-item">
+                      <span className="review-label">ເວລາຈັດສົ່ງ:</span>
+                      <span>{currentCarrier.deliveryTime}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="submit-row">
+                  <button
+                    type="button"
+                    className="btn-primary-custom"
+                    style={{ marginRight: 12, background: "#6b7280" }}
+                    onClick={() => setStep(2)}
+                  >
+                    ◀ ແກ້ໄຂ
+                  </button>
+                  <button type="submit" className="btn-primary-custom">
+                    ✅ ຢືນຢັນການສັ່ງຊື້
+                  </button>
+                </div>
+              </>
+            )}
+          </form>
+        </div>
+      </div>
+    </>
+  );
+}

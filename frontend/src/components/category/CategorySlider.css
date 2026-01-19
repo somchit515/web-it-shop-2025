@@ -1,0 +1,159 @@
+/* ใช้ Bootstrap 5 variables ได้หากมี :root อยู่แล้ว */
+.cat-slider {
+  --cat-height: 420px;
+  --cat-radius: 16px;
+  --cat-shadow: 0 12px 32px rgba(0,0,0,.18);
+  --cat-primary: #2563eb;
+  --cat-primary-light: #dbeafe;
+  position: relative;
+  max-width: 1200px;
+  margin: 2rem auto;
+  height: var(--cat-height);
+  border-radius: var(--cat-radius);
+  overflow: hidden;
+  box-shadow: var(--cat-shadow);
+  outline: none;
+}
+
+.cat-slide {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.cat-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  color: #fff;
+  text-decoration: none;
+}
+
+.cat-link img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .6s ease;
+}
+
+.cat-link:hover img {
+  transform: scale(1.06);
+}
+
+.cat-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,.75) 30%, transparent 70%);
+}
+
+.cat-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 2.5rem 2rem;
+  text-shadow: 0 2px 4px rgba(0,0,0,.4);
+}
+
+.cat-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 .25rem;
+}
+
+.cat-desc {
+  font-size: 1rem;
+  opacity: .9;
+  margin-bottom: 1rem;
+}
+
+.cat-btn {
+  display: inline-block;
+  background: var(--cat-primary-light);
+  color: var(--cat-primary);
+  padding: .55rem 1.25rem;
+  border-radius: 999px;
+  font-weight: 600;
+  transition: background .25s, color .25s;
+}
+
+.cat-link:hover .cat-btn {
+  background: #fff;
+  color: var(--cat-primary);
+}
+
+/* arrows */
+.cat-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: rgba(255,255,255,.85);
+  color: var(--cat-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .25s, color .25s;
+  z-index: 3;
+}
+
+.cat-arrow:hover {
+  background: #fff;
+  color: #1d4ed8;
+}
+
+.cat-prev {
+  left: 1rem;
+}
+
+.cat-next {
+  right: 1rem;
+}
+
+/* indicators */
+.cat-dots {
+  position: absolute;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: .5rem;
+  z-index: 3;
+}
+
+.cat-dot {
+  width: 10px;
+  height: 10px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,.55);
+  cursor: pointer;
+  transition: background .3s, transform .3s;
+}
+
+.cat-dot.active {
+  background: #fff;
+  transform: scale(1.4);
+}
+
+/* responsive */
+@media (max-width: 576px) {
+  .cat-slider {
+    --cat-height: 280px;
+  }
+  .cat-title {
+    font-size: 1.5rem;
+  }
+  .cat-desc {
+    font-size: .875rem;
+  }
+  .cat-arrow {
+    width: 36px;
+    height: 36px;
+  }
+}

@@ -1,178 +1,1097 @@
-import React, { useEffect } from 'react';
-import MetaData from '../layout/MetaData';
-import { useGetOrderDetailsQuery } from '../redux/api/OrderApi';
-import { useParams, Link } from 'react-router-dom';
-import Loader from '../layout/Loader';
-import toast from 'react-hot-toast';
+import React, { useEffect, useState } from "react";
+import MetaData from "../layout/MetaData";
+import { useGetOrderDetailsQuery } from "../redux/api/OrderApi";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import Loader from "../layout/Loader";
+import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
-function OrderDetail() {
-    
-    const params = useParams();
+// Currency formatter -> ₭ 7,000,000.00
+const formatLAK = (val) => {
+  const n = Number(val ?? 0);
+  return `₭ ${n.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+};
 
-    const { data, isLoading, error } = useGetOrderDetailsQuery(params.id);
-    const order = data?.order;
+// safe URL helper
+const resolveFileUrl = (urlOrPath) => {
+  if (!urlOrPath) return "";
+  if (/^https?:\/\//i.test(urlOrPath)) return urlOrPath;
+  if (urlOrPath.startsWith("/")) return urlOrPath;
+  return `/uploads/payment_proofs/${urlOrPath}`;
+};
 
-    // Destructuring order data.
-    const { 
-        shippingInfo, 
-        paymentInfo, 
-        orderItems, 
-        user, 
-        totalAmount, // Used for amount paid
-        orderStatus, // Used for order status
-        createdAt,
-        paymentMethod // ✅ Added paymentMethod here
-    } = order || {};
+export default function OrderDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { data, isLoading, error } = useGetOrderDetailsQuery(id);
+  const order = data?.order || null;
 
-    // Determine the payment status color
-    const isPaid = paymentInfo?.status === 'Paid' || paymentInfo?.status === 'succeeded';
-    const paymentStatusClass = isPaid ? "greenColor" : "redColor";
-    const paymentStatusText = isPaid ? "ຊຳລະແລ້ວ" : "ຍັງບໍ່ທັນຊຳລະ"; // Lao text
-    
-    // Determine the order status color (used in General Info table)
-    const orderStatusClass = orderStatus?.includes("Delivered") ? "greenColor" : "redColor";
+  // Local state for lightbox modal
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [copiedId, setCopiedId] = useState(false);
 
+  useEffect(() => {
+    if (error) {
+      toast.error(
+        error?.data?.message || "เกิดข้อผิดพลาดขณะดึงข้อมูลออร์เดอร์"
+      );
+    }
+  }, [error]);
 
-    useEffect(() => {
-        if (error) {
-            toast.error(error?.data?.message || "An error occurred while fetching order details.");
-        }
-    } , [error]);
+  if (isLoading) return <Loader />;
 
-    if (isLoading) return <Loader />;
-    if (error) return <p className="text-center mt-5">Error: {error?.data?.message || "Could not load order details."}</p>;
-
-    const formatDate = (dateString) => {
-        if (!dateString) return 'N/A';
-        return new Date(dateString).toLocaleString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    };
-
+  if (!order) {
     return (
-        <>
-            <MetaData title="Order Details" />
-            <div className="row d-flex justify-content-center">
-                <div className="col-12 col-lg-9 mt-5 order-details">
-                    <div className="d-flex justify-content-between align-items-center">
-                        <h3 className="mt-5 mb-4">ລາຍລະອຽດສິນຄ້າ</h3>
-                        <a className="btn btn-success" href={`/invoice/order/${order?._id}`}>
-                            <i className="fa fa-print"></i> Invoice
-                        </a>
-                    </div>
-                    
-                    {/* ORDER INFO TABLE */}
-                    <h5 className="mb-3">ຂໍ້ມູນທົ່ວໄປ</h5>
-                    <table className="table table-striped table-bordered">
-                        <tbody>
-                            <tr>
-                                <th scope="row">ID</th>
-                                <td>{order?._id}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">ສະຖານະ</th>
-                                <td className={orderStatusClass}>
-                                    <b>{orderStatus}</b>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">ວັນທີ</th>
-                                <td>{formatDate(createdAt)}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    {/* SHIPPING INFO TABLE */}
-                    <h3 className="mt-5 mb-4">ຂໍ້ມູນການຂົນສົ່ງ</h3>
-                    <table className="table table-striped table-bordered">
-                        <tbody>
-                            <tr>
-                                <th scope="row">ຊື່</th>
-                                <td>{user?.name || 'N/A'}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">ເບີໂທ</th>
-                                <td>{shippingInfo?.phoneNo}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">ສະຖານທີ່</th>
-                                <td>
-                                    {shippingInfo?.address}, {shippingInfo?.city}, {shippingInfo?.zipCode}, {shippingInfo?.country}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    {/* PAYMENT INFO TABLE */}
-                    <h3 className="mt-5 mb-4">ຂໍ້ມູນການຊຳລະ</h3>
-                    <table className="table table-striped table-bordered">
-                        <tbody>
-                            <tr>
-                                <th scope="row">ສະຖານະ</th>
-                                {/* ✅ FIX 1: Apply dynamic payment status class and text */}
-                                <td className={paymentStatusClass}>
-                                    <b>{paymentStatusText}</b>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">ວິທີການຊຳລະ</th>
-                                {/* ✅ FIX 2: Use destructured paymentMethod */}
-                                <td>{paymentMethod}</td> 
-                            </tr>
-                            {/* Transaction ID is paymentInfo.id, show only if available/paid */}
-                            {isPaid && paymentInfo?.id && (
-                                <tr>
-                                    <th scope="row">Transaction ID</th>
-                                    <td>{paymentInfo.id}</td>
-                                </tr>
-                            )}
-                            <tr>
-                                <th scope="row">ຈຳນວນເງິນທີ່ຊຳລະ</th>
-                                <td>${totalAmount?.toFixed(2) || 'N/A'}</td> 
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    {/* ORDER ITEMS LIST */}
-                    <h3 className="mt-5 my-4">ລາຍການສິນຄ້າທີ່ສັ່ງຊື້:</h3>
-                    <hr />
-
-                    {orderItems?.map(item => (
-                        <div key={item.product} className="cart-item my-1">
-                            <div className="row my-5">
-                                <div className="col-4 col-lg-2">
-                                    <img
-                                        src={item.image}
-                                        alt={item.name}
-                                        height="45"
-                                        width="65"
-                                    />
-                                </div>
-
-                                <div className="col-5 col-lg-5">
-                                    <Link to={`/product/${item.product}`}>{item.name}</Link>
-                                </div>
-
-                                <div className="col-4 col-lg-2 mt-4 mt-lg-0">
-                                    <p>${item.price?.toFixed(2)}</p>
-                                </div>
-
-                                <div className="col-4 col-lg-3 mt-4 mt-lg-0">
-                                    <p>{item.quantity} ລາຍການ</p>
-                                </div>
-                            </div>
-                            <hr />
-                        </div>
-                    ))}
-
-                </div>
+      <>
+        <MetaData title="Order Details" />
+        <div className="container mt-5">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <div className="text-center">
+              <div className="empty-icon mb-4">❌</div>
+              <h3>ບໍ່ພົບອໍເດີນີ້</h3>
+              <p className="text-muted mb-4">ບໍ່ພົບອໍເດີນີ້ຫຼືເກີດຂໍ້ຜິດພາດ</p>
+              <button className="btn btn-primary" onClick={() => navigate(-1)}>
+                <i className="fas fa-arrow-left me-2"></i>ຍົກກັບຄືນ
+              </button>
             </div>
-        </>
-    )
-}
+          </motion.div>
+        </div>
+      </>
+    );
+  }
 
-export default OrderDetail;
+  const {
+    shippingInfo = {},
+    paymentInfo = {},
+    orderItems = [],
+    user = {},
+    totalAmount = 0,
+    orderStatus = "Pending",
+    createdAt,
+    paymentMethod = order.paymentMethod || "N/A",
+    paymentProof = [],
+    shippingCarrier = shippingInfo.shippingCarrier || "N/A",
+    branch = shippingInfo.branch || "N/A",
+  } = order;
+
+  const isPaid =
+    (paymentInfo?.status || "").toString().toLowerCase() === "paid" ||
+    (order.paymentStatus || "").toString().toLowerCase() === "paid";
+
+  const openLightbox = (src) => {
+    setLightboxSrc(src);
+    setLightboxOpen(true);
+  };
+
+  const closeLightbox = () => {
+    setLightboxSrc(null);
+    setLightboxOpen(false);
+  };
+
+  const downloadAllProofsZip = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/v1/orders/${order._id}/download-proofs`, {
+        method: "GET",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) {
+        const err = await res
+          .json()
+          .catch(() => ({ message: "Download failed" }));
+        return toast.error(err.message || "ດາວໂຫຼດລົ້ມເຫຼວ");
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `order-${order._id}-proofs.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("ເລີ່ມດາວໂຫຼດໄຟລ໌ ZIP");
+    } catch (err) {
+      console.error(err);
+      toast.error("ເກີດຂໍ້ຜິດພາດລະຫວ່າງດາວໂຫຼດ");
+    }
+  };
+
+  const formatDate = (d) => {
+    if (!d) return "N/A";
+    try {
+      return new Date(d).toLocaleString("lo-LA", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return d;
+    }
+  };
+
+  // copy order id
+  const copyOrderId = async () => {
+    try {
+      await navigator.clipboard.writeText(order._id);
+      setCopiedId(true);
+      toast.success("ຄັດລອກ Order ID ແລ້ວ");
+      setTimeout(() => setCopiedId(false), 2000);
+    } catch (err) {
+      console.error("copy failed", err);
+      toast.error("ຄັດລອກບໍ່ສຳເລັດ");
+    }
+  };
+
+  // Get status badge info
+  const getStatusInfo = (status) => {
+    const statusLower = status?.toLowerCase() || "";
+    switch (statusLower) {
+      case "delivered":
+        return {
+          color: "#10b981",
+          label: "ສຳເລັດ",
+          icon: "✅",
+          bgColor: "#d1fae5",
+        };
+      case "processing":
+        return {
+          color: "#3b82f6",
+          label: "ກຳລັງດຳເນີນ",
+          icon: "⏳",
+          bgColor: "#dbeafe",
+        };
+      case "shipped":
+        return {
+          color: "#06b6d4",
+          label: "ກຳລັງສົ່ງ",
+          icon: "🚚",
+          bgColor: "#cffafe",
+        };
+      case "cancelled":
+        return {
+          color: "#ef4444",
+          label: "ຍົກເລີກ",
+          icon: "❌",
+          bgColor: "#fee2e2",
+        };
+      default:
+        return {
+          color: "#f59e0b",
+          label: status || "ລໍຖ້າ",
+          icon: "⏳",
+          bgColor: "#fef3c7",
+        };
+    }
+  };
+
+  const statusInfo = getStatusInfo(orderStatus);
+
+  return (
+    <>
+      <MetaData title="Order Details" />
+      <div className="order-detail-container">
+        <style>{`
+          .order-detail-container {
+            background: linear-gradient(135deg, #f6f8fb 0%, #eef2f6 100%);
+            min-height: 100vh;
+            padding: 20px 0;
+            font-family: "Noto Sans Lao", "Phetsarath OT", "Segoe UI", Roboto, sans-serif;
+          }
+
+          .order-detail-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+          }
+
+          .page-header {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+          }
+
+          .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+          }
+
+          .header-title h1 {
+            margin: 0;
+            color: #1f2937;
+            font-size: 2rem;
+            font-weight: 700;
+          }
+
+          .header-subtitle {
+            color: #6b7280;
+            margin: 4px 0 0 0;
+          }
+
+          .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+          }
+
+          .btn-icon {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .info-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+          }
+
+          .card-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #f3f4f6;
+          }
+
+          .card-icon {
+            font-size: 1.5rem;
+          }
+
+          .card-title {
+            margin: 0;
+            color: #374151;
+            font-size: 1.25rem;
+            font-weight: 600;
+          }
+
+          .info-table {
+            margin: 0;
+          }
+
+          .info-table th {
+            background: #f9fafb;
+            color: #374151;
+            font-weight: 600;
+            border: none;
+            padding: 12px 16px;
+            width: 30%;
+          }
+
+          .info-table td {
+            padding: 12px 16px;
+            border-color: #f3f4f6;
+            color: #6b7280;
+          }
+
+          .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+          }
+
+          .shipping-info {
+            background: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+          }
+
+          .shipping-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+          }
+
+          .shipping-row:last-child {
+            border-bottom: none;
+          }
+
+          .shipping-label {
+            font-weight: 600;
+            color: #374151;
+          }
+
+          .shipping-value {
+            color: #6b7280;
+            text-align: right;
+          }
+
+          .payment-proofs {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+          }
+
+          .proof-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+          }
+
+          .proof-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          }
+
+          .proof-image {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+          }
+
+          .proof-image:hover {
+            transform: scale(1.05);
+          }
+
+          .proof-info {
+            padding: 12px;
+          }
+
+          .proof-filename {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-bottom: 8px;
+            word-break: break-word;
+          }
+
+          .proof-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+
+          .lightbox-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+            backdrop-filter: blur(4px);
+          }
+
+          .lightbox-content {
+            max-width: 90%;
+            max-height: 90%;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+          }
+
+          .lightbox-image {
+            width: 100%;
+            height: auto;
+            max-height: 70vh;
+            object-fit: contain;
+          }
+
+          .lightbox-footer {
+            padding: 16px;
+            background: #f9fafb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+
+          .order-items {
+            margin-top: 32px;
+          }
+
+          .item-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+          }
+
+          .item-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          }
+
+          .item-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+          }
+
+          .item-details h5 {
+            margin: 0 0 8px 0;
+            color: #374151;
+            font-size: 1rem;
+            font-weight: 600;
+          }
+
+          .item-details h5 a {
+            color: inherit;
+            text-decoration: none;
+          }
+
+          .item-details h5 a:hover {
+            color: #0f63ff;
+          }
+
+          .item-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+
+          .item-price {
+            color: #0f63ff;
+            font-weight: 600;
+            font-size: 1.1rem;
+          }
+
+          .item-quantity {
+            color: #6b7280;
+            font-size: 0.9rem;
+          }
+
+          .item-total {
+            text-align: right;
+          }
+
+          .total-label {
+            color: #6b7280;
+            font-size: 0.8rem;
+            margin-bottom: 4px;
+          }
+
+          .total-amount {
+            color: #0f63ff;
+            font-weight: 700;
+            font-size: 1.2rem;
+          }
+
+          .back-button {
+            background: #f3f4f6;
+            color: #374151;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .back-button:hover {
+            background: #e5e7eb;
+            transform: translateY(-1px);
+          }
+
+          .copy-button {
+            background: linear-gradient(135deg, #0f63ff 0%, #1977ff 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .copy-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(15,99,255,0.3);
+          }
+
+          .copy-button.copied {
+            background: #10b981;
+          }
+
+          .invoice-button {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .invoice-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16,185,129,0.3);
+          }
+
+          .download-button {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .download-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(245,158,11,0.3);
+          }
+
+          .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+          }
+
+          @media (max-width: 768px) {
+            .header-content {
+              flex-direction: column;
+              align-items: flex-start;
+            }
+
+            .payment-proofs {
+              grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+
+            .item-card .row {
+              text-align: center;
+            }
+
+            .item-total {
+              text-align: center;
+              margin-top: 10px;
+            }
+
+            .lightbox-footer {
+              flex-direction: column;
+              gap: 10px;
+            }
+          }
+        `}</style>
+
+        <div className="order-detail-content">
+          {/* Page Header */}
+          <motion.div
+            className="page-header"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <div className="header-content">
+              <div className="header-title">
+                <h1>ລາຍລະອຽດອໍເດີ</h1>
+                <p className="header-subtitle">
+                  ຂໍ້ມູນລາຍລະອຽດຂອງຄໍາສັ່ງຊື້ #{order._id.substring(0, 8)}
+                </p>
+              </div>
+
+              <div className="header-actions">
+                <motion.button
+                  className={`btn btn-icon ${copiedId ? "copied" : ""}`}
+                  onClick={copyOrderId}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <i className={`fas fa-${copiedId ? "check" : "copy"}`}></i>
+                  {copiedId ? "ຄັດລອກແລ້ວ" : "ຄັດລອກ ID"}
+                </motion.button>
+                
+                <motion.a
+                  className="btn btn-icon invoice-button"
+                  // 💡 Note: ถ้าคุณใช้ href ใน motion.a ไม่จำเป็นต้องมี onClick
+                  href={`/invoice/orders/${order._id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <i className="fas fa-file-invoice"></i>
+                  ໃບບິນ
+                </motion.a>
+                <motion.button
+                  className="btn btn-icon back-button"
+                  onClick={() => navigate(-1)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <i className="fas fa-arrow-left"></i>
+                  ກັບຄືນ
+                </motion.button>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Order Info Card */}
+          <motion.div
+            className="info-card"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
+            <div className="card-header">
+              <div className="card-icon">📋</div>
+              <h3 className="card-title">ຂໍ້ມູນທົ່ວໄປ</h3>
+            </div>
+
+            <div className="row">
+              <div className="col-md-6">
+                <table className="table info-table">
+                  <tbody>
+                    <tr>
+                      <th>ລະຫັດອໍເດີ</th>
+                      <td className="font-monospace">{order._id}</td>
+                    </tr>
+                    <tr>
+                      <th>ວັນທີສັ່ງຊື້</th>
+                      <td>{formatDate(createdAt)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="col-md-6">
+                <table className="table info-table">
+                  <tbody>
+                    <tr>
+                      <th>ສະຖານະ</th>
+                      <td>
+                        <span
+                          className="status-badge"
+                          style={{
+                            backgroundColor: statusInfo.bgColor,
+                            color: statusInfo.color,
+                            border: `2px solid ${statusInfo.color}`,
+                          }}
+                        >
+                          <span className="status-icon">{statusInfo.icon}</span>
+                          <span>{statusInfo.label}</span>
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>ວິທີການຊຳລະ</th>
+                      <td>{paymentMethod}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Shipping Info Card */}
+          <motion.div
+            className="info-card"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
+            <div className="card-header">
+              <div className="card-icon">📍</div>
+              <h3 className="card-title">ຂໍ້ມູນການຂົນສົ່ງ</h3>
+            </div>
+
+            <div className="row">
+              <div className="col-md-6">
+                <table className="table info-table">
+                  <tbody>
+                    <tr>
+                      <th>ຊື່ຜູ້ຮັບ</th>
+                      <td>{user?.name || shippingInfo?.fullName || "N/A"}</td>
+                    </tr>
+                    <tr>
+                      <th>ເບີໂທ</th>
+                      <td>{shippingInfo?.phoneNo || "N/A"}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="col-md-6">
+                <table className="table info-table">
+                  <tbody>
+                    <tr>
+                      <th>ຜູ້ຂົນສົ່ງ</th>
+                      <td>{shippingCarrier}</td>
+                    </tr>
+                    <tr>
+                      <th>ສາຂາ</th>
+                      <td>{branch}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="shipping-info">
+              <div className="shipping-row">
+                <span className="shipping-label">ທີ່ຢູ່:</span>
+                <span className="shipping-value">
+                  {shippingInfo?.address || ""}
+                  {shippingInfo?.city ? `, ${shippingInfo.city}` : ""}
+                  {shippingInfo?.province ? `, ${shippingInfo.province}` : ""}
+                  {shippingInfo?.zipCode ? ` ${shippingInfo.zipCode}` : ""}
+                  {shippingInfo?.country ? `, ${shippingInfo.country}` : ""}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Payment Info Card */}
+          <motion.div
+            className="info-card"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
+            <div className="card-header">
+              <div className="card-icon">💳</div>
+              <h3 className="card-title">ຂໍ້ມູນການຊຳລະ</h3>
+            </div>
+
+            <div className="row">
+              <div className="col-md-6">
+                <table className="table info-table">
+                  <tbody>
+                    <tr>
+                      <th>ສະຖານະການຊຳລະ</th>
+                      <td
+                        className={
+                          isPaid
+                            ? "text-success fw-bold"
+                            : "text-danger fw-bold"
+                        }
+                      >
+                        {isPaid
+                          ? "ຊຳລະແລ້ວ"
+                          : order.paymentStatus || "ຍັງບໍ່ທັນຊຳລະ"}
+                      </td>
+                    </tr>
+                    {isPaid && paymentInfo?.id && (
+                      <tr>
+                        <th>Transaction ID</th>
+                        <td className="font-monospace">{paymentInfo.id}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div className="col-md-6">
+                <table className="table info-table">
+                  <tbody>
+                    <tr>
+                      <th>ຍອດທັງໝົດ</th>
+                      <td
+                        className="fw-bold text-primary"
+                        style={{ fontSize: "1.2rem" }}
+                      >
+                        {formatLAK(totalAmount)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Payment Proofs Section */}
+          {paymentProof && paymentProof.length > 0 && (
+            <motion.div
+              className="info-card"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.4 }}
+            >
+              <div className="card-header">
+                <div className="card-icon">📄</div>
+                <h3 className="card-title">ຫຼັກຖານການຊຳລະ</h3>
+              </div>
+
+              <div className="payment-proofs">
+                {paymentProof.map((p, idx) => {
+                  const url = resolveFileUrl(p.url || p.filename || "");
+                  const isImage = /\.(png|jpe?g|webp|gif)$/i.test(url);
+                  return (
+                    <motion.div
+                      key={idx}
+                      className="proof-card"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {isImage ? (
+                        <img
+                          src={url}
+                          alt={`proof-${idx}`}
+                          className="proof-image"
+                          onClick={() => openLightbox(url)}
+                        />
+                      ) : (
+                        <div className="proof-file">
+                          <div className="file-icon">
+                            <i className="fas fa-file-pdf fa-3x"></i>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="proof-info">
+                        <div className="proof-filename">
+                          {p.filename || `file-${idx + 1}`}
+                        </div>
+                        <div className="proof-actions">
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => window.open(url, "_blank")}
+                          >
+                            <i className="fas fa-eye"></i>
+                          </button>
+                          <a
+                            href={url}
+                            download
+                            className="btn btn-sm btn-outline-success"
+                          >
+                            <i className="fas fa-download"></i>
+                          </a>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-3">
+                <motion.button
+                  className="btn download-button"
+                  onClick={downloadAllProofsZip}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <i className="fas fa-file-archive"></i>
+                  ດາວໂຫຼດທັງໝົດ (.zip)
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Order Items Section */}
+          <motion.div
+            className="order-items"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+          >
+            <div className="card-header mb-4">
+              <div className="card-icon">🛒</div>
+              <h3 className="card-title">
+                ລາຍການທີ່ສັ່ງ ({orderItems.length} ລາຍການ)
+              </h3>
+            </div>
+
+            <AnimatePresence>
+              {orderItems.map((item, i) => (
+                <motion.div
+                  key={i}
+                  className="item-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: i * 0.1 }}
+                >
+                  <div className="row align-items-center">
+                    <div className="col-md-2">
+                      <Link to={`/product/${item.product}`}>
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="item-image"
+                        />
+                      </Link>
+                    </div>
+
+                    <div className="col-md-5">
+                      <div className="item-details">
+                        <h5>
+                          <Link to={`/product/${item.product}`}>
+                            {item.name}
+                          </Link>
+                        </h5>
+                        <div className="item-meta">
+                          <span className="item-price">
+                            {formatLAK(item.price)}
+                          </span>
+                          <span className="item-quantity">
+                            ຈຳນວນ: {item.quantity}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="col-md-3 text-center">
+                      <div className="item-subtotal">
+                        <div style={{ color: "#6b7280", fontSize: "0.8rem" }}>
+                          ລວມ
+                        </div>
+                        <div className="item-price">
+                          {formatLAK(item.price * item.quantity)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="col-md-2 text-center">
+                      <Link
+                        to={`/product/${item.product}`}
+                        className="btn btn-outline-primary btn-sm"
+                      >
+                        <i className="fas fa-eye"></i> ເບິ່ງ
+                      </Link>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+
+          {/* Summary Card */}
+          <motion.div
+            className="info-card"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.6 }}
+          >
+            <div className="card-header">
+              <div className="card-icon">📊</div>
+              <h3 className="card-title">ສະຫຼຸບການສັ່ງຊື້</h3>
+            </div>
+
+            <div className="row">
+              <div className="col-md-6">
+                <table className="table info-table">
+                  <tbody>
+                    <tr>
+                      <th>ລວມລາຍການ</th>
+                      <td>{orderItems.length} ລາຍການ</td>
+                    </tr>
+                    <tr>
+                      <th>ຈຳນວນສິນຄ້າ</th>
+                      <td>
+                        {orderItems.reduce(
+                          (sum, item) => sum + item.quantity,
+                          0
+                        )}{" "}
+                        ຊິ້ນ
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="col-md-6">
+                <table className="table info-table">
+                  <tbody>
+                    <tr>
+                      <th>ລວມລາຄາ</th>
+                      <td>
+                        {formatLAK(
+                          orderItems.reduce(
+                            (sum, item) => sum + item.price * item.quantity,
+                            0
+                          )
+                        )}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>ລວມທັງໝົດ</th>
+                      <td
+                        className="fw-bold text-primary"
+                        style={{ fontSize: "1.2rem" }}
+                      >
+                        {formatLAK(totalAmount)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Lightbox Modal */}
+        <AnimatePresence>
+          {lightboxOpen && (
+            <motion.div
+              className="lightbox-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              onClick={closeLightbox}
+            >
+              <motion.div
+                className="lightbox-content"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <img
+                  src={lightboxSrc}
+                  alt="preview"
+                  className="lightbox-image"
+                />
+                <div className="lightbox-footer">
+                  <span style={{ color: "#6b7280" }}>ກົດພາຍນອກຮູບເພື່ອປິດ</span>
+                  <button className="btn btn-light" onClick={closeLightbox}>
+                    <i className="fas fa-times"></i> ປິດ
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </>
+  );
+}

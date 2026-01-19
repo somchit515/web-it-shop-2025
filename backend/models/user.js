@@ -7,19 +7,25 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      require: [true, "Please enter your name "],
-      maxLength: [50, "Your name can not exceed 50 charecters"],
+      required: [true, "Please enter your name "], // ແກ້ຄຳຜິດຈາກ require ເປັນ required
+      maxLength: [50, "Your name can not exceed 50 characters"],
     },
     email: {
       type: String,
-      require: [true, "Please enter your email "],
+      required: [true, "Please enter your email "],
       unique: true,
     },
     password: {
       type: String,
-      require: [true, "Please enter your password "],
-      minLength: [6, "Your password must longer than 6 charecters"],
+      // 💡 ປັບອອກ: ບໍ່ໃສ່ required ເພື່ອໃຫ້ Google Login ສາມາດສ້າງ User ໄດ້ໂດຍບໍ່ຕ້ອງມີ password
+      minLength: [6, "Your password must be longer than 6 characters"],
       select: false,
+    },
+    // 💡 ເພີ່ມ authSource ເພື່ອແຍກປະເພດການ Login
+    authSource: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
     },
     avatar: {
       public_id: String,
@@ -27,6 +33,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
+      enum: ["user", "admin", "superAdmin"],
       default: "user",
     },
     resetPasswordToken: String,
@@ -35,16 +42,17 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-//Encrypting password before saving the user
+// Encrypting password before saving the user
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) {
-    next();
+  // 💡 ຖ້າບໍ່ມີ password (ກໍລະນີ Google Login ໃໝ່ໆ) ໃຫ້ຂ້າມການ Hash ໄປເລີຍ
+  if (!this.password || !this.isModified("password")) {
+    return next();
   }
 
   this.password = await bcrypt.hash(this.password, 10);
 });
 
-//retrun jwt token
+// return jwt token
 userSchema.methods.getJwtToken = function () {
   return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_TIME,
@@ -53,24 +61,23 @@ userSchema.methods.getJwtToken = function () {
 
 // compare user password
 userSchema.methods.comparePassword = async function (enteredPassword) {
+  // 💡 ຖ້າ User ນັ້ນມາຈາກ Google ແລະ ຍັງບໍ່ເຄີຍຕັ້ງ password ຈະໃຫ້ return false
+  if (!this.password) return false;
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
 // generate forget password reset token
 userSchema.methods.getResetPasswordToken = function () {
-  //generate token
   const resetToken = crypto.randomBytes(20).toString("hex");
 
-  // hash and set to resetPasswordToken field
   this.resetPasswordToken = crypto
     .createHash("sha256")
     .update(resetToken)
     .digest("hex");
 
-    // set token expire time
-    this.resetPasswordExpire = Date.now() + 30 * 60 * 1000
+  this.resetPasswordExpire = Date.now() + 30 * 60 * 1000;
 
-    return resetToken;
+  return resetToken;
 };
 
 export default mongoose.model("User", userSchema);

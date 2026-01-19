@@ -1,15 +1,14 @@
 export const PRODUCT_CATEGORIES = [
-  "laptops",
-  "Cameras",
-  "Headphones",
-  "OutDoors",
-  "PC",
-  "Electronics",
-  "Gammings",
-  "smartphones",
-  "Books",
-  "sports",
-  "Iphone",
+   "laptops",
+      "cameras",
+      "headphones",
+      "outdoors",
+      "pc",
+      "electronics",
+      "gaming",
+      "smartphones",
+      "books",
+      "sports"
 ];
 export const RATINGS = [
     { value: "5", label: "★ ★ ★ ★ ★" },
