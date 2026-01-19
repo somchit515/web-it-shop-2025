@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 export const blogApi = createApi({
   reducerPath: 'blogApi',
   baseQuery: fetchBaseQuery({ 
-    baseUrl: '/api/v1',
+    baseUrl: "https://ithub-sy2u.onrender.com/api/v1",
     prepareHeaders: (headers, { getState }) => {
       // ດຶງ token ຈາກ auth state (ປັບຊື່ໃຫ້ກົງກັບ Store ຂອງທ່ານ)
       const token = getState().auth?.token || localStorage.getItem('token');
