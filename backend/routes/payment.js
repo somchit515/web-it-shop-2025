@@ -1,16 +1,25 @@
 import express from "express";
-import { isAuthenticatedUser } from "../middlewares/auth.js";
-// ✅ FIX: Import BOTH functions from the single paymentController.js file
-import { StripecheckoutSession, stripeWebhook } from "../controllers/paymentController.js"; 
-
+import { isAuthenticatedUser, isAdmin } from "../middlewares/auth.js";
+import { StripecheckoutSession } from "../controllers/paymentController.js";
+import { attachPaymentProof, adminVerifyPayment } from "../controllers/paymentProofController.js";
+import { uploadMemory } from "../middlewares/uploadCloudinary.js";
 
 const router = express.Router();
 
-// Route to initiate the Stripe Checkout Session
-router.route("/payment/checkout_session").post(isAuthenticatedUser, StripecheckoutSession);
+router.post("/payment/checkout_session", isAuthenticatedUser, StripecheckoutSession);
 
-// Route for the Stripe Webhook to receive payment events
-// NOTE: This route MUST be called with the raw body, as configured in index.js
-router.route("/payment/webhook").post(stripeWebhook);
+router.post(
+  "/orders/:orderId/upload-proof",
+  isAuthenticatedUser,
+  uploadMemory.single("proof"),   // ใช้ memory + Cloudinary
+  attachPaymentProof
+);
+
+router.post(
+  "/orders/:orderId/verify",
+  isAuthenticatedUser,
+  isAdmin,
+  adminVerifyPayment
+);
 
 export default router;

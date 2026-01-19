@@ -40,16 +40,21 @@ function Filters() {
   const handleButtonClick = (e) => {
     e.preventDefault();
 
-    // ********** การปรับปรุง: ตรวจสอบและแปลงค่าราคา **********
-    const minVal = min === "" ? "" : parseInt(min);
-    const maxVal = max === "" ? "" : parseInt(max);
+    // แปลงเป็น number เฉพาะเมื่อไม่ใช่ค่าว่าง
+    const minExists = min !== "";
+    const maxExists = max !== "";
+    const minVal = minExists ? Number(min) : null;
+    const maxVal = maxExists ? Number(max) : null;
 
-    if (minVal && maxVal && minVal > maxVal) {
+    if (minExists && maxExists && Number.isFinite(minVal) && Number.isFinite(maxVal) && minVal > maxVal) {
       alert("Minimum price cannot be greater than maximum price.");
       return;
     }
 
     const updatedParams = new URLSearchParams(searchParams);
+
+    // ล้าง page เพื่อให้เริ่มจากหน้าแรกเมื่อเปลี่ยน filter
+    updatedParams.delete("page");
 
     // ใช้ min และ max ที่เป็น string (ค่าว่างหรือตัวเลข)
     getPriceQueryParams(updatedParams, "min", min);
@@ -69,10 +74,11 @@ function Filters() {
       updatedParams.delete("rating");
     }
 
+    // navigate ไปที่ path ปัจจุบันพร้อม query string ที่อัปเดต
     navigate(`${window.location.pathname}?${updatedParams.toString()}`);
   };
 
-  // ********** การเพิ่มฟังก์ชัน Clear Filters **********
+  // Clear filters — ล้างค่า state และ query params
   const handleClearFilters = () => {
     setMin("");
     setMax("");
@@ -88,13 +94,13 @@ function Filters() {
         <button
           className="btn btn-sm btn-outline-secondary"
           onClick={handleClearFilters}
-          style={{ whiteSpace: "nowrap" }} // ป้องกันปุ่มโดนตัดคำ
+          style={{ whiteSpace: "nowrap" }}
         >
           Clear Filters
         </button>
       </div>
       <hr />
-      
+
       <h5 className="filter-heading mb-3">Price</h5>
       <form id="filter_form" className="px-2" onSubmit={handleButtonClick}>
         <div className="row">
@@ -102,10 +108,9 @@ function Filters() {
             <input
               type="number"
               className="form-control"
-              placeholder="Min ($)"
+              placeholder="Min (₭)"
               name="min"
               value={min}
-              // ********** การปรับปรุง: อัปเดต state ทันที (เป็น string) **********
               onChange={(e) => setMin(e.target.value)}
               min="0"
             />
@@ -114,10 +119,9 @@ function Filters() {
             <input
               type="number"
               className="form-control"
-              placeholder="Max ($)"
+              placeholder="Max (₭)"
               name="max"
               value={max}
-              // ********** การปรับปรุง: อัปเดต state ทันที (เป็น string) **********
               onChange={(e) => setMax(e.target.value)}
               min="0"
             />
@@ -137,12 +141,13 @@ function Filters() {
           <input
             className="form-check-input"
             type="checkbox"
+            id={`cat-${category}`}
             name="category"
             value={category}
             checked={selectedCategory === category}
             onChange={handleCategoryChange}
           />
-          <label className="form-check-label">{category}</label>
+          <label className="form-check-label" htmlFor={`cat-${category}`}>{category}</label>
         </div>
       ))}
 
@@ -153,11 +158,12 @@ function Filters() {
           <input
             className="form-check-input"
             type="checkbox"
+            id={`rating-${rating.value}`}
             value={rating.value}
-            checked={selectedRating === rating.value}
+            checked={selectedRating === String(rating.value)}
             onChange={handleRatingChange}
           />
-          <label className="form-check-label">{rating.label}</label>
+          <label className="form-check-label" htmlFor={`rating-${rating.value}`}>{rating.label}</label>
         </div>
       ))}
     </div>

@@ -1,0 +1,102 @@
+/* src/components/Home.css */
+
+/* =========================================
+   1. Custom Grid System (สำหรับหมวดหมู่)
+   ========================================= */
+.custom-grid-5 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* มือถือ: 2 คอลัมน์ */
+  gap: 15px; /* ระยะห่างระหว่างช่อง */
+  padding: 5px; /* กันเงาถูกตัด */
+}
+
+/* Tablet (iPad แนวตั้ง) */
+@media (min-width: 768px) {
+  .custom-grid-5 {
+    grid-template-columns: repeat(3, 1fr); /* แท็บเล็ต: 3 คอลัมน์ */
+    gap: 20px;
+  }
+}
+
+/* Desktop (PC/Laptop) */
+@media (min-width: 992px) {
+  .custom-grid-5 {
+    grid-template-columns: repeat(5, 1fr); /* PC: 5 คอลัมน์ */
+  }
+}
+
+/* =========================================
+   2. Category Card (การ์ดหมวดหมู่)
+   ========================================= */
+.category-card {
+  background-color: #ffffff;
+  border: 1px solid #e9ecef; /* เส้นขอบสีเทาจางๆ */
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* Animation นุ่มๆ */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  position: relative;
+  overflow: hidden; /* ป้องกันภาพขยายเกินกรอบ */
+}
+
+/* Hover Effect: เมื่อเอาเมาส์ชี้ที่การ์ด */
+.category-card:hover {
+  transform: translateY(-5px); /* ลอยขึ้น 5px */
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1) !important; /* เงาฟุ้งขึ้น */
+  border-color: #0d6efd; /* เปลี่ยนขอบเป็นสีฟ้า (Bootstrap Primary) */
+  z-index: 2;
+}
+
+/* จัดการรูปภาพในหมวดหมู่ */
+.category-img-wrapper img {
+  transition: transform 0.5s ease; /* รูปขยายช้ากว่าการ์ดนิดหน่อยเพื่อความหรู */
+  filter: grayscale(10%); /* ปรับสีรูปให้ดู Soft ลงนิดนึง (Optional) */
+}
+
+/* เมื่อ Hover การ์ด ให้รูปขยาย */
+.category-card:hover .category-img-wrapper img {
+  transform: scale(1.15); /* ขยายรูป 15% */
+  filter: grayscale(0%); /* กลับมาสีสด */
+}
+
+/* Text Styling */
+.category-card span {
+  color: #495057;
+  transition: color 0.3s ease;
+}
+
+.category-card:hover span {
+  color: #0d6efd; /* ตัวหนังสือเปลี่ยนสีตามขอบ */
+}
+
+/* =========================================
+   3. Empty State (หน้าไม่พบสินค้า)
+   ========================================= */
+.empty-state-icon {
+  font-size: 5rem; /* ไอคอนขนาดใหญ่ */
+  color: #dee2e6; /* สีเทาจาง */
+  margin-bottom: 1.5rem;
+  animation: float 3s ease-in-out infinite; /* (Optional) ทำให้ไอคอนลอยไปมา */
+}
+
+/* Animation ลอยไปมาเบาๆ */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+/* =========================================
+   4. General Tweaks (ปรับแต่งทั่วไป)
+   ========================================= */
+
+/* ปรับ Product Card ให้สูงเท่ากันเสมอใน Grid */
+#products .card {
+  height: 100%; 
+  border: 1px solid #eee;
+  transition: transform 0.2s;
+}
+
+#products .card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+

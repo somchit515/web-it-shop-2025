@@ -1,0 +1,211 @@
+/* ใช้ CSS Variables ปรับธีมง่าย */
+:root {
+  --cr-gap: 12px;
+  --cr-card-w: 220px;
+  --cr-radius: 10px;
+  --cr-shadow: 0 8px 24px rgba(2, 6, 23, 0.08);
+  --cr-primary: #2563eb;
+  --cr-primary-light: #dbeafe;
+  --cr-text: #0f172a;
+  --cr-muted: #64748b;
+  --cr-border: #eef2f6;
+  --cr-skel-bg: #eef2f6;
+}
+
+.cat-row {
+  margin: 3rem auto;
+  max-width: 1200px;
+}
+
+.cr-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.cr-title {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--cr-text);
+  margin: 0;
+}
+
+.cr-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cr-show-all {
+  font-size: 0.875rem;
+  color: var(--cr-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+.cr-show-all:hover {
+  text-decoration: underline;
+}
+.cr-actions button {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #fff;
+  box-shadow: var(--cr-shadow);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: var(--cr-primary);
+  transition: background 0.2s;
+}
+.cr-actions button:hover {
+  background: var(--cr-primary-light);
+}
+
+.cr-scroller {
+  display: flex;
+  gap: var(--cr-gap);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+}
+.cr-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- card ---------- */
+.cr-card {
+  flex: 0 0 var(--cr-card-w);
+  background: #fff;
+  border: 1px solid var(--cr-border);
+  border-radius: var(--cr-radius);
+  box-shadow: var(--cr-shadow);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  scroll-snap-align: start;
+}
+.cr-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.12);
+}
+
+.cr-link {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.cr-img-box {
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  border-bottom: 1px solid var(--cr-border);
+  overflow: hidden;
+  border-radius: var(--cr-radius) var(--cr-radius) 0 0;
+}
+.cr-img-box img {
+  max-height: 120px;
+  object-fit: contain;
+  width: 100%;
+}
+
+.cr-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.cr-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cr-text);
+  line-height: 1.2;
+  height: 32px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+.cr-name:hover {
+  color: var(--cr-primary);
+}
+
+.cr-price {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--cr-primary);
+  margin-top: auto;
+}
+
+/* ---------- skeleton ---------- */
+.cr-card-skel {
+  flex: 0 0 var(--cr-card-w);
+  background: #fff;
+  border: 1px solid var(--cr-border);
+  border-radius: var(--cr-radius);
+  overflow: hidden;
+}
+.cr-skel-img {
+  height: 130px;
+  background: var(--cr-skel-bg);
+  background: linear-gradient(90deg, var(--cr-skel-bg) 8%, #f7fafc 18%, var(--cr-skel-bg) 33%);
+  background-size: 400% 100%;
+  animation: cr-shimmer 1.2s linear infinite;
+}
+.cr-skel-body {
+  padding: 10px 12px;
+}
+.cr-skel-line {
+  height: 14px;
+  background: var(--cr-skel-bg);
+  background: linear-gradient(90deg, var(--cr-skel-bg) 8%, #f7fafc 18%, var(--cr-skel-bg) 33%);
+  background-size: 400% 100%;
+  animation: cr-shimmer 1.2s linear infinite;
+  margin-bottom: 8px;
+}
+
+@keyframes cr-shimmer {
+  0% {
+    background-position: -220px 0;
+  }
+  100% {
+    background-position: 220px 0;
+  }
+}
+
+/* ---------- load more ---------- */
+.cr-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+.cr-more button {
+  padding: 0.45rem 1.1rem;
+  border: 1px solid var(--cr-border);
+  background: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  color: var(--cr-primary);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.cr-more button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cr-more button:not(:disabled):hover {
+  background: var(--cr-primary-light);
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 576px) {
+  .cr-actions {
+    display: none;
+  }
+}

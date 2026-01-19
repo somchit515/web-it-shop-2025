@@ -1,23 +1,252 @@
-import React from 'react'
-
-import {  Route } from "react-router-dom";
+// src/components/routes/AdminRoutes.jsx
+import React from "react";
+import { Route } from "react-router-dom";
 import ProtectedRoute from "../auth/ProtectedRoute";
-import Dashboard from '../admin/Dashboard';
-import ListProducts from '../admin/ListProducts';
 
-function AdminRoutes() {
-  return (
-    <>
+// Admin Pages
+import FinanceReport from "../superAdmin/reports/FinanceReport";
+import Dashboard from "../admin/Dashboard";
+import ListProducts from "../admin/ListProducts";
+import NewProduct from "../admin/NewProduct";
+import UpdateProduct from "../admin/UpdateProduct";
+import UploadImages from "../admin/UploadImages";
+import ListOrders from "../admin/ListOrder";
+import ProcessOrder from "../admin/ProcessOrder";
+import ListUsers from "../admin/ListUsers";
+import UpdateUsers from "../admin/UpdateUsers";
+import ProductReviews from "../admin/ProductReviews";
+import NewUser from "../admin/NewUser";
+import AdminVerifyPayment from "../admin/AdminVerifyPayment";
+import BlogAdmin from "../../components/blog/BlogAdmin";
 
-    <Route path="/admin/dashboard" element={<ProtectedRoute admin ={true}>
-              <Dashboard />
-            </ProtectedRoute>} />
-    <Route path="/admin/products" element={<ProtectedRoute admin ={true}>
-              <ListProducts />
-            </ProtectedRoute>} />
+// Reports (Super Admin)
+import ReportLayout from "../../components/superAdmin/reports/ReportLayout";
+import DashboardReport from "../../components/superAdmin/reports/DashboardReport";
+import CustomerReport from "../../components/superAdmin/reports/CustomerReport";
+import SalesReport from "../../components/superAdmin/reports/SalesReport";
+import ShipmentsPage from "../admin/ShipmentsPage";
+import UpdateOrderPage from "../admin/OrderStatusUpdate";
+import CompletedOrdersPage from "../admin/CompletedOrdersPage";
+import BlogDashboardOverview from "../blog/DashboardBlog"
+/**
+ * ✅ คืนค่าเป็น Array ของ <Route> elements
+ * เพื่อนำไป Spread ในไฟล์ App.js หลัก
+ */
+export default function AdminRoutes() {
+  return [
+   // ===== ✍️ BLOG MANAGEMENT =====
+<Route
+  key="blog-dashboard"
+  path="/admin/blog/dashboard"
+  element={
+    <ProtectedRoute admin>
+      <BlogDashboardOverview />
+    </ProtectedRoute>
+  }
+/>,
 
-    </>
-  )
+<Route
+  key="blog-admin-new"
+  path="/admin/blogs/new"
+  element={
+    <ProtectedRoute admin>
+      <BlogAdmin />
+    </ProtectedRoute>
+  }
+/>,
+
+<Route
+  key="blog-admin-edit"
+  path="/admin/blogs/:id/edit"
+  element={
+    <ProtectedRoute admin>
+      <BlogAdmin />
+    </ProtectedRoute>
+  }
+/>,
+
+    // ===== 📊 FINANCE REPORT & DASHBOARD =====
+    <Route
+      key="admin-dashboard"
+      path="/admin/dashboard"
+      element={
+        <ProtectedRoute admin>
+          <Dashboard />
+        </ProtectedRoute>
+      }
+    />,
+
+    <Route
+      key="admin-finance-report"
+      path="/admin/reports/finance"
+      element={
+        <ProtectedRoute superAdmin>
+          {" "}
+          {/* 🔑 ใช้ superAdmin เพื่อความปลอดภัยระดับการเงิน */}
+          <FinanceReport />
+        </ProtectedRoute>
+      }
+    />,
+
+    // ===== 📦 PRODUCTS MANAGEMENT =====
+    <Route
+      key="admin-products"
+      path="/admin/products"
+      element={
+        <ProtectedRoute admin>
+          <ListProducts />
+        </ProtectedRoute>
+      }
+    />,
+
+    <Route
+      key="admin-product-new"
+      path="/admin/product/new"
+      element={
+        <ProtectedRoute admin>
+          <NewProduct />
+        </ProtectedRoute>
+      }
+    />,
+
+    <Route
+      key="admin-product-update"
+      path="/admin/products/:id"
+      element={
+        <ProtectedRoute admin>
+          <UpdateProduct />
+        </ProtectedRoute>
+      }
+    />,
+
+    <Route
+      key="admin-product-upload"
+      path="/admin/products/:id/upload_images"
+      element={
+        <ProtectedRoute admin>
+          <UploadImages />
+        </ProtectedRoute>
+      }
+    />,
+
+    // ===== 🚚 ORDERS MANAGEMENT =====
+    <Route
+      key="admin-orders"
+      path="/admin/orders"
+      element={
+        <ProtectedRoute admin>
+          <ListOrders />
+        </ProtectedRoute>
+      }
+    />,
+
+    <Route
+      key="admin-orders-process"
+      path="/admin/orders/:id"
+      element={
+        <ProtectedRoute admin>
+          <ProcessOrder />
+        </ProtectedRoute>
+      }
+    />,
+
+    // ===== 👥 USERS MANAGEMENT (SUPER ADMIN) =====
+    <Route
+      key="admin-users"
+      path="/admin/users"
+      element={
+        <ProtectedRoute superAdmin>
+          <ListUsers />
+        </ProtectedRoute>
+      }
+    />,
+
+    <Route
+      key="admin-users-new"
+      path="/admin/users/new"
+      element={
+        <ProtectedRoute superAdmin>
+          <NewUser />
+        </ProtectedRoute>
+      }
+    />,
+
+    <Route
+      key="admin-users-update"
+      path="/admin/users/:id"
+      element={
+        <ProtectedRoute superAdmin>
+          <UpdateUsers />
+        </ProtectedRoute>
+      }
+    />,
+
+    // ===== ⭐ REVIEWS & PAYMENTS =====
+    <Route
+      key="admin-reviews"
+      path="/admin/reviews"
+      element={
+        <ProtectedRoute admin>
+          <ProductReviews />
+        </ProtectedRoute>
+      }
+    />,
+
+    <Route
+      key="admin-verify-payments"
+      path="/admin/verify-payments"
+      element={
+        <ProtectedRoute admin>
+          <AdminVerifyPayment />
+        </ProtectedRoute>
+      }
+    />,
+    <Route
+      key="blog-admin"
+      path="/admin/blog"
+      element={
+        <ProtectedRoute>
+          <BlogAdmin />
+        </ProtectedRoute>
+      }
+    />,
+
+    <Route
+      key="blog-admin-new"
+      path="/admin/blogs/new"
+      element={
+        <ProtectedRoute>
+          <BlogAdmin />
+        </ProtectedRoute>
+      }
+    />,
+    <Route
+      key="blog-admin-edit"
+      path="/admin/blogs/:id/edit"
+      element={
+        <ProtectedRoute>
+          <BlogAdmin />
+        </ProtectedRoute>
+      }
+    />,
+
+    // ===== 📈 NESTED REPORTS (SUPER ADMIN) =====
+    <Route
+      key="admin-reports-layout"
+      path="/admin/reports"
+      element={
+        <ProtectedRoute superAdmin>
+          <ReportLayout />
+        </ProtectedRoute>
+      }
+    >
+      <Route index element={<DashboardReport />} />
+      <Route path="customers" element={<CustomerReport />} />
+      <Route path="sales" element={<SalesReport />} />
+    </Route>,
+
+    <Route path="/admin/shipments" element={<ShipmentsPage />} />,
+    <Route path="/admin/orders/:id/status" element={<UpdateOrderPage />} />,
+    <Route path="/admin/completed-orders" element={<CompletedOrdersPage />} />,
+  ];
 }
-
-export default AdminRoutes

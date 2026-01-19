@@ -8,6 +8,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 
@@ -18,66 +19,92 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
-
 export default function SaleChart({ salesData }) {
-  // 🚨 เพิ่ม Console Log เพื่อตรวจสอบข้อมูลที่ได้รับ
-  console.log("SaleChart received data:", salesData);
 
   const options = {
     responsive: true,
-    interaction: {
-      mode: 'index',
-      intersect: false,
-    },
-    stacked: false,
+    maintainAspectRatio: false, // ✅ ปรับให้กราฟยืดตาม container
     plugins: {
       title: {
         display: true,
-        text: 'ข้อมูลການຂາຍ ແລະ ອໍເດີ',
+        text: 'ຂໍ້ມູນການຂາຍ ແລະ ອໍເດີ',
+        color: "#1a1a1a",
+        font: { size: 20, weight: "bold" },
+        padding: 20
       },
+      legend: {
+        position: "top",
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: { size: 14 }
+        }
+      },
+      tooltip: {
+        backgroundColor: "rgba(0,0,0,0.8)",
+        padding: 12,
+        bodyFont: { size: 14 },
+        titleFont: { size: 16 },
+        cornerRadius: 8
+      }
     },
     scales: {
+      x: {
+        grid: { display: false },
+        ticks: { color: "#374151", font: { size: 13 } }
+      },
       y: {
-        type: 'linear',
-        display: true,
-        position: 'left',
+        grid: { color: "rgba(0,0,0,0.05)" },
+        ticks: { color: "#374151", font: { size: 12 } },
+        position: 'left'
       },
       y1: {
-        type: 'linear',
-        display: true,
-        position: 'right',
-        grid: {
-          drawOnChartArea: false,
-        },
-      },
-    },
+        grid: { drawOnChartArea: false },
+        ticks: { color: "#9b1c1c", font: { size: 12 } },
+        position: 'right'
+      }
+    }
   };
 
-  // ✅ FIX: Changed 'data.Date' (uppercase D) to 'data.date' (lowercase d)
-  // to match the data structure returned by the backend (orderController.js)
-  const labels = salesData?.map((data) => data.date);
+  const labels = salesData?.map((x) => x.date);
 
   const data = {
     labels,
     datasets: [
       {
-        label: 'ຍອດການຂາຍ',
-        data: salesData?.map((data) => data.sales),
-        borderColor: '#198753',
-        backgroundColor: 'rgba(42, 117, 83, 0.5)',
-        yAxisID: 'y',
+        label: 'ຍອດຂາຍ (Sale)',
+        data: salesData?.map((x) => x.sales),
+        borderColor: "#0f766e",
+        backgroundColor: "rgba(15, 118, 110, 0.2)",
+        fill: true, // ✅ สวยขึ้นเหมือนกราฟสมัยใหม่
+        tension: 0.4, // ทำเส้นโค้งนุ่ม
+        yAxisID: "y"
       },
       {
-        label: 'ຂໍ້ມູນອໍເດີ',
-        data: salesData?.map((data) => data.numOrders),
-        borderColor: 'rgb(220, 52, 69)',
-        backgroundColor: 'rgba(201, 68, 82, 0.5)',
-        yAxisID: 'y1',
-      },
-    ],
+        label: 'ຈໍານວນອໍເດີ (Orders)',
+        data: salesData?.map((x) => x.numOrders),
+        borderColor: "#b91c1c",
+        backgroundColor: "rgba(185, 28, 28, 0.15)",
+        fill: true,
+        tension: 0.4,
+        yAxisID: "y1"
+      }
+    ]
   };
-  return <Line options={options} data={data} />;
+
+  return (
+    <div style={{
+      height: "420px",
+      background: "#fff",
+      borderRadius: "12px",
+      padding: "20px",
+      boxShadow: "0 4px 18px rgba(0,0,0,0.06)"
+    }}>
+      <Line options={options} data={data} />
+    </div>
+  );
 }

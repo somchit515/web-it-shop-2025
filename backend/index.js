@@ -54,7 +54,14 @@ import productRoutes from "./routes/products.js";
 import authRoutes from "./routes/auth.js";
 import orderRoutes from "./routes/order.js";
 import paymentRoutes from "./routes/payment.js";
+import reportRoutes from "./routes/reportRoutes.js";
+import blogRoutes from "./routes/blogRoutes.js"
 
+// Mount blog routes
+app.use("/api/v1/blogs", blogRoutes);
+
+// Mount report routes
+app.use("/api/v1", reportRoutes);
 
 // Mount routes
 app.use("/api/v1", productRoutes);
