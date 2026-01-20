@@ -4,7 +4,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 export const orderApi = createApi({
   reducerPath: "orderApi",
   baseQuery: fetchBaseQuery({
-    baseUrl: "https://ithub-sy2u.onrender.com/api/v1",
+    baseUrl: "http://172.21.1.135/api/v1",
     prepareHeaders: (headers, { getState }) => {
       // ถ้าคุณเก็บ token ใน state.auth.token ให้ส่งไปโดยอัตโนมัติ
       const token = getState()?.auth?.token;
