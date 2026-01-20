@@ -7,7 +7,7 @@ import { userApi } from "./api/userApi"; // ตรวจสอบ path นี้
 
 export const authApi = createApi({
   reducerPath: "authApi",
-  baseQuery: fetchBaseQuery({ baseUrl: "https://ithub-sy2u.onrender.com/api/v1" }),
+  baseQuery: fetchBaseQuery({ baseUrl: "http://172.21.1.135/api/v1" }),
   // 💡 แนะนำ: เพิ่ม tagTypes ที่นี่ด้วย เพื่อความเป็นระเบียบ
   tagTypes: ["User"],
 
