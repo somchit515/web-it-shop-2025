@@ -7,7 +7,7 @@ import { userApi } from "./api/userApi"; // ตรวจสอบ path นี้
 
 export const authApi = createApi({
   reducerPath: "authApi",
-  baseQuery: fetchBaseQuery({ baseUrl: "/api/v1" }),
+  baseQuery: fetchBaseQuery({ baseUrl: "https://necessary-lian-xxx-1-bf271a33.koyeb.app/api/v1" }),
   // 💡 แนะนำ: เพิ่ม tagTypes ที่นี่ด้วย เพื่อความเป็นระเบียบ
   tagTypes: ["User"],
 

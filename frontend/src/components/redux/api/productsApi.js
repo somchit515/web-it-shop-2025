@@ -7,7 +7,7 @@ const getTokenFromLocal = () => localStorage.getItem("token") || null;
 export const productApi = createApi({
   reducerPath: "productApi",
   baseQuery: fetchBaseQuery({
-    baseUrl: "/api/v1", // change in dev if needed
+    baseUrl: "https://necessary-lian-xxx-1-bf271a33.koyeb.app/api/v1", // change in dev if needed
     prepareHeaders: (headers, { getState }) => {
       const token = getTokenFromLocal();
       if (token) {
