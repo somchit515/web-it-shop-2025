@@ -2,13 +2,8 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 export const blogApi = createApi({
   reducerPath: 'blogApi',
-<<<<<<< HEAD
   baseQuery: fetchBaseQuery({
     baseUrl: '/api/v1',
-=======
-  baseQuery: fetchBaseQuery({ 
-    baseUrl: 'https://necessary-lian-xxx-1-bf271a33.koyeb.app/api/v1/blogs',
->>>>>>> f90b8e0f05e8f98dfd9e701dd1f9e547813bbc96
     prepareHeaders: (headers, { getState }) => {
       const token = getState().auth?.token || localStorage.getItem('token');
       if (token) {
@@ -196,10 +191,5 @@ export const {
   useDeleteBlogMutation,
   useLikeBlogMutation,
   useAddCommentMutation,
-<<<<<<< HEAD
   useIncrementViewMutation,
 } = blogApi;
-=======
-  useIncrementViewMutation
-} = blogApi;
->>>>>>> f90b8e0f05e8f98dfd9e701dd1f9e547813bbc96
