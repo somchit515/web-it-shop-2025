@@ -13,8 +13,8 @@
 }
 
 .cat-row {
-  margin: 3rem auto;
-  max-width: 1200px;
+  max-width: 100%;
+  margin: 3rem 0;
 }
 
 .cr-head {

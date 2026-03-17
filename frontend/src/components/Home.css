@@ -5,15 +5,15 @@
    ========================================= */
 .custom-grid-5 {
   display: grid;
-  grid-template-columns: repeat(2, 1fr); /* มือถือ: 2 คอลัมน์ */
-  gap: 15px; /* ระยะห่างระหว่างช่อง */
-  padding: 5px; /* กันเงาถูกตัด */
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  padding: 5px;
 }
 
 /* Tablet (iPad แนวตั้ง) */
 @media (min-width: 768px) {
   .custom-grid-5 {
-    grid-template-columns: repeat(3, 1fr); /* แท็บเล็ต: 3 คอลัมน์ */
+    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
   }
 }
@@ -21,82 +21,95 @@
 /* Desktop (PC/Laptop) */
 @media (min-width: 992px) {
   .custom-grid-5 {
-    grid-template-columns: repeat(5, 1fr); /* PC: 5 คอลัมน์ */
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 
 /* =========================================
-   2. Category Card (การ์ดหมวดหมู่)
+   2. Warm Background Theme
    ========================================= */
-.category-card {
-  background-color: #ffffff;
-  border: 1px solid #e9ecef; /* เส้นขอบสีเทาจางๆ */
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* Animation นุ่มๆ */
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-  position: relative;
-  overflow: hidden; /* ป้องกันภาพขยายเกินกรอบ */
+.home-wrapper {
+  width: 100%;
+  max-width: 100%;
+  padding-left: 24px;
+  padding-right: 24px;
+  background: linear-gradient(160deg,
+    #fdf8f2 0%,
+    #fef6e8 40%,
+    #fdf2e9 100%
+  );
+  min-height: 100vh;
 }
 
-/* Hover Effect: เมื่อเอาเมาส์ชี้ที่การ์ด */
+/* =========================================
+   3. Category Card (การ์ดหมวดหมู่)
+   ========================================= */
+.category-card {
+  background-color: #fffdf9;
+  border: 1px solid #f0e6d3;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Hover Effect */
 .category-card:hover {
-  transform: translateY(-5px); /* ลอยขึ้น 5px */
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1) !important; /* เงาฟุ้งขึ้น */
-  border-color: #0d6efd; /* เปลี่ยนขอบเป็นสีฟ้า (Bootstrap Primary) */
+  transform: translateY(-5px);
+  box-shadow: 0 12px 24px rgba(196, 122, 58, 0.15) !important;
+  border-color: #c47a3a;
   z-index: 2;
 }
 
 /* จัดการรูปภาพในหมวดหมู่ */
 .category-img-wrapper img {
-  transition: transform 0.5s ease; /* รูปขยายช้ากว่าการ์ดนิดหน่อยเพื่อความหรู */
-  filter: grayscale(10%); /* ปรับสีรูปให้ดู Soft ลงนิดนึง (Optional) */
+  transition: transform 0.5s ease;
+  filter: grayscale(10%);
 }
 
 /* เมื่อ Hover การ์ด ให้รูปขยาย */
 .category-card:hover .category-img-wrapper img {
-  transform: scale(1.15); /* ขยายรูป 15% */
-  filter: grayscale(0%); /* กลับมาสีสด */
+  transform: scale(1.15);
+  filter: grayscale(0%);
 }
 
 /* Text Styling */
 .category-card span {
-  color: #495057;
+  color: #6b4c2a;
   transition: color 0.3s ease;
 }
 
 .category-card:hover span {
-  color: #0d6efd; /* ตัวหนังสือเปลี่ยนสีตามขอบ */
+  color: #c47a3a;
 }
 
 /* =========================================
-   3. Empty State (หน้าไม่พบสินค้า)
+   4. Empty State (หน้าไม่พบสินค้า)
    ========================================= */
 .empty-state-icon {
-  font-size: 5rem; /* ไอคอนขนาดใหญ่ */
-  color: #dee2e6; /* สีเทาจาง */
+  font-size: 5rem;
+  color: #e8d5b7;
   margin-bottom: 1.5rem;
-  animation: float 3s ease-in-out infinite; /* (Optional) ทำให้ไอคอนลอยไปมา */
+  animation: float 3s ease-in-out infinite;
 }
 
-/* Animation ลอยไปมาเบาๆ */
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  0%   { transform: translateY(0px); }
+  50%  { transform: translateY(-10px); }
   100% { transform: translateY(0px); }
 }
 
 /* =========================================
-   4. General Tweaks (ปรับแต่งทั่วไป)
+   5. General Tweaks
    ========================================= */
-
-/* ปรับ Product Card ให้สูงเท่ากันเสมอใน Grid */
 #products .card {
-  height: 100%; 
-  border: 1px solid #eee;
+  height: 100%;
+  border: 1px solid #f0e6d3;
+  background-color: #fffdf9;
   transition: transform 0.2s;
 }
 
 #products .card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 15px rgba(196, 122, 58, 0.12);
 }
-
