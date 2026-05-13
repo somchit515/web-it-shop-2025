@@ -21,7 +21,15 @@ const CategoryCard = ({ c }) => (
 );
 
 export default function CategoryOverview() {
+codex/add-a-greeting-feature-hj6ijz
   const { categories } = useCategories();
+
+ codex/add-a-greeting-feature-azctjh
+  const { categories } = useCategories();
+
+  const categories = useCategories();
+master
+ master
   const rowsToShow = [
     { slug: "smartphones", title: "Mobile phone" },
     { slug: "laptops", title: "Laptops" },
