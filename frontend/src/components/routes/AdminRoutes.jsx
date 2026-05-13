@@ -29,6 +29,7 @@ import UpdateOrderPage from "../admin/OrderStatusUpdate";
 import CompletedOrdersPage from "../admin/CompletedOrdersPage";
 import CouponsPage from "../admin/CouponsPage";
 import BlogDashboardOverview from "../blog/DashboardBlog"
+import CategoriesManager from "../admin/CategoriesManager"
 /**
  * ✅ คืนค่าเป็น Array ของ <Route> elements
  * เพื่อนำไป Spread ในไฟล์ App.js หลัก
@@ -252,6 +253,17 @@ export default function AdminRoutes() {
       element={
         <ProtectedRoute admin>
           <CompletedOrdersPage />
+        </ProtectedRoute>
+      }
+    />,
+
+
+    <Route
+      key="admin-categories"
+      path="/admin/categories"
+      element={
+        <ProtectedRoute admin>
+          <CategoriesManager />
         </ProtectedRoute>
       }
     />,
