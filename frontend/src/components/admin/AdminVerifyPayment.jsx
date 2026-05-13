@@ -1,16 +1,49 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import AdminLayout from '../layout/AdminLayout';
+import {
+  useGetAdminOrdersQuery,
+  useVerifyPaymentMutation,
+  useNotifyOrderCustomerMutation,
+} from '../redux/api/OrderApi';
+import { confirmDialog } from './_shared/confirmDialog';
 
 export default function AdminVerifyPayment() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [verifyingId, setVerifyingId] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('date-desc');
+
+  // ✅ Pagination
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+
+  // ✅ Server-side filter: ดึงเฉพาะ orders ที่ paymentStatus = AwaitingProof หรือ Pending
+  //    (ลดจาก 1000+ orders เหลือแค่ที่ต้องตรวจสอบจริงๆ)
+  const queryParams = useMemo(() => {
+    const params = {
+      paymentStatus: 'AwaitingProof,Pending', // backend รับ comma-separated
+    };
+    if (searchTerm.trim()) params.q = searchTerm.trim();
+    return params;
+  }, [searchTerm]);
+
+  const {
+    data: ordersData,
+    isLoading: loading,
+    error: fetchError,
+    refetch,
+  } = useGetAdminOrdersQuery(queryParams);
+
+  const [verifyPayment] = useVerifyPaymentMutation();
+  const [notifyCustomer] = useNotifyOrderCustomerMutation();
+
+  // Reset page เมื่อเปลี่ยน filter/search/sort
+  useEffect(() => {
+    setPage(1);
+  }, [filterStatus, searchTerm, sortBy]);
 
   // Proof modal state
   const [proofModalOpen, setProofModalOpen] = useState(false);
@@ -18,109 +51,71 @@ export default function AdminVerifyPayment() {
   const [proofIndex, setProofIndex] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  const token = localStorage.getItem('token');
+  // ✅ Server-side filter ทำให้แล้ว — แค่อ่าน list มาใช้
+  const orders = useMemo(() => {
+    return Array.isArray(ordersData)
+      ? ordersData
+      : (ordersData?.orders || []);
+  }, [ordersData]);
 
+  // แสดง error ครั้งเดียวเมื่อโหลดล้มเหลว
   useEffect(() => {
-    fetchPending();
-  }, []);
+    if (fetchError) {
+      toast.error(fetchError?.data?.message || 'ບໍ່ສາມາດໂຫຼດຂໍ້ມູນໄດ້');
+    }
+  }, [fetchError]);
 
   const formatLAK = (v) => {
     try {
       const n = Number(v || 0);
-      return new Intl.NumberFormat('lo-LA', { 
-        style: 'currency', 
-        currency: 'LAK', 
-        maximumFractionDigits: 0 
+      return new Intl.NumberFormat('lo-LA', {
+        style: 'currency',
+        currency: 'LAK',
+        maximumFractionDigits: 0,
       }).format(n);
     } catch {
       return `₭ ${v}`;
     }
   };
 
-  const fetchPending = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/v1/admin/orders', {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      const payload = await res.json().catch(() => ({}));
-      setLoading(false);
-      if (!res.ok) {
-        toast.error(payload.message || 'ບໍ່ສາມາດໂຫຼດຂໍ້ມູນໄດ້');
-        setOrders([]);
-        return;
-      }
-      const all = Array.isArray(payload) ? payload : (payload.orders || []);
-      
-      const pending = all.filter(o => {
-        const status = (o.paymentStatus || o.paymentInfo?.status || '').toLowerCase();
-        return status === 'awaitingproof' || status === 'pending';
-      });
-      
-      setOrders(pending);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-      toast.error('ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນ');
-    }
-  };
-
   const tryNotifyCustomer = async (orderId, action) => {
     try {
-      const res = await fetch(`/api/v1/orders/${orderId}/notify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ action }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.message || 'ການແຈ້ງເຕືອນລົ້ມເຫລວ');
-        return false;
-      }
+      await notifyCustomer({ id: orderId, action }).unwrap();
       toast.success('ແຈ້ງເຕືອນລູກຄ້າສຳເລັດ');
       return true;
     } catch (err) {
       console.error('notify error', err);
-      toast.error('ການແຈ້ງເຕືອນລົ້ມເຫລວ');
+      toast.error(err?.data?.message || 'ການແຈ້ງເຕືອນລົ້ມເຫລວ');
       return false;
     }
   };
 
   const handleVerify = async (orderId, action, note = '') => {
-    const confirmText = action === 'confirm' ? 'ຢືນຢັນ' : 'ປະຕິເສດ';
-    if (!window.confirm(`ທ່ານແນ່ໃຈທີ່ຈະ ${confirmText} ການຊຳລະເງິນນີ້ບໍ?`)) return;
+    const isConfirm = action === 'confirm';
+    const ok = await confirmDialog.show({
+      title: isConfirm ? 'ຢືນຢັນການຊຳລະເງິນ?' : 'ປະຕິເສດການຊຳລະເງິນ?',
+      message: isConfirm
+        ? 'ການຊຳລະນີ້ຈະຖືກບັນທຶກວ່າສຳເລັດ ແລະ ອໍເດີຈະເຂົ້າສູ່ຂັ້ນຕອນຈັດສົ່ງ'
+        : 'ການຊຳລະນີ້ຈະຖືກປະຕິເສດ ແລະ ລູກຄ້າຈະໄດ້ຮັບການແຈ້ງເຕືອນ',
+      confirmText: isConfirm ? 'ຢືນຢັນ' : 'ປະຕິເສດ',
+      variant: isConfirm ? 'primary' : 'warning',
+      icon: isConfirm ? 'fa-check-double' : 'fa-ban',
+    });
+    if (!ok) return;
 
     setVerifyingId(orderId);
     try {
-      const res = await fetch(`/api/v1/orders/${orderId}/verify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ 
-          action: action === 'confirm' ? 'confirm' : 'reject', 
-          note 
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(data.message || 'ການຢືນຢັນລົ້ມເຫລວ');
-        setVerifyingId(null);
-        return;
-      }
-      toast.success(`${action === 'confirm' ? 'ຢືນຢັນສຳເລັດ' : 'ປະຕິເສດສຳເລັດ'}`);
+      await verifyPayment({
+        id: orderId,
+        action: action === 'confirm' ? 'confirm' : 'reject',
+        note,
+      }).unwrap();
+      toast.success(action === 'confirm' ? 'ຢືນຢັນສຳເລັດ' : 'ປະຕິເສດສຳເລັດ');
       tryNotifyCustomer(orderId, action);
-      await fetchPending();
+      // ไม่ต้องเรียก refetch — invalidatesTags จะ trigger ให้เอง
     } catch (err) {
       console.error(err);
-      toast.error('ເກີດຂໍ້ຜິດພາດ');
+      toast.error(err?.data?.message || 'ການຢືນຢັນລົ້ມເຫລວ');
     } finally {
       setVerifyingId(null);
     }
@@ -155,9 +150,7 @@ export default function AdminVerifyPayment() {
         if (!p?.url) continue;
         try {
           const fetchRes = await fetch(p.url, {
-            headers: {
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
+            credentials: 'include',
           });
           if (!fetchRes.ok) continue;
           const blob = await fetchRes.blob();
@@ -214,40 +207,42 @@ export default function AdminVerifyPayment() {
     setProofIndex((i) => (i >= proofItems.length - 1 ? 0 : i + 1));
   };
 
-  // Filter and sort orders
+  // ✅ Server-side ทำ filter หลักแล้ว (paymentStatus + search q)
+  //    Client-side ทำเพียง: sub-filter status (pending/awaiting), sort, refine search
   const filteredOrders = orders
-    .filter(order => {
-      // Filter by status
+    .filter((order) => {
+      // Sub-filter: dropdown filterStatus
       if (filterStatus !== 'all') {
         const status = (order.paymentStatus || '').toLowerCase();
         if (filterStatus === 'pending' && status !== 'pending') return false;
         if (filterStatus === 'awaiting' && status !== 'awaitingproof') return false;
       }
-      
-      // Filter by search term
+      // ค้นหา customer name (server-side ค้น orderId/address แล้ว — ตรงนี้ refine name)
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
-        const orderId = (order._id || '').toLowerCase();
         const customerName = (order.user?.name || order.shippingInfo?.name || '').toLowerCase();
-        return orderId.includes(term) || customerName.includes(term);
+        const orderId = (order._id || '').toLowerCase();
+        if (!customerName.includes(term) && !orderId.includes(term)) return false;
       }
-      
       return true;
     })
     .sort((a, b) => {
       switch (sortBy) {
-        case 'date-desc':
-          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-        case 'date-asc':
-          return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
-        case 'amount-desc':
-          return (b.totalAmount || 0) - (a.totalAmount || 0);
-        case 'amount-asc':
-          return (a.totalAmount || 0) - (b.totalAmount || 0);
-        default:
-          return 0;
+        case 'date-desc': return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        case 'date-asc':  return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+        case 'amount-desc': return (b.totalAmount || 0) - (a.totalAmount || 0);
+        case 'amount-asc':  return (a.totalAmount || 0) - (b.totalAmount || 0);
+        default: return 0;
       }
     });
+
+  // ✅ Pagination calculations
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedOrders = filteredOrders.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE
+  );
 
   return (
     <AdminLayout>
@@ -590,6 +585,57 @@ export default function AdminVerifyPayment() {
           font-size: 0.875rem;
         }
 
+        /* ✅ Pagination */
+        .vp-pagination {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+          padding: 24px 0 8px;
+        }
+        .vp-pagination-info {
+          color: #64748b;
+          font-size: 0.875rem;
+        }
+        .vp-pagination-list {
+          display: flex;
+          gap: 6px;
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+        .vp-page-btn {
+          min-width: 40px;
+          height: 40px;
+          padding: 0 12px;
+          border: 2px solid #e2e8f0;
+          background: white;
+          color: #64748b;
+          border-radius: 10px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 0.9rem;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .vp-page-btn:hover:not(:disabled) {
+          border-color: #667eea;
+          color: #667eea;
+          transform: translateY(-1px);
+        }
+        .vp-page-btn.active {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-color: #667eea;
+          color: white;
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .vp-page-btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
         .loading-state {
           display: flex;
           flex-direction: column;
@@ -853,7 +899,7 @@ export default function AdminVerifyPayment() {
               </select>
             </div>
 
-            <button className="refresh-btn" onClick={fetchPending} disabled={loading}>
+            <button className="refresh-btn" onClick={refetch} disabled={loading}>
               {loading ? (
                 <>
                   <i className="fas fa-spinner fa-spin"></i>
@@ -889,7 +935,7 @@ export default function AdminVerifyPayment() {
           </div>
         ) : (
           <div className="orders-grid">
-            {filteredOrders.map((order) => {
+            {pagedOrders.map((order) => {
               const hasProof = Array.isArray(order.paymentProof) && order.paymentProof.length > 0;
               const paymentStatus = order.paymentStatus || order.paymentInfo?.status || 'Unknown';
               const customerName = order.user?.name || order.shippingInfo?.name || 'N/A';
@@ -1041,6 +1087,54 @@ export default function AdminVerifyPayment() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* ✅ Pagination */}
+        {filteredOrders.length > 0 && totalPages > 1 && (
+          <div className="vp-pagination">
+            <div className="vp-pagination-info">
+              ສະແດງ {(safePage - 1) * PAGE_SIZE + 1}–
+              {Math.min(safePage * PAGE_SIZE, filteredOrders.length)} ຈາກ{' '}
+              {filteredOrders.length} ລາຍການ
+            </div>
+            <ul className="vp-pagination-list">
+              <li>
+                <button
+                  className="vp-page-btn"
+                  onClick={() => setPage(safePage - 1)}
+                  disabled={safePage === 1}
+                >
+                  <i className="fas fa-chevron-left"></i>
+                </button>
+              </li>
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                let n;
+                if (totalPages <= 7) n = i + 1;
+                else if (safePage <= 4) n = i + 1;
+                else if (safePage >= totalPages - 3) n = totalPages - 6 + i;
+                else n = safePage - 3 + i;
+                return (
+                  <li key={n}>
+                    <button
+                      className={`vp-page-btn ${n === safePage ? 'active' : ''}`}
+                      onClick={() => setPage(n)}
+                    >
+                      {n}
+                    </button>
+                  </li>
+                );
+              })}
+              <li>
+                <button
+                  className="vp-page-btn"
+                  onClick={() => setPage(safePage + 1)}
+                  disabled={safePage === totalPages}
+                >
+                  <i className="fas fa-chevron-right"></i>
+                </button>
+              </li>
+            </ul>
           </div>
         )}
 

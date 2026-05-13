@@ -47,10 +47,10 @@ const About = () => {
       description: 'ຜູ້ຊ່ຽວຊານດ້ານເທັກໂນໂລຢີ'
     },
     {
-      name: 'ທ່ານ ບຸນມີ',
-      role: 'Head of Operations',
+      name: 'ທ່ານ ສຸກສະຫວັນ ສີປະມວນ',
+      role: 'COO',
       image: '👨‍💼',
-      description: 'ຜູ້ຈັດການການດຳເນີນງານ'
+      description: 'ຜູ້ອຳນວຍການດ້ານການເງິນ'
     },
     {
       name: 'ນາງ ດາລາ',

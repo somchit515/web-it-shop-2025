@@ -1,16 +1,29 @@
 // src/components/product/ProductDetails.jsx
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { useGetProductDetailsQuery } from "../redux/api/productsApi"; // <- corrected path (up two)
-import { useParams } from "react-router-dom";
+import { useGetProductDetailsQuery } from "../redux/api/productsApi";
+import { useParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import Loader from "../layout/Loader";
 import StarRatings from "react-star-ratings";
 import { useDispatch } from "react-redux";
-import { setcartItems } from "../redux/features/cartSlice"; // <- corrected path (up two)
-import MetaData from '../layout/MetaData';
+import {
+  FaHome,
+  FaChevronRight,
+  FaShoppingCart,
+  FaBoxOpen,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaPlus,
+  FaMinus,
+} from "react-icons/fa";
+
+import { setcartItems } from "../redux/features/cartSlice";
+import Loader from "../layout/Loader";
+import MetaData from "../layout/MetaData";
 import NewReviews from "../reviews/NewReviews";
 import ListReviews from "../reviews/ListReviews";
-import RelatedProductsSlider from "./RelatedProductsSlider"; // same-folder component
+import RelatedProductsSlider from "./RelatedProductsSlider";
+
+import "../Home.css"; // ใช้ theme เดียวกัน
 
 function ProductDetails() {
   const params = useParams();
@@ -19,33 +32,40 @@ function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [activeImg, setActiveImg] = useState("/images/default_product.png");
 
-  // RTK Query Hook
-  const { data, isLoading, error, isError } = useGetProductDetailsQuery(params?.id);
+  const { data, isLoading, error, isError } = useGetProductDetailsQuery(
+    params?.id
+  );
   const product = useMemo(() => data?.product || null, [data]);
 
-  // Format LAK
   const formatLAK = useCallback((val) => {
     const n = Number(val ?? 0);
-    return `₭ ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `₭ ${n.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
   }, []);
 
-  // safe image resolver
   const resolveImg = useCallback((imgObjOrUrl) => {
     if (!imgObjOrUrl) return "/images/default_product.png";
-    const url = typeof imgObjOrUrl === 'string' ? imgObjOrUrl : (imgObjOrUrl.url || imgObjOrUrl.path || "");
+    const url =
+      typeof imgObjOrUrl === "string"
+        ? imgObjOrUrl
+        : imgObjOrUrl.url || imgObjOrUrl.path || "";
     if (!url) return "/images/default_product.png";
-    if (/^https?:\/\//i.test(url) || url.startsWith('/')) return url;
+    if (/^https?:\/\//i.test(url) || url.startsWith("/")) return url;
     return `/uploads/products/${url}`;
   }, []);
 
-  // image fallback on error
   const handleImgError = (e) => {
     e.currentTarget.src = "/images/default_product.png";
   };
 
   useEffect(() => {
     if (product) {
-      const first = (product.images && product.images.length > 0) ? resolveImg(product.images[0]) : "/images/default_product.png";
+      const first =
+        product.images && product.images.length > 0
+          ? resolveImg(product.images[0])
+          : "/images/default_product.png";
       setActiveImg(first);
       setQuantity(1);
     }
@@ -53,11 +73,12 @@ function ProductDetails() {
 
   useEffect(() => {
     if (isError) {
-      toast.error(error?.data?.message || "ເກີດຂໍ້ຜິດພາດໃນການໂຫລດຂໍ້ມູນ");
+      toast.error(
+        error?.data?.message || "ເກີດຂໍ້ຜິດພາດໃນການໂຫລດຂໍ້ມູນ"
+      );
     }
   }, [isError, error]);
 
-  // Quantity handlers
   const increaseQty = useCallback(() => {
     if (!product) return;
     const stock = Number(product.stock) || 0;
@@ -74,15 +95,17 @@ function ProductDetails() {
     setQuantity((q) => (q > 1 ? q - 1 : 1));
   }, []);
 
-  const onQtyChange = useCallback((e) => {
-    const v = Number(e.target.value) || 1;
-    const stock = Number(product?.stock) || 0;
-    if (v < 1) return setQuantity(1);
-    if (stock && v > stock) return setQuantity(stock);
-    setQuantity(v);
-  }, [product]);
+  const onQtyChange = useCallback(
+    (e) => {
+      const v = Number(e.target.value) || 1;
+      const stock = Number(product?.stock) || 0;
+      if (v < 1) return setQuantity(1);
+      if (stock && v > stock) return setQuantity(stock);
+      setQuantity(v);
+    },
+    [product]
+  );
 
-  // Cart Handler
   const setItemToCart = useCallback(() => {
     if (!product) {
       toast.error("ຂໍ້ມູນສິນຄ້າບໍ່ພ້ອມ");
@@ -94,7 +117,7 @@ function ProductDetails() {
       price: product.price,
       image: resolveImg((product.images && product.images[0]) || null),
       stock: Number(product.stock) || 0,
-      quantity
+      quantity,
     };
     dispatch(setcartItems(cartItem));
     toast.success("ເພີ່ມໄປກະຕ່າສຳເລັດ");
@@ -102,172 +125,211 @@ function ProductDetails() {
 
   if (isLoading) return <Loader />;
 
-  // safety: if no product after loading
   if (!product) {
     return (
       <>
         <MetaData title="Product" />
-        <div className="container py-5">
-          <h4>ບໍ່ພົບສິນຄ້າ</h4>
-          <p>ກະລຸນາກວດເບິ່ງລິ້ງກັບຫຼືກະລຸນາກັບຫາໜ້າຫຼັກ</p>
+        <div className="home-wrapper pt-4 pb-5">
+          <span className="home-side-accent left" aria-hidden="true" />
+          <span className="home-side-accent right" aria-hidden="true" />
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <FaBoxOpen />
+            </div>
+            <h4>ບໍ່ພົບສິນຄ້າ</h4>
+            <p>ກະລຸນາກວດເບິ່ງລິ້ງກັບ ຫຼື ກັບໄປໜ້າຫຼັກ</p>
+            <Link to="/" className="btn-warm mt-3 text-decoration-none">
+              ກັບໄປໜ້າຫຼັກ
+            </Link>
+          </div>
         </div>
       </>
     );
   }
 
   const stockNumber = Number(product.stock) || 0;
+  const inStock = stockNumber > 0;
 
   return (
     <>
-      <MetaData title={product?.name || 'Product'} description={String(product?.description || '').slice(0, 160)} />
-      <div className="row d-flex justify-content-around">
-        <div className="col-12 col-lg-5 img-fluid" id="product_image">
-          <div className="p-3" style={{ background: '#fff', borderRadius: 8 }}>
-            <img
-              className="d-block w-100"
-              src={activeImg}
-              alt={product?.name ? `${product.name} image` : 'Product image'}
-              width="340"
-              height="390"
-              loading="lazy"
-              onError={handleImgError}
-              style={{ objectFit: 'contain', background: '#fafafa' }}
-            />
-          </div>
+      <MetaData
+        title={product?.name || "Product"}
+        description={String(product?.description || "").slice(0, 160)}
+      />
 
-          <div className="row justify-content-start mt-4 gx-2">
-            {(product?.images?.length ? product.images : [{ url: activeImg }]).map((img, idx) => {
-              const url = resolveImg(img);
-              const isActive = url === activeImg;
-              return (
-                <div className="col-auto" key={idx}>
+      <div className="home-wrapper pb-5 pt-4">
+        {/* Decorative side accents */}
+        <span className="home-side-accent left" aria-hidden="true" />
+        <span className="home-side-accent right" aria-hidden="true" />
+
+        {/* ===== Breadcrumb ===== */}
+        <nav aria-label="breadcrumb" className="cat-breadcrumb">
+          <Link to="/" className="cat-breadcrumb-item">
+            <FaHome /> Home
+          </Link>
+          <FaChevronRight className="cat-breadcrumb-sep" />
+          {product?.category && (
+            <>
+              <Link
+                to={`/category/${product.category}`}
+                className="cat-breadcrumb-item"
+              >
+                {product.category}
+              </Link>
+              <FaChevronRight className="cat-breadcrumb-sep" />
+            </>
+          )}
+          <span className="cat-breadcrumb-item active">
+            {product?.name?.slice(0, 40) || "Product"}
+            {product?.name?.length > 40 && "…"}
+          </span>
+        </nav>
+
+        {/* ===== Main Product Card ===== */}
+        <div className="pd-card">
+          <div className="row g-4">
+            {/* === LEFT: Image gallery === */}
+            <div className="col-12 col-lg-6">
+              <div className="pd-img-main">
+                <img
+                  src={activeImg}
+                  alt={product?.name ? `${product.name}` : "Product image"}
+                  loading="lazy"
+                  onError={handleImgError}
+                />
+              </div>
+
+              {/* Thumbnails */}
+              <div className="pd-thumbs">
+                {(product?.images?.length
+                  ? product.images
+                  : [{ url: activeImg }]
+                ).map((img, idx) => {
+                  const url = resolveImg(img);
+                  const isActive = url === activeImg;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveImg(url)}
+                      className={`pd-thumb ${isActive ? "active" : ""}`}
+                      aria-label={`Image ${idx + 1}`}
+                      aria-pressed={isActive}
+                    >
+                      <img
+                        src={url}
+                        alt={`thumb ${idx + 1}`}
+                        loading="lazy"
+                        onError={handleImgError}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* === RIGHT: Product info === */}
+            <div className="col-12 col-lg-6">
+              <h1 className="pd-title">{product?.name}</h1>
+              <p className="pd-sku">
+                ລະຫັດສິນຄ້າ: <span>{product?._id}</span>
+              </p>
+
+              <div className="pd-rating">
+                <StarRatings
+                  rating={Number(product?.rating) || 0}
+                  starRatedColor="#fbbf24"
+                  numberOfStars={5}
+                  name="rating"
+                  starDimension="20px"
+                  starSpacing="2px"
+                />
+                <span className="pd-rating-count">
+                  ({Number(product?.numOfReviews || 0)} ຄຳຕິຊົມ)
+                </span>
+              </div>
+
+              <div className="pd-price-box">
+                <div className="pd-price">{formatLAK(product?.price)}</div>
+                <div className={`pd-stock ${inStock ? "in" : "out"}`}>
+                  {inStock ? <FaCheckCircle /> : <FaTimesCircle />}
+                  {inStock
+                    ? `ມີສິນຄ້າ (${stockNumber} ຊິ້ນ)`
+                    : "ສິນຄ້າໝົດ"}
+                </div>
+              </div>
+
+              {/* Quantity + Add to cart */}
+              <div className="pd-actions">
+                <div className="pd-qty">
                   <button
                     type="button"
-                    onClick={() => setActiveImg(url)}
-                    className="p-0 border-0 bg-transparent"
-                    aria-label={`Select image ${idx + 1}`}
-                    aria-pressed={isActive}
-                    style={{ width: 96, height: 96 }}
+                    onClick={decreaseQty}
+                    disabled={quantity <= 1}
+                    aria-label="Decrease"
                   >
-                    <img
-                      className={`d-block rounded p-2 ${isActive ? "border border-3 border-warning" : "border border-1 border-light"}`}
-                      height="96"
-                      width="96"
-                      src={url}
-                      alt={`${product.name || 'thumbnail'} ${idx + 1}`}
-                      loading="lazy"
-                      onError={handleImgError}
-                      style={{ objectFit: 'cover', background: '#fff' }}
-                    />
+                    <FaMinus />
+                  </button>
+                  <input
+                    type="number"
+                    value={quantity}
+                    min="1"
+                    max={stockNumber}
+                    onChange={onQtyChange}
+                    aria-label="Quantity"
+                  />
+                  <button
+                    type="button"
+                    onClick={increaseQty}
+                    disabled={!inStock || quantity >= stockNumber}
+                    aria-label="Increase"
+                  >
+                    <FaPlus />
                   </button>
                 </div>
-              );
-            })}
+
+                <button
+                  type="button"
+                  className="btn-warm pd-cart-btn"
+                  disabled={!inStock}
+                  onClick={setItemToCart}
+                >
+                  <FaShoppingCart /> ເພີ່ມໄປກະຕ່າ
+                </button>
+              </div>
+
+              <div className="pd-meta">
+                <span>ຂາຍໂດຍ:</span>
+                <strong>{product?.seller || "—"}</strong>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="col-12 col-lg-5 mt-3">
-          <h3 style={{ fontWeight: 700 }}>{product?.name}</h3>
-          <p id="product_id" style={{ color: '#6b7280' }}>ລະຫັດສິນຄ້າ: {product?._id}</p>
+        {/* ===== Description Card ===== */}
+        <div className="pd-card pd-desc-card">
+          <h3 className="section-title">ລາຍລະອຽດສິນຄ້າ</h3>
+          <p className="pd-desc">{product?.description || "-"}</p>
+        </div>
 
-          <hr />
-
-          <div className="d-flex align-items-center">
-            <StarRatings
-              rating={Number(product?.rating) || 0}
-              starRatedColor="#ffb229"
-              numberOfStars={5}
-              name="rating"
-              starDimension="22px"
-              starSpacing="1px"
-            />
-            <span id="no-of-reviews" className="pt-1 ps-2" style={{ color: '#475569' }}>
-              ({Number(product?.numOfReviews || 0)} ຄຳຕິຊົມ)
-            </span>
-          </div>
-
-          <hr />
-
-          <p id="product_price" style={{ fontSize: 22, fontWeight: 800, marginTop: 6 }}>{formatLAK(product?.price)}</p>
-
-          <div className="d-flex align-items-center mt-2">
-            <div className="stockCounter d-inline" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button
-                className="btn btn-danger"
-                onClick={decreaseQty}
-                aria-label="Decrease quantity"
-                disabled={quantity <= 1}
-              >-</button>
-
-              <input
-                type="number"
-                className="form-control count d-inline text-center"
-                value={quantity}
-                min="1"
-                max={stockNumber}
-                onChange={onQtyChange}
-                style={{ width: 80 }}
-                aria-label="Quantity"
-              />
-
-              <button
-                className="btn btn-primary"
-                onClick={increaseQty}
-                aria-label="Increase quantity"
-                disabled={stockNumber <= 0 || quantity >= stockNumber}
-              >+</button>
-            </div>
-
-            <button
-              type="button"
-              id="cart_btn"
-              className="btn btn-primary d-inline ms-3"
-              disabled={stockNumber <= 0}
-              onClick={setItemToCart}
-            >
-              ເພີ່ມໄປກະຕ່າ
-            </button>
-          </div>
-
-          <hr />
-
-          <p>
-            ສະຖານະ: {' '}
-            <span
-              id="stock_status"
-              className={stockNumber > 0 ? "text-success" : "text-danger"}
-              style={{ fontWeight: 700 }}
-            >
-              {stockNumber > 0 ? "ມີສິນຄ້າ" : "ສິນຄ້າໝົດ"}
-            </span>
-          </p>
-
-          <hr />
-
-          <h4 className="mt-2">ລາຍລະອຽດ</h4>
-          <p style={{ whiteSpace: 'pre-wrap' }}>{product?.description || '-'}</p>
-
-          <hr />
-
-          <p id="product_seller" className="mb-3">
-            ຂາຍໂດຍ: <strong>{product?.seller || '—'}</strong>
-          </p>
-
-          {/* Reviews Section */}
-          <h4 className="mt-2">ຄຳຕິຊົມ</h4>
+        {/* ===== Reviews Card ===== */}
+        <div className="pd-card">
+          <h3 className="section-title">ຄຳຕິຊົມ</h3>
 
           <NewReviews productId={product?._id} />
 
           {product?.reviews?.length > 0 && (
-            <div className="mt-3">
+            <div className="mt-4">
               <ListReviews reviews={product.reviews} />
             </div>
           )}
-
-         
         </div>
-         {/* Related products slider (same category) */}
-          <RelatedProductsSlider category={product?.category} currentId={product?._id} />
+
+        {/* ===== Related Products ===== */}
+        <RelatedProductsSlider
+          category={product?.category}
+          currentId={product?._id}
+        />
       </div>
     </>
   );

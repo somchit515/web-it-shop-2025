@@ -24,6 +24,11 @@ import {
   useGetAdminUsersQuery,
   useDeleteUserMutation
 } from '../redux/api/userApi';
+import { confirmDialog } from './_shared/confirmDialog';
+import Breadcrumb from './_shared/Breadcrumb';
+import useBulkSelect from './_shared/useBulkSelect';
+import BulkActionsBar from './_shared/BulkActionsBar';
+import { exportToCSV } from './_shared/exportCSV';
 
 function ListUsers() {
   const {
@@ -87,11 +92,56 @@ function ListUsers() {
     }
   }, [isDeleteSuccess, deleteError, refetch]);
 
-  const handleDelete = (id, userName) => {
-    if (window.confirm(`ທ່ານແນ່ໃຈບໍທີ່ຈະລຶບຜູ້ໃຊ້ "${userName}" ຢ່າງຖາວອນ?`)) {
-      setDeletingId(id);
-      deleteUser(id);
+  const handleDelete = async (id, userName) => {
+    const ok = await confirmDialog.show({
+      title: 'ລຶບຜູ້ໃຊ້?',
+      message: `ທ່ານແນ່ໃຈບໍ່ວ່າຈະລຶບ "${userName}"\nຂໍ້ມູນຈະຫາຍຖາວອນ`,
+      confirmText: 'ລຶບເລີຍ',
+      cancelText: 'ຍົກເລີກ',
+      variant: 'danger',
+      icon: 'fa-user-minus',
+    });
+    if (!ok) return;
+    setDeletingId(id);
+    deleteUser(id);
+  };
+
+  // ✅ Bulk select + bulk delete + export
+  const filteredUsers = getFilteredUsers();
+  const bulk = useBulkSelect(filteredUsers, (u) => u._id);
+
+  const handleBulkDelete = async () => {
+    const ids = bulk.selectedIds;
+    if (ids.length === 0) return;
+    const ok = await confirmDialog.show({
+      title: `ລຶບ ${ids.length} ຜູ້ໃຊ້?`,
+      message: 'ຜູ້ໃຊ້ທີ່ເລືອກຈະຖືກລຶບຖາວອນ',
+      confirmText: `ລຶບທັງໝົດ (${ids.length})`,
+      variant: 'danger',
+      icon: 'fa-users-slash',
+    });
+    if (!ok) return;
+    try {
+      await Promise.all(ids.map((id) => deleteUser(id).unwrap()));
+      toast.success(`ລຶບ ${ids.length} ຜູ້ໃຊ້ສຳເລັດ`);
+      bulk.clear();
+    } catch (err) {
+      toast.error(err?.data?.message || 'ການລຶບບາງລາຍການລົ້ມເຫລວ');
     }
+  };
+
+  const handleExport = () => {
+    exportToCSV({
+      filename: 'users',
+      columns: [
+        { key: '_id', label: 'ID' },
+        { key: 'name', label: 'ຊື່' },
+        { key: 'email', label: 'ອີເມວ' },
+        { key: 'role', label: 'Role' },
+        { key: 'createdAt', label: 'ສະມາຊິກຕັ້ງແຕ່', format: (v) => v ? new Date(v).toLocaleDateString('lo-LA') : '' },
+      ],
+      rows: filteredUsers,
+    });
   };
 
   const getFilteredUsers = () => {
@@ -134,7 +184,7 @@ function ListUsers() {
     return filtered;
   };
 
-  const filteredUsers = getFilteredUsers();
+  // (filteredUsers ถูกประกาศไว้ด้านบนแล้วใน bulk select section)
 
   const clearAllFilters = () => {
     setSearchTerm("");
@@ -157,6 +207,20 @@ function ListUsers() {
   const tableData = useMemo(() => {
     const dataTable = {
       columns: [
+        {
+          label: (
+            <input
+              type="checkbox"
+              checked={bulk.isAllSelected}
+              ref={(el) => { if (el) el.indeterminate = bulk.isPartial; }}
+              onChange={bulk.toggleAll}
+              aria-label="Select all"
+            />
+          ),
+          field: 'select',
+          sort: 'disabled',
+          width: 40,
+        },
         { label: 'ຜູ້ໃຊ້', field: 'user', sort: 'disabled', width: 300 },
         { label: 'ອີເມວ', field: 'email', sort: 'asc' },
         { label: 'Role', field: 'role', sort: 'asc' },
@@ -168,6 +232,14 @@ function ListUsers() {
 
     filteredUsers.forEach((user) => {
       dataTable.rows.push({
+        select: (
+          <input
+            type="checkbox"
+            checked={bulk.isSelected(user._id)}
+            onChange={() => bulk.toggle(user._id)}
+            aria-label={`เลือก ${user.name}`}
+          />
+        ),
         user: (
           <div className="d-flex align-items-center">
             <div className="user-avatar-wrapper me-3">
@@ -216,7 +288,7 @@ function ListUsers() {
     });
 
     return dataTable;
-  }, [filteredUsers, deletingId]);
+  }, [filteredUsers, deletingId, bulk]);
 
   if (isLoading) return <Loader />;
 
@@ -560,13 +632,7 @@ function ListUsers() {
         <div className="list-users-container">
           {/* Page Header */}
           <div className="page-header">
-            <div className="breadcrumb-nav">
-              <Link to="/admin/dashboard">
-                <FontAwesomeIcon icon={faHome} /> Dashboard
-              </Link>
-              <span>/</span>
-              <span>ຈັດການຜູ້ໃຊ້</span>
-            </div>
+            <Breadcrumb items={[{ label: 'ຈັດການຜູ້ໃຊ້' }]} />
             <h1 className="page-title">
               <FontAwesomeIcon icon={faUsers} />
               ຈັດການຜູ້ໃຊ້
@@ -705,6 +771,26 @@ function ListUsers() {
               </span>
             </div>
           </div>
+
+          {/* ✅ Bulk Actions Bar + Export */}
+          <div className="d-flex justify-content-end mb-3">
+            <button
+              type="button"
+              className="btn-clear"
+              onClick={handleExport}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+            >
+              <i className="fas fa-download"></i>
+              Export CSV ({filteredUsers.length})
+            </button>
+          </div>
+          <BulkActionsBar
+            count={bulk.selectedCount}
+            onClear={bulk.clear}
+            actions={[
+              { label: 'ລຶບທີ່ເລືອກ', icon: 'fa-trash', variant: 'danger', onClick: handleBulkDelete },
+            ]}
+          />
 
           {/* Users Table */}
           <div className="table-section">

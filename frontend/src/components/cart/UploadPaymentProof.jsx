@@ -4,11 +4,22 @@ import MetaData from "../layout/MetaData";
 import toast from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { clearCart } from "../redux/features/cartSlice";
+import { clearShippingInfo } from "../redux/features/shippingSlice";
+import { useGetOrderDetailsQuery } from "../redux/api/OrderApi";
+
+// ✅ ต้องตรงกับ backend (BANK_TRANSFER_EXPIRY_MINUTES)
+const ORDER_EXPIRY_MINUTES = 15;
 
 export default function UploadPaymentProof() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  // ดึง order เพื่อรู้ createdAt + เช็คว่ายังไม่หมดอายุ
+  const { data: orderData } = useGetOrderDetailsQuery(orderId, {
+    skip: !orderId,
+  });
+  const order = orderData?.order;
 
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -17,7 +28,42 @@ export default function UploadPaymentProof() {
   const [dragActive, setDragActive] = useState(false);
   const [selectedBank, setSelectedBank] = useState(0);
 
-  const token = localStorage.getItem("token");
+  // ✅ Countdown timer — แสดงเวลาที่เหลือก่อน order หมดอายุ
+  const [remainingMs, setRemainingMs] = useState(null);
+
+  useEffect(() => {
+    if (!order?.createdAt) return;
+    const expiresAt =
+      new Date(order.createdAt).getTime() + ORDER_EXPIRY_MINUTES * 60 * 1000;
+
+    const tick = () => {
+      const ms = expiresAt - Date.now();
+      setRemainingMs(Math.max(0, ms));
+
+      // ถ้าหมดอายุ + ยังไม่ upload → แจ้งและกลับหน้า orders
+      if (ms <= 0 && order.fulfillmentStatus !== "Cancelled" && (!order.paymentProof || order.paymentProof.length === 0)) {
+        toast.error("ອໍເດີນີ້ໝົດອາຍຸແລ້ວ ກະລຸນາສ້າງອໍເດີໃໝ່", { duration: 4000 });
+        setTimeout(() => navigate("/me/orders"), 1500);
+      }
+    };
+
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [order?.createdAt, order?.fulfillmentStatus, order?.paymentProof, navigate]);
+
+  const formatTime = (ms) => {
+    if (ms == null) return "--:--";
+    const totalSec = Math.floor(ms / 1000);
+    const mm = Math.floor(totalSec / 60);
+    const ss = totalSec % 60;
+    return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+  };
+
+  const isExpired = remainingMs === 0;
+  const isUrgent = remainingMs !== null && remainingMs < 3 * 60 * 1000; // < 3 mins
+
+  // ✅ ใช้ cookie auth ผ่าน xhr.withCredentials (ลบ localStorage token)
   const dropRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -121,7 +167,7 @@ export default function UploadPaymentProof() {
     new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `/api/v1/orders/${orderId}/upload-proof`, true);
-      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.withCredentials = true; // ✅ ส่ง cookie auth
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
@@ -161,7 +207,9 @@ export default function UploadPaymentProof() {
         return;
       }
 
+      // ✅ เคลียร์ทั้ง cart + shipping
       dispatch(clearCart());
+      dispatch(clearShippingInfo());
       toast.success("ອັບໂຫຼດສຳເລັດ! ກຳລັງລໍຖ້າການຢືນຢັນ");
 
       if (previewUrl) {
@@ -736,6 +784,62 @@ export default function UploadPaymentProof() {
             </div>
           </div>
 
+          {/* ✅ Countdown timer — เตือนว่า order หมดอายุภายในกี่นาที */}
+          {remainingMs !== null && (
+            <div
+              style={{
+                background: isExpired
+                  ? 'linear-gradient(135deg, #fef2f2, #fee2e2)'
+                  : isUrgent
+                  ? 'linear-gradient(135deg, #fef3c7, #fde68a)'
+                  : 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+                border: `2px solid ${isExpired ? '#ef4444' : isUrgent ? '#f59e0b' : '#3b82f6'}`,
+                borderRadius: 14,
+                padding: '14px 18px',
+                marginBottom: 20,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ fontSize: 28 }}>
+                {isExpired ? '⏰' : isUrgent ? '⚠️' : '⏱️'}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontWeight: 700,
+                    color: isExpired ? '#991b1b' : isUrgent ? '#92400e' : '#1e40af',
+                    fontSize: '0.95rem',
+                  }}
+                >
+                  {isExpired
+                    ? 'ອໍເດີຫມົດອາຍຸແລ້ວ'
+                    : isUrgent
+                    ? 'ໃກ້ຫມົດເວລາ! ກະລຸນາອັບໂຫຼດສະຫຼິບໄວ'
+                    : 'ກະລຸນາອັບໂຫຼດສະຫຼິບພາຍໃນ'}
+                </div>
+                <div
+                  style={{
+                    fontSize: '1.6rem',
+                    fontWeight: 800,
+                    color: isExpired ? '#dc2626' : isUrgent ? '#d97706' : '#2563eb',
+                    fontFamily: 'monospace',
+                    letterSpacing: 1,
+                  }}
+                >
+                  {formatTime(remainingMs)}
+                </div>
+                {!isExpired && (
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>
+                    ຖ້າເກີນເວລາ ອໍເດີຈະຖືກຍົກເລີກ + ສິນຄ້າຄືນສາງອັດຕະໂນມັດ
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="upload-grid">
             {/* Bank Info */}
             <div className="info-card">
@@ -917,7 +1021,7 @@ export default function UploadPaymentProof() {
                   <button
                     type="submit"
                     className="submit-btn"
-                    disabled={!file || loading}
+                    disabled={!file || loading || isExpired}
                   >
                     {loading ? (
                       <i className="fas fa-spinner spinner"></i>

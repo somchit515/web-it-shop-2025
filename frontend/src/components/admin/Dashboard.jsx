@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import AdminLayout from '../layout/AdminLayout';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import SaleChart from '../charts/SaleChart';
 import { useLazyGetDashboardSalesQuery } from '../redux/api/OrderApi';
+import { clearUser } from '../redux/features/userSlice';
 import Loader from "../layout/Loader";
 import toast from "react-hot-toast";
 import { DateTime } from 'luxon';
@@ -47,27 +50,60 @@ function formatCurrencyLAK(value) {
 }
 
 function Dashboard() {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
   const [startDate, setStartdate] = useState(new Date());
   const [endDate, setEnddate] = useState(new Date());
 
   const [getDashboardSales, { data: salesData, error, isLoading }] = useLazyGetDashboardSalesQuery();
 
-  // Initial fetch on mount
+  // ✅ ป้องกัน Toast Spam: ใช้ ref เก็บสถานะว่าเคยแสดง toast ไปแล้ว
+  const errorShownRef = useRef(false);
+  const initialFetchRef = useRef(false);
+
+  // Initial fetch ครั้งเดียวเมื่อ mount
   useEffect(() => {
-    if (error) {
-      toast.error(error?.data?.message || 'Failed to fetch dashboard sales.');
+    if (initialFetchRef.current) return;
+    initialFetchRef.current = true;
+    const s = startOfDayInZone(startDate);
+    const e = endOfDayInZone(endDate);
+    getDashboardSales({ startDate: s, endDate: e });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // จัดการ error แบบไม่ spam toast + redirect ถ้า 401
+  useEffect(() => {
+    if (!error) {
+      errorShownRef.current = false;
+      return;
     }
-    if (!salesData && !isLoading) {
-      const s = startOfDayInZone(startDate);
-      const e = endOfDayInZone(endDate);
-      getDashboardSales({ startDate: s, endDate: e });
+    if (errorShownRef.current) return;
+    errorShownRef.current = true;
+
+    const status = error?.status;
+    const msg = error?.data?.message || 'Failed to fetch dashboard sales.';
+
+    // ถ้า session หมดอายุ → clear state แล้ว redirect ไปหน้า login
+    if (status === 401 || /login|ເຂົ້າສູ່ລະບົບ/i.test(msg)) {
+      toast.error('ເຊດຊັນໝົດອາຍຸ ກະລຸນາເຂົ້າສູ່ລະບົບໃໝ່');
+      dispatch(clearUser());
+      setTimeout(() => navigate('/login', { replace: true }), 800);
+      return;
     }
-  }, [error, startDate, endDate, salesData, getDashboardSales, isLoading]);
+    if (status === 403) {
+      toast.error('ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້');
+      setTimeout(() => navigate('/', { replace: true }), 800);
+      return;
+    }
+    toast.error(msg);
+  }, [error, dispatch, navigate]);
 
   const submitHandler = () => {
     if (!startDate || !endDate || startDate > endDate) {
       return toast.error("Please select a valid date range.");
     }
+    errorShownRef.current = false; // reset เพื่อให้ toast ใหม่ได้ถ้ามี error
     const s = startOfDayInZone(startDate);
     const e = endOfDayInZone(endDate);
     getDashboardSales({ startDate: s, endDate: e });
@@ -76,8 +112,6 @@ function Dashboard() {
   const chartSales = salesData?.sales || salesData?.saleData || [];
   const totalSales = Number(salesData?.totalSales ?? 0);
   const totalOrders = Number(salesData?.totalNumOrders ?? salesData?.totalOrders ?? 0);
-
-  if (isLoading) return <Loader />;
 
   return (
     <>
@@ -381,7 +415,12 @@ function Dashboard() {
       `}</style>
 
       <AdminLayout>
-        <div className="dashboard-container">
+        {isLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
+            <Loader />
+          </div>
+        ) : null}
+        <div className="dashboard-container" style={isLoading ? { display: 'none' } : undefined}>
           {/* Dashboard Header */}
           <div className="dashboard-header">
             <h1 className="dashboard-title">

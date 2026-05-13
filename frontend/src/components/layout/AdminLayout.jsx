@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-import SideMenu from "./SideMenu"; // Assuming SideMenu is a separate component
-
+import SideMenu from "./SideMenu";
+import { useGetAdminOrdersQuery } from "../redux/api/OrderApi";
 const superAdminMenuItems = [
   {
     name: "ເພີ່ມຜູ້ໃຊ້ (SA)",
@@ -33,47 +33,41 @@ const superAdminMenuItems = [
  */
 
 function AdminLayout({ children }) {
-  const [pendingCount, setPendingCount] = useState(0);
-  const [pendingBlogCount, setPendingBlogCount] = useState(0);  
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Changed from isSidebarCollapsed
-  const token = localStorage.getItem("token");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const { user } = useSelector((state) => state.auth);
   const userRole = user?.role;
 
-  // Existing useEffect for fetching pending orders
-  useEffect(() => {
-    let mounted = true;
-    async function fetchPending() {
-      try {
-        const res = await fetch("/api/v1/admin/orders", {
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        const orders = data.orders || data;
-        const pending = (orders || []).filter(
-          (o) => o.paymentStatus === "AwaitingProof"
-        ).length;
-        if (mounted) setPendingCount(pending);
-      } catch (err) {
-        console.error("fetch pending orders failed", err);
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
+  // ✅ ดึงเฉพาะ orders ที่รอตรวจสอบ (server-side filter) — เร็วกว่าเดิมมาก
+  //    + perPage:1 เพราะแค่อยากรู้ count ไม่ต้องการ list
+  const { data: ordersData, isLoading } = useGetAdminOrdersQuery(
+    { paymentStatus: "AwaitingProof", page: 1, perPage: 1 },
+    {
+      pollingInterval: 30000,
+      refetchOnFocus: true,
     }
-    fetchPending();
+  );
 
-    const interval = setInterval(fetchPending, 30000);
+  // ✅ ใช้ total จาก backend response (ใส่ pagination แล้ว)
+  const pendingCount = useMemo(() => {
+    if (typeof ordersData?.total === "number") return ordersData.total;
+    // fallback สำหรับ response เก่า
+    const orders = ordersData?.orders || [];
+    return Array.isArray(orders) ? orders.length : 0;
+  }, [ordersData]);
+
+  // ✅ ล็อก scroll ของ body เฉพาะตอน AdminLayout แสดงอยู่
+  // และ restore กลับเมื่อ unmount (เพื่อไม่ให้กระทบหน้า public)
+  useEffect(() => {
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
     return () => {
-      mounted = false;
-      clearInterval(interval);
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
     };
-  }, [token]);
+  }, []);
 
   const menuItems = [
     {
@@ -153,6 +147,12 @@ function AdminLayout({ children }) {
       icon: "fas fa-star",
       description: "ຈັດການຄຳຄິດເຫັນ",
     },
+    {
+      name: "ລະຫັດສ່ວນຫຼຸດ",
+      url: "/admin/coupons",
+      icon: "fas fa-ticket",
+      description: "ສ້າງ ແລະ ຈັດການລະຫັດສ່ວນຫຼຸດ",
+    },
   ];
 
   const filteredMenuItems = React.useMemo(() => {
@@ -167,27 +167,17 @@ function AdminLayout({ children }) {
   return (
     <>
       <style>{`
-                /* Global Reset and Layout */
-                * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                }
-
-                html, body, #root {
-                    height: 100%;
-                    width: 100%;
-                    overflow: hidden;
-                }
+                /* ⚠️ Reset/overflow ที่เคยอยู่ใน html/body/#root ถูกย้ายไปจัดการ
+                   ผ่าน useEffect แล้ว เพื่อไม่ให้รั่วไปหน้าอื่นหลัง navigate ออก */
 
                 /* 1. Main Layout - Light Theme (Minimalist) */
                 .admin-layout {
                     /* Changed from dark gradient to light neutral base */
-                    background-color:  #764ba2 ; 
-                    height: 100vh;
+                    background-color:  #764ba2 ;
+                    height: calc(100vh - 88px);
                     width: 100vw;
                     position: fixed;
-                    top: 0;
+                    top: 88px;
                     left: 0;
                     display: flex;
                     flex-direction: column;
@@ -472,24 +462,24 @@ function AdminLayout({ children }) {
                 /* 5. Mobile Responsiveness - Off-Canvas Drawer */
                 @media (max-width: 991.98px) {
                     .admin-sidebar-wrapper {
-                        position: fixed; /* Changed from absolute to fixed for better mobile experience */
+                        position: fixed;
                         left: 0;
-                        top: 0;
-                        height: 100%; /* Full height */
-                        z-index: 1000; /* Higher z-index to cover content */
-                        transform: translateX(-100%); /* Start off-screen */
-                        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.2); /* Stronger shadow when open */
+                        top: 88px;
+                        height: calc(100vh - 88px);
+                        z-index: 1000;
+                        transform: translateX(-100%);
+                        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.2);
                     }
-                    
+
                     .admin-layout.sidebar-open .admin-sidebar-wrapper {
-                        transform: translateX(0); /* Slide in */
+                        transform: translateX(0);
                     }
 
                     /* Overlay to close sidebar when clicking outside */
                     .admin-layout.sidebar-open::after {
                         content: '';
                         position: fixed;
-                        top: 0;
+                        top: 88px;
                         left: 0;
                         right: 0;
                         bottom: 0;
@@ -637,7 +627,7 @@ function AdminLayout({ children }) {
               className="d-lg-none"
               style={{
                 position: "fixed",
-                top: 0,
+                top: 88,
                 left: 0,
                 right: 0,
                 bottom: 0,
@@ -659,18 +649,6 @@ function AdminLayout({ children }) {
           </div>
         </div>
 
-        {/* Enhanced Loading Overlay */}
-        {isLoading && (
-          <div
-            className="loading-overlay position-fixed top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center"
-            style={{ zIndex: 9999 }}
-          >
-            <div className="spinner-border text-white mb-3" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <p className="text-white fw-semibold">ກຳລັງໂຫລດຂໍ້ມູນ...</p>
-          </div>
-        )}
       </div>
     </>
   );

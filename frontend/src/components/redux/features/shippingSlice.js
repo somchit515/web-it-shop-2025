@@ -1,4 +1,5 @@
 // src/redux/features/shippingSlice.js
+// ✅ Single source of truth สำหรับ shipping info (เคยซ้ำกับ cartSlice แล้วลบออกแล้ว)
 
 import { createSlice } from "@reduxjs/toolkit";
 
@@ -15,14 +16,17 @@ export const shippingSlice = createSlice({
     reducers: {
         saveShippingInfo: (state, action) => {
             state.shippingInfo = action.payload;
-            // Store data in Local Storage immediately after saving to state
             localStorage.setItem("shippingInfo", JSON.stringify(action.payload));
+        },
+
+        // ✅ เคลียร์ shipping info ทั้ง state + localStorage
+        clearShippingInfo: (state) => {
+            state.shippingInfo = {};
+            localStorage.removeItem("shippingInfo");
         },
     },
 });
 
-export const { saveShippingInfo } = shippingSlice.actions;
+export const { saveShippingInfo, clearShippingInfo } = shippingSlice.actions;
 
 export default shippingSlice.reducer;
-
-// Don't forget to add this reducer to your store (e.g., store.js)

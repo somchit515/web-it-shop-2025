@@ -35,6 +35,9 @@ import {
   useGetAdminOrdersQuery,
   useDeleteOrderMutation,
 } from "../redux/api/OrderApi";
+import { confirmDialog } from "./_shared/confirmDialog";
+import Breadcrumb from "./_shared/Breadcrumb";
+import { exportToCSV } from "./_shared/exportCSV";
 
 export default function ListOrder() {
   // 1. ดึงข้อมูลออเดอร์ทั้งหมดสำหรับ Admin
@@ -96,10 +99,9 @@ export default function ListOrder() {
     // ตรวจจับ Bank Transfer จากสถานะการชำระเงินก่อน
     if (
       paymentStatus === "AwaitingProof" ||
-      paymentStatus === "Paid" ||
-      paymentStatus === "Confirmed"
+      paymentStatus === "Paid"
     ) {
-      if (paymentStatus === "Paid" || paymentStatus === "Confirmed") {
+      if (paymentStatus === "Paid") {
         return (
           <span className="badge bg-success fw-bold">
             <FontAwesomeIcon icon={faCheckCircle} className="me-1" />
@@ -151,10 +153,34 @@ export default function ListOrder() {
   };
 
   // 5. Handler สำหรับการลบออเดอร์
-  const deleteOrderHandler = (id) => {
-    if (window.confirm(`ທ່ານແນ່ໃຈບໍທີ່ຈະລຶບອໍເດີ ${id} ນີ້?`)) {
-      deleteOrder(id);
-    }
+  const deleteOrderHandler = async (id) => {
+    const ok = await confirmDialog.show({
+      title: 'ລຶບອໍເດີ?',
+      message: `ທ່ານແນ່ໃຈບໍ່ວ່າຈະລຶບອໍເດີ\n#${id}`,
+      confirmText: 'ລຶບເລີຍ',
+      variant: 'danger',
+      icon: 'fa-trash-can',
+    });
+    if (!ok) return;
+    deleteOrder(id);
+  };
+
+  // ✅ Export ไปยัง CSV
+  const handleExport = (orders) => {
+    exportToCSV({
+      filename: 'orders',
+      columns: [
+        { key: '_id', label: 'Order ID' },
+        { key: 'user.name', label: 'ລູກຄ້າ' },
+        { key: 'shippingInfo.fullName', label: 'ຜູ້ຮັບ' },
+        { key: 'paymentMethod', label: 'ວິທີຊຳລະ' },
+        { key: 'paymentStatus', label: 'ສະຖານະຊຳລະ' },
+        { key: 'orderStatus', label: 'ສະຖານະອໍເດີ' },
+        { key: 'totalAmount', label: 'ຍອດລວມ', format: (v) => Number(v || 0).toLocaleString() },
+        { key: 'createdAt', label: 'ວັນທີ່ສ້າງ', format: (v) => v ? new Date(v).toLocaleString('lo-LA') : '' },
+      ],
+      rows: orders,
+    });
   };
 
   // 6. ฟังก์ชันกรองและเรียงข้อมูล
@@ -304,8 +330,7 @@ export default function ListOrder() {
         paymentStatus: (
           <span
             className={`badge ${
-              order.paymentStatus === "Paid" ||
-              order.paymentStatus === "Confirmed"
+              order.paymentStatus === "Paid"
                 ? "bg-success"
                 : "bg-warning text-dark"
             }`}
@@ -720,20 +745,28 @@ export default function ListOrder() {
         <div className="orders-container">
           {/* Page Header */}
           <div className="page-header">
-            <div className="breadcrumb-nav">
-              <Link to="/admin/dashboard">
-                <FontAwesomeIcon icon={faHome} /> Dashboard
-              </Link>
-              <span>/</span>
-              <span>ລາຍການອໍເດີ</span>
+            <Breadcrumb items={[{ label: 'ລາຍການອໍເດີ' }]} />
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div>
+                <h1 className="page-title">
+                  <FontAwesomeIcon icon={faClipboardList} /> ລາຍການອໍເດີທັງໝົດ (
+                  {stats.total})
+                </h1>
+                <p className="page-subtitle">
+                  ຈັດການ, ເບິ່ງລາຍລະອຽດ, ແລະ ລຶບອໍເດີຂອງລູກຄ້າ
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-success"
+                onClick={() => handleExport(filteredOrders)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+              >
+                <FontAwesomeIcon icon={faSyncAlt} style={{ display: 'none' }} />
+                <i className="fas fa-download"></i>
+                Export CSV
+              </button>
             </div>
-            <h1 className="page-title">
-              <FontAwesomeIcon icon={faClipboardList} /> ລາຍການອໍເດີທັງໝົດ (
-              {stats.total})
-            </h1>
-            <p className="page-subtitle">
-              ຈັດການ, ເບິ່ງລາຍລະອຽດ, ແລະ ລຶບອໍເດີຂອງລູກຄ້າ
-            </p>
           </div>
 
           {/* Stats Cards */}

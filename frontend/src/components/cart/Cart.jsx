@@ -1,13 +1,15 @@
 // src/components/Cart.jsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import MetaData from '../layout/MetaData';
 import { useSelector, useDispatch } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { setcartItems, removeItemFromCart } from '../redux/features/cartSlice';
+import { useCheckStockMutation } from '../redux/api/productsApi';
 import toast from 'react-hot-toast';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash, faMinus, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { confirmDialog } from '../admin/_shared/confirmDialogStore';
 
 function Cart() {
   const dispatch = useDispatch();
@@ -15,6 +17,44 @@ function Cart() {
 
   // safe selector with fallback
   const { cartItems = [] } = useSelector((state) => state.cart || { cartItems: [] });
+
+  // ✅ Stock validation state
+  const [checkStock, { isLoading: isCheckingStock }] = useCheckStockMutation();
+  // เก็บผลตรวจ stock ล่าสุด: { [productId]: { available, ok, reason } }
+  const [stockIssues, setStockIssues] = useState({});
+
+  // ตรวจ stock ทันทีเมื่อ cart เปิด หรือเปลี่ยน
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      setStockIssues({});
+      return;
+    }
+    const items = cartItems.map((i) => ({
+      product: i.product,
+      quantity: Number(i.quantity || 0),
+    }));
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await checkStock(items).unwrap();
+        if (cancelled) return;
+        const issues = {};
+        (res.items || []).forEach((r) => {
+          if (!r.ok) issues[r.product] = r;
+        });
+        setStockIssues(issues);
+      } catch (err) {
+        // silent fail — UI ยังใช้งานได้ปกติ
+        console.warn("checkStock failed", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(cartItems.map((i) => `${i.product}:${i.quantity}`))]);
+
+  const hasStockIssues = Object.keys(stockIssues).length > 0;
 
   // Helper: calculate subtotal for a single item
   const calculateItemSubtotal = (item) => {
@@ -37,11 +77,16 @@ function Cart() {
     dispatch(setcartItems(newItem));
   };
 
-  const decreaseQty = (item) => {
+  const decreaseQty = async (item) => {
     const qty = Number(item.quantity || 0) - 1;
     if (qty <= 0) {
-      // confirm remove
-      if (window.confirm("ຢືນຢັນຕ້ອງການລຶບລາຍການນີ້?")) {
+      const ok = await confirmDialog.show({
+        title: 'ລຶບສິນຄ້າ',
+        message: `ຢືນຢັນຕ້ອງການລຶບ "${item.name}" ອອກຈາກກະຕ່າ?`,
+        confirmText: 'ລຶບ',
+        variant: 'danger',
+      });
+      if (ok) {
         dispatch(removeItemFromCart(item.product));
         toast.success("ລຶບສິນຄ້າສໍາເລັດ");
       }
@@ -51,14 +96,63 @@ function Cart() {
     dispatch(setcartItems(newItem));
   };
 
-  const handleRemoveItem = (id) => {
-    if (!window.confirm("ຢືນຢັນການລຶບລາຍການ?")) return;
+  const handleRemoveItem = async (id, name) => {
+    const ok = await confirmDialog.show({
+      title: 'ລຶບສິນຄ້າ',
+      message: `ຢືນຢັນຕ້ອງການລຶບ "${name}" ອອກຈາກກະຕ່າ?`,
+      confirmText: 'ລຶບ',
+      variant: 'danger',
+    });
+    if (!ok) return;
     dispatch(removeItemFromCart(id));
     toast.success("ລຶບສິນຄ້າອອກຈາກກະຕ່າສຳເລັດ");
   };
 
-  const checkoutHandler = () => {
-    navigate("/shipping");
+  // ✅ ตรวจ stock อีกครั้งก่อน checkout (defense in depth)
+  const checkoutHandler = async () => {
+    if (cartItems.length === 0) return;
+
+    if (hasStockIssues) {
+      toast.error('ມີສິນຄ້າທີ່ສາງບໍ່ພຽງພໍ ກະລຸນາແກ້ໄຂກ່ອນ');
+      return;
+    }
+
+    // re-check แบบสด ก่อน navigate (เผื่อ stock เปลี่ยนหลัง mount)
+    try {
+      const items = cartItems.map((i) => ({
+        product: i.product,
+        quantity: Number(i.quantity || 0),
+      }));
+      const res = await checkStock(items).unwrap();
+      if (!res.ok) {
+        const issues = {};
+        (res.items || []).forEach((r) => {
+          if (!r.ok) issues[r.product] = r;
+        });
+        setStockIssues(issues);
+        toast.error('ສິນຄ້າບາງລາຍການບໍ່ພຽງພໍ ກະລຸນາກວດເບິ່ງ');
+        return;
+      }
+    } catch (err) {
+      console.warn('checkStock before navigate failed', err);
+      // ถ้า check ไม่ได้ — ปล่อยให้ผ่านไป backend จะ validate อีกที
+    }
+
+    navigate('/shipping');
+  };
+
+  // ✅ ปรับปริมาณอัตโนมัติให้ตรงกับ stock ที่มี
+  const adjustQuantityToStock = (item) => {
+    const issue = stockIssues[item.product];
+    if (!issue) return;
+    if (issue.available === 0) {
+      // out of stock → ลบออก
+      dispatch(removeItemFromCart(item.product));
+      toast.success(`ລຶບ "${item.name}" ຍ້ອນສິນຄ້າໝົດ`);
+    } else {
+      dispatch(setcartItems({ ...item, quantity: issue.available }));
+      toast.success(`ປັບປະລິມານ "${item.name}" ເປັນ ${issue.available}`);
+    }
   };
 
   // Format currency (LAK)
@@ -144,44 +238,140 @@ function Cart() {
           ) : (
             <div className="cart-grid">
               <div className="cart-list" aria-live="polite">
-                {cartItems.map((item) => (
-                  <div className="cart-row" key={item.product}>
-                    <div className="cart-thumb">
-                      <img src={item.image || '/images/default_product.png'} alt={item.name} />
+                {/* ✅ Stock issue banner รวม — ถ้ามีหลายชิ้นที่มีปัญหา */}
+                {hasStockIssues && (
+                  <div
+                    style={{
+                      background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                      border: '1px solid #f59e0b',
+                      borderRadius: 12,
+                      padding: '12px 16px',
+                      marginBottom: 16,
+                      color: '#78350f',
+                      fontSize: '0.92rem',
+                    }}
+                  >
+                    <strong>⚠️ ມີ {Object.keys(stockIssues).length} ລາຍການມີບັນຫາ</strong>
+                    <div style={{ marginTop: 4, fontSize: '0.85rem' }}>
+                      ສິນຄ້າບາງລາຍການເຫຼືອຫຼຸດກວ່າທີ່ສັ່ງ ຫຼື ໝົດແລ້ວ —
+                      ກົດ "ປັບເປັນ X" ດ້ານລຸ່ມເພື່ອປັບອັດຕະໂນມັດ.
                     </div>
+                  </div>
+                )}
 
-                    <div className="cart-info">
-                      <Link to={`/product/${item.product}`} className="cart-title">{item.name}</Link>
-                      <div className="cart-meta">
-                        <span className="muted-small">Seller: {item.seller || 'ITHUBB'}</span> •
-                        <span className="muted-small"> Stock: {typeof item.stock !== 'undefined' ? item.stock : '—'}</span>
+                {cartItems.map((item) => {
+                  const issue = stockIssues[item.product];
+                  return (
+                    <div
+                      className="cart-row"
+                      key={item.product}
+                      style={
+                        issue
+                          ? {
+                              background: 'rgba(239, 68, 68, 0.04)',
+                              borderLeft: '3px solid #ef4444',
+                              paddingLeft: 12,
+                            }
+                          : undefined
+                      }
+                    >
+                      <div className="cart-thumb">
+                        <img src={item.image || '/images/default_product.png'} alt={item.name} />
                       </div>
 
-                      <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                        <div className="qty-control" role="group" aria-label={`Quantity for ${item.name}`}>
-                          <button className="qty-btn btn btn-light" onClick={() => decreaseQty(item)} aria-label="Decrease quantity">
-                            <FontAwesomeIcon icon={faMinus} />
-                          </button>
-
-                          <input className="qty-input" value={String(item.quantity)} readOnly aria-label="Quantity input" />
-
-                          <button className="qty-btn btn btn-light" onClick={() => increaseQty(item)} aria-label="Increase quantity">
-                            <FontAwesomeIcon icon={faPlus} />
-                          </button>
+                      <div className="cart-info">
+                        <Link to={`/product/${item.product}`} className="cart-title">{item.name}</Link>
+                        <div className="cart-meta">
+                          <span className="muted-small">Seller: {item.seller || 'ITHUBB'}</span> •
+                          <span className="muted-small"> Stock: {typeof item.stock !== 'undefined' ? item.stock : '—'}</span>
                         </div>
 
-                        <div style={{ textAlign: 'right' }}>
-                          <div className="item-subtotal">{formatKip(calculateItemSubtotal(item))}</div>
-                          <div style={{ marginTop: 8 }}>
-                            <button className="remove-btn" onClick={() => handleRemoveItem(item.product)} title="Remove item">
-                              <FontAwesomeIcon icon={faTrash} /> ລຶບ
+                        {/* ✅ Stock warning badge */}
+                        {issue && (
+                          <div
+                            style={{
+                              marginTop: 6,
+                              padding: '6px 10px',
+                              background: '#fee2e2',
+                              border: '1px solid #fecaca',
+                              borderRadius: 8,
+                              fontSize: '0.85rem',
+                              color: '#991b1b',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <span>
+                              {issue.reason === 'product_not_found' && '❌ ສິນຄ້ານີ້ບໍ່ມີໃນລະບົບແລ້ວ'}
+                              {issue.reason === 'out_of_stock' && '❌ ສິນຄ້າໝົດ'}
+                              {issue.reason === 'insufficient_stock' &&
+                                `⚠️ ເຫຼືອ ${issue.available} (ສັ່ງ ${issue.requested})`}
+                            </span>
+                            {issue.available > 0 && issue.reason !== 'product_not_found' && (
+                              <button
+                                onClick={() => adjustQuantityToStock(item)}
+                                style={{
+                                  background: '#fff',
+                                  border: '1px solid #ef4444',
+                                  color: '#ef4444',
+                                  borderRadius: 6,
+                                  padding: '3px 10px',
+                                  cursor: 'pointer',
+                                  fontWeight: 600,
+                                  fontSize: '0.8rem',
+                                }}
+                              >
+                                ປັບເປັນ {issue.available}
+                              </button>
+                            )}
+                            {(issue.available === 0 || issue.reason === 'product_not_found') && (
+                              <button
+                                onClick={() => adjustQuantityToStock(item)}
+                                style={{
+                                  background: '#ef4444',
+                                  border: 'none',
+                                  color: '#fff',
+                                  borderRadius: 6,
+                                  padding: '3px 10px',
+                                  cursor: 'pointer',
+                                  fontWeight: 600,
+                                  fontSize: '0.8rem',
+                                }}
+                              >
+                                ລົບອອກ
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                          <div className="qty-control" role="group" aria-label={`Quantity for ${item.name}`}>
+                            <button className="qty-btn btn btn-light" onClick={() => decreaseQty(item)} aria-label="Decrease quantity">
+                              <FontAwesomeIcon icon={faMinus} />
                             </button>
+
+                            <input className="qty-input" value={String(item.quantity)} readOnly aria-label="Quantity input" />
+
+                            <button className="qty-btn btn btn-light" onClick={() => increaseQty(item)} aria-label="Increase quantity">
+                              <FontAwesomeIcon icon={faPlus} />
+                            </button>
+                          </div>
+
+                          <div style={{ textAlign: 'right' }}>
+                            <div className="item-subtotal">{formatKip(calculateItemSubtotal(item))}</div>
+                            <div style={{ marginTop: 8 }}>
+                              <button className="remove-btn" onClick={() => handleRemoveItem(item.product, item.name)} title="Remove item">
+                                <FontAwesomeIcon icon={faTrash} /> ລຶບ
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <aside className="order-summary" aria-label="Order summary">
@@ -203,7 +393,18 @@ function Cart() {
                 </div>
 
                 <div style={{ marginTop: 16 }}>
-                  <button className="checkout-btn" onClick={checkoutHandler}>Check out</button>
+                  <button
+                    className="checkout-btn"
+                    onClick={checkoutHandler}
+                    disabled={hasStockIssues || isCheckingStock}
+                    title={hasStockIssues ? 'ກະລຸນາແກ້ໄຂບັນຫາ stock ກ່ອນ' : ''}
+                  >
+                    {isCheckingStock
+                      ? 'ກຳລັງກວດສິນຄ້າ...'
+                      : hasStockIssues
+                      ? '⚠️ ມີສິນຄ້າທີ່ມີບັນຫາ'
+                      : 'Check out'}
+                  </button>
                 </div>
 
                 <div style={{ marginTop: 12 }} className="muted-small">

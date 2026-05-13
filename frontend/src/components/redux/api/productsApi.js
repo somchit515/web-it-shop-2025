@@ -1,12 +1,14 @@
 // src/redux/api/productApi.js
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-// Example helper to read token from localStorage or from Redux store.
-const getTokenFromLocal = () => localStorage.getItem("token") || null;
-
 export const productApi = createApi({
   reducerPath: "productApi",
   baseQuery: fetchBaseQuery({
+main
+    baseUrl: "http://localhost:8000/api/v1", // change in dev if needed
+    // ✅ ใช้ cookie auth อย่างเดียว (ลบ localStorage token ออก)
+    credentials: "include",
+
     baseUrl: "https://ithub-sy2u.onrender.com/api/v1", // change in dev if needed
     prepareHeaders: (headers, { getState }) => {
       const token = getTokenFromLocal();
@@ -15,6 +17,7 @@ export const productApi = createApi({
       }
       return headers;
     },
+ master
   }),
   tagTypes: ["Product", "Products", "Reviews", "Reports"],
 
@@ -45,6 +48,15 @@ export const productApi = createApi({
     getProductDetails: builder.query({
       query: (id) => `/products/${id}`,
       providesTags: (result, error, id) => [{ type: "Product", id }],
+    }),
+
+    // ✅ Batch check stock ก่อน checkout — รับ items: [{product, quantity}]
+    checkStock: builder.mutation({
+      query: (items) => ({
+        url: "/products/check-stock",
+        method: "POST",
+        body: { items },
+      }),
     }),
 
     createProduct: builder.mutation({
@@ -169,6 +181,7 @@ export const {
   useGetProductsQuery,
   useGetAdminProductsQuery,
   useGetProductDetailsQuery,
+  useCheckStockMutation,
 
   useCreateProductMutation,
   useCreateProductsBatchMutation,

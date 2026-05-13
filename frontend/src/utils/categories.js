@@ -8,7 +8,7 @@ export const CATEGORIES = [
   { key: "gammings", title: "Gaming Products", slug: "gaming-products", img: "/images/categories/gaming.jpg" },
   { key: "smartphones", title: "Smartphones", slug: "smartphones", img: "/images/categories/smartphones.jpg" },
   { key: "books", title: "Books", slug: "books", img: "/images/categories/books.webp" },
-  { key: "sports", title: "Sports Items", slug: "sports", img: "/images/categories/sports.av" },
+  { key: "sports", title: "Sports Items", slug: "sports", img: "/images/categories/sports.avif" },
 ];
 
 export const slugToKey = (slug) => {

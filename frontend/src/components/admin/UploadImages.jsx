@@ -3,11 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 // import Loader from '../layout/Loader'; 
 import AdminLayout from '../layout/AdminLayout'; // 
-import { 
-    useGetProductDetailsQuery, 
+import {
+    useGetProductDetailsQuery,
     useUploadProductImagesMutation,
     useDeleteProductImageMutation
 } from '../redux/api/productsApi';
+import { confirmDialog } from './_shared/confirmDialog';
 
 function UploadImages() {
 
@@ -118,14 +119,19 @@ function UploadImages() {
     }
 
     // 💡 ຟັງຊັນສຳລັບການລຶບພາບที่ອັບໂຫຼດແລ້ວ (เรียก API)
-    const handleUploadedImageDelete = (public_id) => {
-        if (window.confirm("ທ່ານແນ່ໃຈບໍທີ່ຈະລຶບຮູບພາບນີ້?")) {
-            // ✅ FIX: Pass public_id inside a 'body' object
-            deleteProductImage({ 
-                id: params?.id, 
-                body: { public_id } 
-            });
-        }
+    const handleUploadedImageDelete = async (public_id) => {
+        const ok = await confirmDialog.show({
+            title: 'ລຶບຮູບພາບ?',
+            message: 'ຮູບນີ້ຈະຫາຍຖາວອນຈາກ cloud storage',
+            confirmText: 'ລຶບເລີຍ',
+            variant: 'danger',
+            icon: 'fa-image',
+        });
+        if (!ok) return;
+        deleteProductImage({
+            id: params?.id,
+            body: { public_id }
+        });
     }
     
     const isOperationLoading = isLoading || isDeleteLoading;

@@ -11,8 +11,13 @@ export const attachPaymentProof = catchAsyncErrors(async (req, res, next) => {
 
   const order = await Order.findById(req.params.orderId);
   if (!order) return next(new ErrorHandler("Order not found.", 404));
-  if (order.user.toString() !== req.user._id.toString())
-    return next(new ErrorHandler("Not authorized.", 403));
+
+  // ✅ เฉพาะเจ้าของ order เท่านั้น (admin ไม่ถูก allow โดยเจตนา —
+  //    การอัปโหลดสลิปต้องมาจากลูกค้าที่ชำระเงินจริงๆ)
+  if (order.user.toString() !== req.user._id.toString()) {
+    return next(new ErrorHandler("You are not authorized to upload proof for this order", 403));
+  }
+
   if (order.paymentStatus === "Paid")
     return next(new ErrorHandler("Order already paid.", 400));
 

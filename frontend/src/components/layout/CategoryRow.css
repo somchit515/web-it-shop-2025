@@ -1,79 +1,119 @@
-/* ใช้ CSS Variables ปรับธีมง่าย */
+/* =========================================
+   CategoryRow — Modern Product Slider
+   ========================================= */
 :root {
-  --cr-gap: 12px;
-  --cr-card-w: 220px;
-  --cr-radius: 10px;
-  --cr-shadow: 0 8px 24px rgba(2, 6, 23, 0.08);
+  --cr-gap: 16px;
+  --cr-card-w: 240px;
+  --cr-radius: 12px;
+  --cr-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
+  --cr-shadow-hover: 0 16px 36px rgba(2, 6, 23, 0.14);
   --cr-primary: #2563eb;
   --cr-primary-light: #dbeafe;
   --cr-text: #0f172a;
   --cr-muted: #64748b;
   --cr-border: #eef2f6;
   --cr-skel-bg: #eef2f6;
+  --cr-danger: #dc2626;
+  --cr-danger-bg: #ef4444;
 }
 
 .cat-row {
-  margin: 3rem auto;
-  max-width: 1200px;
+  max-width: 100%;
+  margin: 2.5rem 0;
+  position: relative;
 }
 
+/* ---------- Header ---------- */
 .cr-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1rem;
+  padding: 0 4px;
 }
 
 .cr-title {
-  font-weight: 700;
+  font-weight: 800;
   font-size: 1.25rem;
   color: var(--cr-text);
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .cr-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
+
 .cr-show-all {
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   color: var(--cr-primary);
   text-decoration: none;
   font-weight: 600;
-}
-.cr-show-all:hover {
-  text-decoration: underline;
-}
-.cr-actions button {
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: #fff;
-  box-shadow: var(--cr-shadow);
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1.2rem;
-  color: var(--cr-primary);
-  transition: background 0.2s;
-}
-.cr-actions button:hover {
-  background: var(--cr-primary-light);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: gap 0.2s ease;
 }
 
+.cr-show-all:hover {
+  text-decoration: underline;
+  gap: 8px;
+}
+
+/* ---------- Scroller wrapper (relative for floating arrows) ---------- */
+.cr-scroller-wrap {
+  position: relative;
+}
+
+/* Floating navigation arrows (overlay style) */
+.cr-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--cr-primary-light);
+  background: #fff;
+  color: var(--cr-primary);
+  box-shadow: 0 8px 22px rgba(2, 6, 23, 0.15);
+  cursor: pointer;
+  font-size: 1.4rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  z-index: 20;
+  transition: all 0.2s ease;
+}
+
+.cr-nav-btn:hover {
+  background: var(--cr-primary);
+  color: #fff;
+  transform: translateY(-50%) scale(1.08);
+}
+
+.cr-nav-btn.cr-nav-left  { left: -10px; }
+.cr-nav-btn.cr-nav-right { right: -10px; }
+
+/* ---------- Scroller ---------- */
 .cr-scroller {
   display: flex;
   gap: var(--cr-gap);
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 6px;
-}
-.cr-scroller::-webkit-scrollbar {
-  display: none;
+  padding: 6px 4px 14px;
+  scroll-padding-left: 4px;
 }
 
-/* ---------- card ---------- */
+.cr-scroller::-webkit-scrollbar { display: none; }
+.cr-scroller { scrollbar-width: none; }
+
+/* ---------- Card ---------- */
 .cr-card {
   flex: 0 0 var(--cr-card-w);
   background: #fff;
@@ -82,12 +122,15 @@
   box-shadow: var(--cr-shadow);
   display: flex;
   flex-direction: column;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
   scroll-snap-align: start;
 }
+
 .cr-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.12);
+  transform: translateY(-5px);
+  box-shadow: var(--cr-shadow-hover);
 }
 
 .cr-link {
@@ -98,24 +141,136 @@
   height: 100%;
 }
 
+/* ---------- Wishlist (heart) button — top-left ---------- */
+.cr-wishlist {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(4px);
+  color: #94a3b8;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 6;
+  box-shadow: 0 2px 6px rgba(2, 6, 23, 0.08);
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+}
+
+.cr-wishlist:hover,
+.cr-wishlist.active {
+  color: var(--cr-danger);
+  transform: scale(1.1);
+  background: #fff;
+}
+
+/* ---------- Diagonal RED Ribbon — top-right (savings) ---------- */
+.cr-ribbon {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 110px;
+  height: 110px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.cr-ribbon-inner {
+  position: absolute;
+  top: 18px;
+  right: -32px;
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  padding: 5px 36px;
+  box-shadow: 0 3px 8px rgba(220, 38, 38, 0.35);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+/* ---------- Image box ---------- */
 .cr-img-box {
-  height: 130px;
+  position: relative;
+  height: 170px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fafafa;
+  background: #fff;
   border-bottom: 1px solid var(--cr-border);
   overflow: hidden;
-  border-radius: var(--cr-radius) var(--cr-radius) 0 0;
-}
-.cr-img-box img {
-  max-height: 120px;
-  object-fit: contain;
-  width: 100%;
 }
 
+.cr-img-box img {
+  max-height: 150px;
+  max-width: 85%;
+  object-fit: contain;
+  transition: transform 0.4s ease;
+}
+
+.cr-card:hover .cr-img-box img {
+  transform: scale(1.06);
+}
+
+/* ---------- Hover overlay (Buy now / Add to cart) ---------- */
+.cr-hover-actions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.cr-card:hover .cr-hover-actions {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.cr-hover-btn {
+  min-width: 130px;
+  padding: 7px 14px;
+  border: 1.5px solid var(--cr-primary);
+  background: #fff;
+  color: var(--cr-primary);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.18s ease;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.15);
+}
+
+.cr-hover-btn:hover {
+  background: var(--cr-primary);
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+/* ---------- Body ---------- */
 .cr-body {
-  padding: 10px 12px;
+  padding: 12px 14px 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -126,86 +281,141 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--cr-text);
-  line-height: 1.2;
-  height: 32px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
   margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 36px;
+  transition: color 0.2s ease;
 }
-.cr-name:hover {
+
+.cr-card:hover .cr-name {
   color: var(--cr-primary);
+}
+
+.cr-specs {
+  font-size: 11.5px;
+  color: var(--cr-muted);
+  line-height: 1.3;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 15px;
+}
+
+/* ---------- Price row ---------- */
+.cr-price-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.cr-price-old {
+  font-size: 12px;
+  color: var(--cr-muted);
+  text-decoration: line-through;
+  font-weight: 500;
 }
 
 .cr-price {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
-  color: var(--cr-primary);
-  margin-top: auto;
+  color: var(--cr-danger);
 }
 
-/* ---------- skeleton ---------- */
+.cr-price-unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cr-text);
+}
+
+/* ---------- Viewed count ---------- */
+.cr-viewed {
+  font-size: 11px;
+  color: var(--cr-muted);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* ---------- Skeleton ---------- */
 .cr-card-skel {
   flex: 0 0 var(--cr-card-w);
   background: #fff;
   border: 1px solid var(--cr-border);
   border-radius: var(--cr-radius);
   overflow: hidden;
+  box-shadow: var(--cr-shadow);
 }
+
 .cr-skel-img {
-  height: 130px;
+  height: 170px;
   background: var(--cr-skel-bg);
   background: linear-gradient(90deg, var(--cr-skel-bg) 8%, #f7fafc 18%, var(--cr-skel-bg) 33%);
   background-size: 400% 100%;
   animation: cr-shimmer 1.2s linear infinite;
 }
-.cr-skel-body {
-  padding: 10px 12px;
-}
+
+.cr-skel-body { padding: 12px 14px; }
+
 .cr-skel-line {
-  height: 14px;
+  height: 12px;
   background: var(--cr-skel-bg);
   background: linear-gradient(90deg, var(--cr-skel-bg) 8%, #f7fafc 18%, var(--cr-skel-bg) 33%);
   background-size: 400% 100%;
   animation: cr-shimmer 1.2s linear infinite;
   margin-bottom: 8px;
+  border-radius: 4px;
 }
 
 @keyframes cr-shimmer {
-  0% {
-    background-position: -220px 0;
-  }
-  100% {
-    background-position: 220px 0;
-  }
+  0%   { background-position: -220px 0; }
+  100% { background-position: 220px 0; }
 }
 
-/* ---------- load more ---------- */
+/* ---------- Load more ---------- */
 .cr-more {
   display: flex;
   justify-content: center;
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
 }
+
 .cr-more button {
-  padding: 0.45rem 1.1rem;
-  border: 1px solid var(--cr-border);
+  padding: 0.55rem 1.4rem;
+  border: 1px solid var(--cr-primary-light);
   background: #fff;
-  border-radius: 8px;
+  border-radius: 999px;
   font-weight: 600;
   color: var(--cr-primary);
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: all 0.2s ease;
 }
+
 .cr-more button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
 .cr-more button:not(:disabled):hover {
-  background: var(--cr-primary-light);
+  background: var(--cr-primary);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
 }
 
-/* ---------- responsive ---------- */
+/* ---------- Responsive ---------- */
 @media (max-width: 576px) {
-  .cr-actions {
-    display: none;
+  :root {
+    --cr-card-w: 180px;
+    --cr-gap: 12px;
   }
+  .cr-img-box { height: 140px; }
+  .cr-img-box img { max-height: 120px; }
+  .cr-nav-btn { display: none; }
+  .cr-hover-actions { display: none; }
 }

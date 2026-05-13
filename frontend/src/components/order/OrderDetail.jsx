@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import MetaData from "../layout/MetaData";
-import { useGetOrderDetailsQuery } from "../redux/api/OrderApi";
+import {
+  useGetOrderDetailsQuery,
+  useCancelMyOrderMutation,
+} from "../redux/api/OrderApi";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import Loader from "../layout/Loader";
 import toast from "react-hot-toast";
@@ -26,21 +29,57 @@ const resolveFileUrl = (urlOrPath) => {
 export default function OrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data, isLoading, error } = useGetOrderDetailsQuery(id);
+  const { data, isLoading, error, refetch } = useGetOrderDetailsQuery(id);
   const order = data?.order || null;
+
+  const [cancelOrder, { isLoading: cancelling }] = useCancelMyOrderMutation();
 
   // Local state for lightbox modal
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [copiedId, setCopiedId] = useState(false);
 
+  // Cancel modal state
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+
+  // ✅ ตรวจว่า order นี้ยกเลิกได้หรือไม่
+  const currentStatus = order?.fulfillmentStatus || order?.status || order?.orderStatus;
+  const canCancel =
+    order &&
+    ["Unfulfilled", "Processing"].includes(currentStatus) &&
+    order.paymentStatus !== "Paid";
+
+  const handleCancelOrder = async () => {
+    if (!cancelReason.trim()) {
+      return toast.error("ກະລຸນາລະບຸເຫດຜົນການຍົກເລີກ");
+    }
+    try {
+      await cancelOrder({ id, reason: cancelReason.trim() }).unwrap();
+      toast.success("ຍົກເລີກອໍເດີສຳເລັດ ສິນຄ້າຄືນສາງແລ້ວ");
+      setCancelModalOpen(false);
+      setCancelReason("");
+      refetch();
+    } catch (err) {
+      toast.error(err?.data?.message || "ການຍົກເລີກລົ້ມເຫລວ");
+    }
+  };
+
   useEffect(() => {
     if (error) {
-      toast.error(
-        error?.data?.message || "เกิดข้อผิดพลาดขณะดึงข้อมูลออร์เดอร์"
-      );
+      // ✅ จัดการ 403 (ไม่ใช่เจ้าของ order) แบบเจาะจง
+      if (error?.status === 403) {
+        toast.error("ທ່ານບໍ່ມີສິດເບິ່ງອໍເດີນີ້");
+        setTimeout(() => navigate('/me/orders', { replace: true }), 1200);
+      } else if (error?.status === 404) {
+        toast.error("ບໍ່ພົບອໍເດີນີ້");
+      } else {
+        toast.error(
+          error?.data?.message || "เกิดข้อผิดพลาดขณะดึงข้อมูลออร์เดอร์"
+        );
+      }
     }
-  }, [error]);
+  }, [error, navigate]);
 
   if (isLoading) return <Loader />;
 
@@ -98,12 +137,9 @@ export default function OrderDetail() {
 
   const downloadAllProofsZip = async () => {
     try {
-      const token = localStorage.getItem("token");
       const res = await fetch(`/api/v1/orders/${order._id}/download-proofs`, {
         method: "GET",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        credentials: "include", // ✅ ส่ง cookie auth
       });
       if (!res.ok) {
         const err = await res
@@ -634,6 +670,25 @@ export default function OrderDetail() {
               </div>
 
               <div className="header-actions">
+                {/* ✅ ປຸ່ມຍົກເລີກ — ສະແດງສະເພາະອໍເດີທີ່ຍົກເລີກໄດ້ */}
+                {canCancel && (
+                  <motion.button
+                    className="btn btn-icon"
+                    onClick={() => setCancelModalOpen(true)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    style={{
+                      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                      color: 'white',
+                      border: 'none',
+                    }}
+                    disabled={cancelling}
+                  >
+                    <i className="fas fa-ban"></i>
+                    ຍົກເລີກອໍເດີ
+                  </motion.button>
+                )}
+
                 <motion.button
                   className={`btn btn-icon ${copiedId ? "copied" : ""}`}
                   onClick={copyOrderId}
@@ -668,6 +723,22 @@ export default function OrderDetail() {
               </div>
             </div>
           </motion.div>
+
+          {/* ✅ Order Timeline */}
+          {Array.isArray(order.events) && order.events.length > 0 && (
+            <motion.div
+              className="info-card"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.05 }}
+            >
+              <div className="card-header">
+                <div className="card-icon">🕓</div>
+                <h3 className="card-title">ປະຫວັດອໍເດີ</h3>
+              </div>
+              <OrderTimeline events={order.events} />
+            </motion.div>
+          )}
 
           {/* Order Info Card */}
           <motion.div
@@ -1057,6 +1128,127 @@ export default function OrderDetail() {
           </motion.div>
         </div>
 
+        {/* ✅ Cancel Order Modal */}
+        <AnimatePresence>
+          {cancelModalOpen && (
+            <motion.div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(15, 23, 42, 0.6)',
+                backdropFilter: 'blur(4px)',
+                zIndex: 9999,
+                display: 'grid',
+                placeItems: 'center',
+                padding: 16,
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !cancelling && setCancelModalOpen(false)}
+            >
+              <motion.div
+                onClick={(e) => e.stopPropagation()}
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                style={{
+                  background: 'white',
+                  borderRadius: 16,
+                  padding: '28px 24px 20px',
+                  maxWidth: 460,
+                  width: '100%',
+                  boxShadow: '0 24px 60px rgba(0,0,0,0.25)',
+                }}
+              >
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    margin: '0 auto 16px',
+                    background: '#fee2e2',
+                    color: '#dc2626',
+                    borderRadius: '50%',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontSize: 28,
+                  }}
+                >
+                  <i className="fas fa-ban"></i>
+                </div>
+                <h4 style={{ textAlign: 'center', margin: '0 0 8px', color: '#1e293b' }}>
+                  ຍົກເລີກອໍເດີ?
+                </h4>
+                <p style={{ textAlign: 'center', color: '#64748b', fontSize: '0.92rem', marginBottom: 16 }}>
+                  ສິນຄ້າຈະຄືນກັບສາງ ການກະທຳນີ້ບໍ່ສາມາດຢ້ອນກັບໄດ້
+                </p>
+
+                <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                  ເຫດຜົນ <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  rows={3}
+                  placeholder="ເຊັ່ນ: ສັ່ງຜິດ, ບໍ່ຕ້ອງການແລ້ວ, ໄດ້ສິນຄ້າທີ່ອື່ນແລ້ວ..."
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: 10,
+                    fontSize: '0.95rem',
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    resize: 'vertical',
+                    marginBottom: 18,
+                  }}
+                  disabled={cancelling}
+                  autoFocus
+                />
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => {
+                      setCancelModalOpen(false);
+                      setCancelReason('');
+                    }}
+                    disabled={cancelling}
+                    style={{
+                      flex: 1,
+                      padding: '12px 18px',
+                      border: '2px solid #e2e8f0',
+                      background: 'white',
+                      color: '#64748b',
+                      borderRadius: 10,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ກັບຄືນ
+                  </button>
+                  <button
+                    onClick={handleCancelOrder}
+                    disabled={cancelling || !cancelReason.trim()}
+                    style={{
+                      flex: 1,
+                      padding: '12px 18px',
+                      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 10,
+                      fontWeight: 700,
+                      cursor: cancelling || !cancelReason.trim() ? 'not-allowed' : 'pointer',
+                      opacity: cancelling || !cancelReason.trim() ? 0.6 : 1,
+                    }}
+                  >
+                    {cancelling ? 'ກຳລັງຍົກເລີກ...' : 'ຢືນຢັນຍົກເລີກ'}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Lightbox Modal */}
         <AnimatePresence>
           {lightboxOpen && (
@@ -1091,6 +1283,112 @@ export default function OrderDetail() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+    </>
+  );
+}
+
+// ✅ Order Timeline sub-component
+const EVENT_CONFIG = {
+  created:           { icon: "🛒", color: "#667eea", label: "ສ້າງອໍເດີ" },
+  proof_uploaded:    { icon: "📤", color: "#0ea5e9", label: "ອັບໂຫຼດສະຫຼິບ" },
+  payment_confirmed: { icon: "💰", color: "#10b981", label: "ຢືນຢັນການຊຳລະ" },
+  payment_rejected:  { icon: "❌", color: "#ef4444", label: "ປະຕິເສດການຊຳລະ" },
+  processing:        { icon: "📦", color: "#3b82f6", label: "ກຳລັງເຕີມ" },
+  shipped:           { icon: "🚚", color: "#f59e0b", label: "ຈັດສົ່ງແລ້ວ" },
+  delivered:         { icon: "✅", color: "#10b981", label: "ສົ່ງສຳເລັດ" },
+  cancelled:         { icon: "🚫", color: "#ef4444", label: "ຍົກເລີກ" },
+  returned:          { icon: "↩️", color: "#a855f7", label: "ສົ່ງຄືນ" },
+  refunded:          { icon: "💸", color: "#06b6d4", label: "ຄືນເງິນ" },
+  note:              { icon: "📝", color: "#64748b", label: "ບັນທຶກ" },
+};
+
+function formatRelativeTime(date) {
+  const diff = Date.now() - new Date(date).getTime();
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return "ໜ້ອຍກວ່າ 1 ນາທີຜ່ານມາ";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} ນາທີຜ່ານມາ`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} ຊົ່ວໂມງຜ່ານມາ`;
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day} ມື້ຜ່ານມາ`;
+  return new Date(date).toLocaleDateString("lo-LA");
+}
+
+function OrderTimeline({ events = [] }) {
+  // เรียงจากเก่า → ใหม่ (timeline ลำดับเหตุการณ์)
+  const sorted = [...events].sort(
+    (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+  );
+
+  return (
+    <>
+      <style>{`
+        .timeline { position: relative; padding-left: 32px; padding-top: 8px; }
+        .timeline::before {
+          content: ''; position: absolute;
+          left: 14px; top: 16px; bottom: 8px;
+          width: 2px; background: linear-gradient(180deg, #e2e8f0, #f1f5f9);
+        }
+        .timeline-event {
+          position: relative; margin-bottom: 20px;
+        }
+        .timeline-event:last-child { margin-bottom: 0; }
+        .timeline-dot {
+          position: absolute; left: -32px; top: 0;
+          width: 30px; height: 30px;
+          border-radius: 50%;
+          display: grid; place-items: center;
+          font-size: 14px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+          border: 3px solid white;
+        }
+        .timeline-content {
+          background: #f8fafc;
+          border-left: 3px solid;
+          padding: 10px 14px;
+          border-radius: 0 10px 10px 0;
+          margin-left: 4px;
+        }
+        .timeline-label {
+          font-weight: 700; color: #1e293b; font-size: 0.95rem;
+        }
+        .timeline-note {
+          color: #64748b; font-size: 0.85rem; margin-top: 2px;
+        }
+        .timeline-time {
+          color: #94a3b8; font-size: 0.78rem; margin-top: 4px;
+          display: flex; align-items: center; gap: 4px;
+        }
+      `}</style>
+      <div className="timeline">
+        {sorted.map((event, idx) => {
+          const cfg = EVENT_CONFIG[event.type] || EVENT_CONFIG.note;
+          return (
+            <div className="timeline-event" key={event._id || idx}>
+              <div
+                className="timeline-dot"
+                style={{ background: cfg.color, color: "white" }}
+              >
+                {cfg.icon}
+              </div>
+              <div
+                className="timeline-content"
+                style={{ borderLeftColor: cfg.color }}
+              >
+                <div className="timeline-label">{cfg.label}</div>
+                {event.note && (
+                  <div className="timeline-note">{event.note}</div>
+                )}
+                <div className="timeline-time" title={new Date(event.timestamp).toLocaleString()}>
+                  <i className="far fa-clock"></i>
+                  {formatRelativeTime(event.timestamp)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </>
   );

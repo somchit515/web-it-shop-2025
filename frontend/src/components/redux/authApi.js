@@ -1,17 +1,22 @@
-// In src/redux/authApi.js
-
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-
-// 🛑 FIX 1: ต้อง Import 'userApi' กลับมาใช้
-import { userApi } from "./api/userApi"; // ตรวจสอบ path นี้ให้ถูกต้องตามโครงสร้างไฟล์ของคุณ
+import { userApi } from "./api/userApi"; // ກວດສອບ path ໃຫ້ຖືກຕາມ Folder ຂອງທ່ານ
 
 export const authApi = createApi({
   reducerPath: "authApi",
+ main
+  // 🛑 FIX: ເພີ່ມ credentials: "include" ເພື່ອໃຫ້ Browser ສົ່ງ Cookie/Token ໄປຫາ Backend ທຸກ Request
+  baseQuery: fetchBaseQuery({ 
+    baseUrl: "http://localhost:8000/api/v1",
+    credentials: "include", 
+  }),
+
   baseQuery: fetchBaseQuery({ baseUrl: "https://ithub-sy2u.onrender.com/api/v1" }),
   // 💡 แนะนำ: เพิ่ม tagTypes ที่นี่ด้วย เพื่อความเป็นระเบียบ
+ master
   tagTypes: ["User"],
 
   endpoints: (builder) => ({
+    // 1. ລົງທະບຽນ
     register: builder.mutation({
       query(body) {
         return {
@@ -22,6 +27,7 @@ export const authApi = createApi({
       },
     }),
 
+    // 2. ເຂົ້າສູ່ລະບົບດ້ວຍ Email/Password
     login: builder.mutation({
       query(body) {
         return {
@@ -30,39 +36,47 @@ export const authApi = createApi({
           body,
         };
       },
+      // 🛑 FIX: ເມື່ອ Login ສຳເລັດ, ໃຫ້ໄປດຶງຂໍ້ມູນ User (getMe) ມາທັນທີ
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
-          // 🛑 FIX 2: เปิดใช้งาน Logic นี้เพื่อเรียก getMe ทันทีหลัง Login สำเร็จ
           dispatch(userApi.endpoints.getMe.initiate());
         } catch (error) {
-          console.log(error);
+          console.error("Login failed:", error);
         }
       },
     }),
 
-    // ตัวอย่างใน authApi.js (สมมติฐาน)
+    // 3. ອອກຈາກລະບົບ
     logout: builder.mutation({
       query: () => ({
         url: "/logout",
         method: "GET",
       }),
-      // 🚀 FIX: การ Invalidates tags ที่เกี่ยวข้องกับการดึงข้อมูลผู้ใช้ (Me)
+      // 🚀 Invalidates tags ເພື່ອໃຫ້ລະບົບຮູ້ວ່າຂໍ້ມູນ User ເກົ່າໃຊ້ບໍ່ໄດ້ແລ້ວ
       invalidatesTags: ["User"],
     }),
-    // authApi.js
+
+    // 4. ເຂົ້າສູ່ລະບົບດ້ວຍ Google
     googleLogin: builder.mutation({
       query: (body) => ({
         url: "/google/login",
         method: "POST",
         body,
-        credentials: "include", // ถ้าใช้ cookie
       }),
+      async onQueryStarted(args, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(userApi.endpoints.getMe.initiate());
+        } catch (error) {
+          console.error("Google Login failed:", error);
+        }
+      },
     }),
   }),
 });
 
-// 💡 Export Hook: useLogoutMutation is correct for builder.mutation
+// Export Hooks ສຳລັບໃຊ້ໃນ Component
 export const {
   useLoginMutation,
   useRegisterMutation,

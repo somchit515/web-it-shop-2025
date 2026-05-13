@@ -7,30 +7,41 @@ import { Toaster } from "react-hot-toast";
 import useUserRoutes from "./components/routes/UserRoutes";
 import useAdminRoutes from "./components/routes/AdminRoutes";
 import BlogRoutes from "./components/routes/BlogRoutes"; // ✅ เพิ่มตรงนี้
+import ConfirmDialog from "./components/admin/_shared/ConfirmDialog.jsx";
 
 function AppWrapper() {
   const location = useLocation();
 
-  // ซ่อน Header บนหน้า login/register/forgot password
-  const hideHeader = location.pathname === "/login" || 
-                    location.pathname === "/register" || 
-                    location.pathname === "/password/forgot";
+  // ซ่อน Header + Footer บนหน้า auth (login/register/forgot/reset password)
+  const isAuthPage =
+    location.pathname === "/login" ||
+    location.pathname === "/register" ||
+    location.pathname === "/password/forgot" ||
+    location.pathname.startsWith("/password/reset");
+
+  const isAdminPage = location.pathname.startsWith("/admin");
+
+  // Header: ซ่อนเฉพาะ auth pages (admin ให้แสดงด้วย)
+  const showHeader = !isAuthPage;
+  // Footer: ซ่อนทั้ง auth และ admin
+  const showFooter = !isAuthPage && !isAdminPage;
 
   return (
     <div className="App">
       <Toaster position="top-center" />
-      {!hideHeader && <Header />}
+      <ConfirmDialog />
+      {showHeader && <Header />}
 
       <div className="container">
         <Routes>
           {/* render route arrays WITHOUT commas */}
           {useUserRoutes()}
           {useAdminRoutes()}
-          {BlogRoutes()} {/* ✅ เพิ่มตรงนี้ */}
+          {BlogRoutes()}
         </Routes>
       </div>
 
-      <Footer />
+      {showFooter && <Footer />}
     </div>
   );
 }

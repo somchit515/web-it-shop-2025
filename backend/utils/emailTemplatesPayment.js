@@ -50,14 +50,122 @@ function orderSummaryHtml(order, lang) {
 /**
  * Returns an object: { subject, text, html }
  * lang: 'la' | 'en' | 'th'
- * action: 'confirm' | 'reject' | 'uploaded'
+ * action: 'created' | 'confirm' | 'reject' | 'uploaded' | 'shipped' | 'delivered' | 'cancelled'
  */
 export function getEmailTemplate({ lang = 'la', action = 'confirm', order = {}, note = '' } = {}) {
   const orderHtml = orderSummaryHtml(order, lang);
   const orderLink = `${process.env.FRONTEND_URL || ''}/me/orders/${order._id}`;
+  const tracking = order.trackingCode || '';
+  const carrier = order.shippingInfo?.shippingCarrier || '';
 
   // --- Lao (Default) ---
   if (lang === 'la') {
+    // ✅ NEW: ສ້າງ order ສຳເລັດ (receipt)
+    if (action === 'created') {
+      const isCOD = order.paymentMethod === 'COD';
+      return {
+        subject: `🛒 ໄດ້ຮັບຄຳສັ່ງຊື້ #${String(order._id).substring(0, 8)} ແລ້ວ`,
+        text: `ຂອບໃຈ! ໄດ້ຮັບຄຳສັ່ງຊື້ ${order._id} ຍອດ ₭${formatCurrencyLAK(order.totalAmount)}`,
+        html: `
+          <div style="font-family: 'Noto Sans Lao', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px;">
+            <h2 style="color: #667eea;">ຂອບໃຈສຳລັບການສັ່ງຊື້! 🎉</h2>
+            <p>ສະບາຍດີ ທ່ານ ${order.user?.name || ''},</p>
+            <p>ພວກເຮົາໄດ້ຮັບຄຳສັ່ງຊື້ຂອງທ່ານແລ້ວ (ID: <strong>${order._id}</strong>)</p>
+            ${orderHtml}
+            <div style="background: #f0f9ff; padding: 14px 16px; border-radius: 10px; margin: 16px 0; border-left: 4px solid #3b82f6;">
+              <strong>💳 ວິທີຊຳລະ:</strong> ${isCOD ? '💵 ເງິນສົດເມື່ອຮັບສິນຄ້າ (COD)' : '🏦 ໂອນເງິນຜ່ານທະນາຄານ'}<br>
+              ${isCOD
+                ? '<small>ກະລຸນາກຽມເງິນສົດໃຫ້ພ້ອມເມື່ອພະນັກງານຂົນສົ່ງມາສົ່ງ</small>'
+                : '<small>ກະລຸນາໂອນເງິນ ແລະ ອັບໂຫຼດສະຫຼິບໃບໂອນຢູ່ໃນລະບົບ</small>'}
+            </div>
+            <p>ສະຖານະປະຈຸບັນ: <strong>ກຳລັງດຳເນີນການ</strong></p>
+            <p style="text-align: center; margin: 24px 0;">
+              <a href="${orderLink}" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                📋 ເບິ່ງລາຍລະອຽດອໍເດີ
+              </a>
+            </p>
+          </div>
+        `
+      };
+    }
+
+    // ✅ NEW: ຈັດສົ່ງແລ້ວ
+    if (action === 'shipped') {
+      return {
+        subject: `🚚 ຄຳສັ່ງຊື້ #${String(order._id).substring(0, 8)} ກຳລັງຈັດສົ່ງ`,
+        text: `ສິນຄ້າຂອງທ່ານກຳລັງຈັດສົ່ງ ${tracking ? `ເລກພັດດຸ: ${tracking}` : ''}`,
+        html: `
+          <div style="font-family: 'Noto Sans Lao', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px;">
+            <h2 style="color: #f59e0b;">🚚 ສິນຄ້າຂອງທ່ານກຳລັງຈັດສົ່ງ!</h2>
+            <p>ສະບາຍດີ ທ່ານ ${order.user?.name || ''},</p>
+            <p>ຄຳສັ່ງຊື້ <strong>${order._id}</strong> ໄດ້ຖືກສົ່ງໃຫ້ບໍລິສັດຂົນສົ່ງແລ້ວ</p>
+            ${carrier ? `<p><strong>📦 ບໍລິສັດຂົນສົ່ງ:</strong> ${carrier}</p>` : ''}
+            ${tracking ? `
+              <div style="background: #fef3c7; padding: 14px 16px; border-radius: 10px; margin: 16px 0; border-left: 4px solid #f59e0b;">
+                <strong>🔍 ເລກຕິດຕາມພັດດຸ:</strong>
+                <div style="font-family: monospace; font-size: 18px; color: #92400e; margin-top: 8px;">
+                  ${tracking}
+                </div>
+              </div>
+            ` : ''}
+            <p style="text-align: center; margin: 24px 0;">
+              <a href="${orderLink}" style="display: inline-block; padding: 12px 24px; background: #f59e0b; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                ຕິດຕາມການຈັດສົ່ງ
+              </a>
+            </p>
+          </div>
+        `
+      };
+    }
+
+    // ✅ NEW: ສົ່ງສຳເລັດ
+    if (action === 'delivered') {
+      return {
+        subject: `✅ ຄຳສັ່ງຊື້ #${String(order._id).substring(0, 8)} ສົ່ງສຳເລັດແລ້ວ`,
+        text: `ສິນຄ້າຂອງທ່ານໄດ້ສົ່ງເຖິງມືແລ້ວ. ຂອບໃຈທີ່ໃຊ້ບໍລິການ!`,
+        html: `
+          <div style="font-family: 'Noto Sans Lao', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px;">
+            <h2 style="color: #10b981;">✅ ສິນຄ້າສົ່ງເຖິງມືແລ້ວ!</h2>
+            <p>ສະບາຍດີ ທ່ານ ${order.user?.name || ''},</p>
+            <p>ຄຳສັ່ງຊື້ <strong>${order._id}</strong> ໄດ້ສົ່ງເຖິງມືທ່ານສຳເລັດແລ້ວ</p>
+            <p>ຫວັງວ່າທ່ານຈະພໍໃຈກັບສິນຄ້າ 🙏</p>
+            <div style="background: #f0fdf4; padding: 16px; border-radius: 10px; margin: 16px 0; text-align: center;">
+              <p style="margin: 0;">⭐ ກະລຸນາສະລະເວລາໃຫ້ຄະແນນ + ຄຳຄິດເຫັນ</p>
+              <a href="${orderLink}" style="display: inline-block; margin-top: 10px; padding: 10px 20px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                ໃຫ້ຄະແນນສິນຄ້າ
+              </a>
+            </div>
+          </div>
+        `
+      };
+    }
+
+    // ✅ NEW: ຍົກເລີກ
+    if (action === 'cancelled') {
+      return {
+        subject: `❌ ຄຳສັ່ງຊື້ #${String(order._id).substring(0, 8)} ຖືກຍົກເລີກ`,
+        text: `ຄຳສັ່ງຊື້ຂອງທ່ານຖືກຍົກເລີກ${note ? `: ${note}` : ''}`,
+        html: `
+          <div style="font-family: 'Noto Sans Lao', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px;">
+            <h2 style="color: #ef4444;">ຄຳສັ່ງຊື້ຖືກຍົກເລີກ</h2>
+            <p>ສະບາຍດີ ທ່ານ ${order.user?.name || ''},</p>
+            <p>ຄຳສັ່ງຊື້ <strong>${order._id}</strong> ໄດ້ຖືກຍົກເລີກແລ້ວ</p>
+            ${note ? `
+              <div style="background: #fef2f2; padding: 14px 16px; border-radius: 10px; margin: 16px 0; border-left: 4px solid #ef4444;">
+                <strong>ເຫດຜົນ:</strong> ${note}
+              </div>
+            ` : ''}
+            <p>ສິນຄ້າຄືນສາງແລ້ວ ຖ້າທ່ານໂອນເງິນແລ້ວ ກະລຸນາຕິດຕໍ່ຝ່າຍຊ່ວຍເຫຼືອເພື່ອຂໍຄືນເງິນ</p>
+            <p style="text-align: center; margin: 24px 0;">
+              <a href="${orderLink}" style="display: inline-block; padding: 10px 20px; background: #64748b; color: white; text-decoration: none; border-radius: 8px;">
+                ເບິ່ງລາຍລະອຽດ
+              </a>
+            </p>
+          </div>
+        `
+      };
+    }
+
     if (action === 'confirm') {
       return {
         subject: `ຢືນຢັນການຊຳລະເງິນສຳລັບຄຳສັ່ງຊື້ #${order._id}`,
@@ -138,6 +246,54 @@ export function getEmailTemplate({ lang = 'la', action = 'confirm', order = {}, 
   }
 
   // --- Default English ---
+  if (action === 'created') {
+    return {
+      subject: `Order received #${order._id}`,
+      text: `Thank you! We have received your order ${order._id}.`,
+      html: `
+        <p>Hi ${order.user?.name || ''},</p>
+        <p>Thank you for your order <strong>${order._id}</strong>!</p>
+        ${orderHtml}
+        <p>Payment method: <strong>${order.paymentMethod}</strong></p>
+        <p>View details: <a href="${orderLink}">${orderLink}</a></p>
+      `
+    };
+  }
+  if (action === 'shipped') {
+    return {
+      subject: `Your order #${order._id} is on the way 🚚`,
+      text: `Your order has been shipped. ${tracking ? `Tracking: ${tracking}` : ''}`,
+      html: `
+        <p>Hi ${order.user?.name || ''},</p>
+        <p>Your order <strong>${order._id}</strong> has been shipped.</p>
+        ${carrier ? `<p>Carrier: <strong>${carrier}</strong></p>` : ''}
+        ${tracking ? `<p>Tracking code: <code>${tracking}</code></p>` : ''}
+        <p><a href="${orderLink}">Track your order</a></p>
+      `
+    };
+  }
+  if (action === 'delivered') {
+    return {
+      subject: `Order #${order._id} delivered ✅`,
+      text: `Your order has been delivered. Thank you!`,
+      html: `
+        <p>Hi ${order.user?.name || ''},</p>
+        <p>Your order <strong>${order._id}</strong> has been delivered. Thank you!</p>
+        <p>Please rate the products: <a href="${orderLink}">${orderLink}</a></p>
+      `
+    };
+  }
+  if (action === 'cancelled') {
+    return {
+      subject: `Order #${order._id} cancelled`,
+      text: `Your order has been cancelled. ${note}`,
+      html: `
+        <p>Hi ${order.user?.name || ''},</p>
+        <p>Your order <strong>${order._id}</strong> has been cancelled.</p>
+        ${note ? `<p>Reason: ${note}</p>` : ''}
+      `
+    };
+  }
   if (action === 'confirm') {
     return {
       subject: `Payment confirmed for order #${order._id}`,

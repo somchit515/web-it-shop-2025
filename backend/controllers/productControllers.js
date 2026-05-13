@@ -422,6 +422,70 @@ export const getProductsByCategory = catchAsyncErrors(async (req, res, next) => 
   });
 });
 
+// ✅ Batch check stock — รับรายการสินค้าจาก cart แล้วตอบกลับสถานะแต่ละชิ้น
+//    Frontend ใช้ก่อน checkout เพื่อตรวจว่าของยังพอหรือไม่
+//    POST /api/v1/products/check-stock
+//    body: { items: [{ product, quantity }, ...] }
+export const checkStock = catchAsyncErrors(async (req, res, next) => {
+  const { items = [] } = req.body || {};
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "items array is required",
+    });
+  }
+
+  const ids = items
+    .map((it) => it.product)
+    .filter(Boolean);
+
+  // ดึงสินค้ามาทีเดียว (1 query) → เร็วกว่าวน findById
+  const products = await (await import("../models/product.js")).default
+    .find({ _id: { $in: ids } })
+    .select("_id name stock images price");
+
+  const productMap = new Map(products.map((p) => [String(p._id), p]));
+
+  const results = items.map((it) => {
+    const requested = Number(it.quantity || 0);
+    const product = productMap.get(String(it.product));
+
+    if (!product) {
+      return {
+        product: it.product,
+        ok: false,
+        reason: "product_not_found",
+        requested,
+        available: 0,
+      };
+    }
+
+    const ok = product.stock >= requested && requested > 0;
+    return {
+      product: String(product._id),
+      name: product.name,
+      ok,
+      reason: ok
+        ? "ok"
+        : product.stock === 0
+        ? "out_of_stock"
+        : "insufficient_stock",
+      requested,
+      available: product.stock,
+      currentPrice: product.price, // เผื่อ frontend อยากเตือนว่าราคาเปลี่ยน
+    };
+  });
+
+  const allOk = results.every((r) => r.ok);
+
+  res.status(200).json({
+    success: true,
+    ok: allOk,
+    items: results,
+  });
+});
+
 // Get All Categories  => api/v1/categories
 export const getAllCategories = catchAsyncErrors(async (req, res, next) => {
   const categories = [

@@ -83,13 +83,10 @@ function invoiceHtml(order = {}) {
             </thead>
             <tbody>
               ${itemsRows}
+              <!-- Inclusive tax: ราคารวม VAT แล้ว → ไม่บวก tax ซ้ำใน total -->
               <tr>
-                <td colspan="4"><b>ລວມລາຄາສິນຄ້າທັງໝົດ</b></td>
+                <td colspan="4"><b>ລາຄາສິນຄ້າ (ລວມ VAT)</b></td>
                 <td class="total">${formatCurrency(itemsPrice)}</td>
-              </tr>
-              <tr>
-                <td colspan="4"><b>ອມພ (ອາກອນ)</b></td>
-                <td class="total">${formatCurrency(taxAmount)}</td>
               </tr>
               <tr>
                 <td colspan="4"><b>ຄ່າຂົນສົ່ງ</b></td>
@@ -98,6 +95,14 @@ function invoiceHtml(order = {}) {
               <tr>
                 <td colspan="4" class="grand total"><b>ລວມລາຄາທັງໝົດ</b></td>
                 <td class="grand total">${formatCurrency(totalAmount)}</td>
+              </tr>
+              <tr style="background:#f9fafb">
+                <td colspan="4" style="font-style:italic;color:#6b7280">
+                  ★ ອມພ (VAT 10%) ທີ່ລວມໃນລາຄາສິນຄ້າແລ້ວ
+                </td>
+                <td style="font-style:italic;color:#6b7280">
+                  ${formatCurrency(taxAmount)}
+                </td>
               </tr>
             </tbody>
           </table>

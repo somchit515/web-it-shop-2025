@@ -120,7 +120,7 @@ export default function Login() {
         html, body, #root {
           height: 100%;
           width: 100%;
-          overflow-x: hidden;
+          overflow-x: clip;
         }
 
         body {
@@ -129,32 +129,241 @@ export default function Login() {
           -moz-osx-font-smoothing: grayscale;
         }
 
+        /* ================ SPLIT SCREEN LAYOUT ================ */
         .login-container {
           min-height: 100vh;
           width: 100vw;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           position: fixed;
           top: 0;
           left: 0;
           right: 0;
           bottom: 0;
           display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 20px;
-          overflow-y: auto;
+          overflow: hidden;
+          background: #0f172a;
         }
 
-        .login-container::before {
+        /* ============ LEFT BRANDING PANEL ============ */
+        .login-brand-panel {
+          flex: 1.1;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 56px 64px;
+          overflow: hidden;
+          background:
+            radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.55) 0%, transparent 50%),
+            radial-gradient(circle at 85% 80%, rgba(236, 72, 153, 0.45) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.30) 0%, transparent 60%),
+            linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+        }
+
+        /* Animated mesh dots */
+        .login-brand-panel::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-image:
+            radial-gradient(rgba(255, 255, 255, 0.08) 1.5px, transparent 1.5px);
+          background-size: 28px 28px;
+          mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+          -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+          pointer-events: none;
+        }
+
+        /* Floating decorative orbs */
+        .brand-orb {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(60px);
+          pointer-events: none;
+          animation: floatOrb 12s ease-in-out infinite;
+        }
+        .brand-orb-1 {
+          width: 320px;
+          height: 320px;
+          background: radial-gradient(circle, rgba(168, 85, 247, 0.6), transparent 70%);
+          top: -80px;
+          left: -80px;
+        }
+        .brand-orb-2 {
+          width: 280px;
+          height: 280px;
+          background: radial-gradient(circle, rgba(56, 189, 248, 0.5), transparent 70%);
+          bottom: -60px;
+          right: -60px;
+          animation-delay: -6s;
+        }
+        .brand-orb-3 {
+          width: 220px;
+          height: 220px;
+          background: radial-gradient(circle, rgba(236, 72, 153, 0.4), transparent 70%);
+          top: 40%;
+          right: 20%;
+          animation-delay: -3s;
+        }
+
+        @keyframes floatOrb {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -40px) scale(1.08); }
+          66% { transform: translate(-20px, 30px) scale(0.95); }
+        }
+
+        .brand-top {
+          position: relative;
+          z-index: 2;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .brand-top-logo {
+          width: 52px;
+          height: 52px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #818cf8, #c084fc);
+          display: grid;
+          place-items: center;
+          padding: 10px;
+          box-shadow: 0 12px 32px rgba(129, 140, 248, 0.5);
+        }
+        .brand-top-logo img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+
+        .brand-top-name {
+          color: white;
+          font-size: 22px;
+          font-weight: 800;
+          letter-spacing: 0.5px;
+        }
+
+        .brand-hero {
+          position: relative;
+          z-index: 2;
+          color: white;
+        }
+
+        .brand-hero-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 14px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 999px;
+          font-size: 12px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.9);
+          margin-bottom: 24px;
+          backdrop-filter: blur(10px);
+        }
+        .brand-hero-badge::before {
+          content: '';
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #22c55e;
+          box-shadow: 0 0 8px #22c55e;
+          animation: pulseDot 2s ease-in-out infinite;
+        }
+        @keyframes pulseDot {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+
+        .brand-hero h2 {
+          font-size: clamp(32px, 3.5vw, 48px);
+          font-weight: 800;
+          line-height: 1.15;
+          margin-bottom: 18px;
+          letter-spacing: -1px;
+        }
+        .brand-hero h2 span {
+          background: linear-gradient(135deg, #c084fc 0%, #f0abfc 50%, #fbcfe8 100%);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .brand-hero p {
+          font-size: 16px;
+          line-height: 1.7;
+          color: rgba(255, 255, 255, 0.75);
+          max-width: 480px;
+          margin-bottom: 32px;
+        }
+
+        .brand-features {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 14px;
+          max-width: 520px;
+        }
+        .brand-feature {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 14px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          backdrop-filter: blur(10px);
+          color: white;
+          font-size: 13px;
+          font-weight: 600;
+          transition: all 0.3s ease;
+        }
+        .brand-feature:hover {
+          background: rgba(255, 255, 255, 0.09);
+          transform: translateY(-2px);
+          border-color: rgba(192, 132, 252, 0.4);
+        }
+        .brand-feature-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, rgba(129, 140, 248, 0.25), rgba(192, 132, 252, 0.25));
+          display: grid;
+          place-items: center;
+          color: #c4b5fd;
+          font-size: 14px;
+          flex-shrink: 0;
+        }
+
+        .brand-bottom {
+          position: relative;
+          z-index: 2;
+          color: rgba(255, 255, 255, 0.55);
+          font-size: 13px;
+          display: flex;
+          gap: 22px;
+        }
+        .brand-bottom span:hover { color: white; cursor: pointer; }
+
+        /* ============ RIGHT FORM PANEL ============ */
+        .login-form-panel {
+          flex: 0.9;
+          background: linear-gradient(180deg, #fafbff 0%, #f1f5f9 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 40px;
+          overflow-y: auto;
+          position: relative;
+        }
+
+        .login-form-panel::before {
           content: '';
           position: absolute;
           top: 0;
-          left: 0;
           right: 0;
-          bottom: 0;
-          background: 
-            radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
-            radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
+          width: 200px;
+          height: 200px;
+          background: radial-gradient(circle, rgba(102, 126, 234, 0.08), transparent 70%);
           pointer-events: none;
         }
 
@@ -162,14 +371,15 @@ export default function Login() {
           position: relative;
           z-index: 1;
           width: 100%;
-          max-width: 460px;
-          background: rgba(255, 255, 255, 0.95);
-          backdrop-filter: blur(20px);
-          border-radius: 24px;
-          padding: 48px 40px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          animation: slideUp 0.5s ease-out;
+          max-width: 520px;
+          background: white;
+          border-radius: 20px;
+          padding: 48px 44px;
+          box-shadow:
+            0 1px 3px rgba(0, 0, 0, 0.05),
+            0 20px 50px rgba(15, 23, 42, 0.08);
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
           margin: auto;
         }
 
@@ -237,20 +447,22 @@ export default function Login() {
         }
 
         .welcome-text {
-          text-align: center;
+          text-align: left;
           margin-bottom: 32px;
         }
 
         .welcome-text h1 {
-          font-size: 28px;
-          font-weight: 700;
-          color: #1e293b;
+          font-size: 32px;
+          font-weight: 800;
+          color: #0f172a;
           margin-bottom: 8px;
+          letter-spacing: -0.5px;
         }
 
         .welcome-text p {
-          font-size: 14px;
+          font-size: 15px;
           color: #64748b;
+          line-height: 1.5;
         }
 
         .form-group {
@@ -449,15 +661,26 @@ export default function Login() {
           to { transform: rotate(360deg); }
         }
 
+        /* ================ RESPONSIVE ================ */
+        @media (max-width: 1024px) {
+          .login-brand-panel {
+            display: none;
+          }
+          .login-form-panel {
+            flex: 1;
+          }
+        }
+
         /* Responsive Styles */
         @media (max-width: 640px) {
-          .login-container {
+          .login-form-panel {
             padding: 16px;
           }
 
           .login-card {
             padding: 32px 24px;
             max-width: 100%;
+            border-radius: 16px;
           }
 
           .logo-wrapper {
@@ -525,7 +748,7 @@ export default function Login() {
         }
 
         @media (max-height: 600px) and (orientation: landscape) {
-          .login-container {
+          .login-form-panel {
             padding: 12px;
           }
 
@@ -572,29 +795,75 @@ export default function Login() {
       `}</style>
 
       <div className="login-container">
-        <div className="login-card">
-          {/* Logo Section */}
-          <div className="logo-section">
-            <div className="logo-wrapper">
-              <div className="brand-logo">
-                <img
-                  src="/images/logo.png"
-                  alt="IT HUBB Logo"
-                  onError={(e) =>
-                    (e.target.src =
-                      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='60' x='50' text-anchor='middle' font-size='40' font-weight='bold' fill='white'%3EIT%3C/text%3E%3C/svg%3E")
-                  }
-                />
-              </div>
-              <div className="brand-text">
-                <div className="brand-name">IT HUBB</div>
-                <div className="brand-tagline">
-                  ຮ້ານເຄື່ອງຖື ແລະ ອຸປະກອນ IT
+        {/* ============ LEFT BRANDING PANEL ============ */}
+        <div className="login-brand-panel">
+          <span className="brand-orb brand-orb-1" aria-hidden="true" />
+          <span className="brand-orb brand-orb-2" aria-hidden="true" />
+          <span className="brand-orb brand-orb-3" aria-hidden="true" />
+
+          <div className="brand-top">
+            <div className="brand-top-logo">
+              <img
+                src="/images/logo.png"
+                alt="IT HUBB Logo"
+                onError={(e) =>
+                  (e.target.src =
+                    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='60' x='50' text-anchor='middle' font-size='40' font-weight='bold' fill='white'%3EIT%3C/text%3E%3C/svg%3E")
+                }
+              />
+            </div>
+            <span className="brand-top-name">IT HUBB</span>
+          </div>
+
+          <div className="brand-hero">
+            <div className="brand-hero-badge">ເປີດບໍລິການ 24/7</div>
+            <h2>
+              ຍິນດີຕ້ອນຮັບສູ່<br />
+              <span>IT HUBB Store</span>
+            </h2>
+            <p>
+              ຮ້ານຄ້າອອນລາຍສຳລັບສິນຄ້າ IT ແລະອຸປະກອນອິເລັກໂຕຣນິກ
+              ລົງທະບຽນເຂົ້າສູ່ລະບົບ ເພື່ອຮັບສິດຜົນປະໂຫຍດ ແລະການບໍລິການພິເສດ.
+            </p>
+
+            <div className="brand-features">
+              <div className="brand-feature">
+                <div className="brand-feature-icon">
+                  <i className="fas fa-shield-halved"></i>
                 </div>
+                <span>ຮັບປະກັນຂອງແທ້ 100%</span>
+              </div>
+              <div className="brand-feature">
+                <div className="brand-feature-icon">
+                  <i className="fas fa-truck-fast"></i>
+                </div>
+                <span>ຈັດສົ່ງທົ່ວປະເທດ</span>
+              </div>
+              <div className="brand-feature">
+                <div className="brand-feature-icon">
+                  <i className="fas fa-headset"></i>
+                </div>
+                <span>ສະໜັບສະໜຸນ 24/7</span>
+              </div>
+              <div className="brand-feature">
+                <div className="brand-feature-icon">
+                  <i className="fas fa-tags"></i>
+                </div>
+                <span>ໂປຣໂມຊັ່ນພິເສດ</span>
               </div>
             </div>
           </div>
 
+          <div className="brand-bottom">
+            <span>© 2026 IT HUBB</span>
+            <span>ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ</span>
+            <span>ຂໍ້ກຳນົດການໃຊ້ງານ</span>
+          </div>
+        </div>
+
+        {/* ============ RIGHT FORM PANEL ============ */}
+        <div className="login-form-panel">
+        <div className="login-card">
           {/* Welcome Text */}
           <div className="welcome-text">
             <h1>ຍິນດີຕ້ອນຮັບກັບຄືນ</h1>
@@ -710,6 +979,7 @@ export default function Login() {
             ຍັງບໍ່ມີບັນຊີ?{" "}
             <a onClick={() => navigate("/register")}>ສະໝັກສະມາຊິກ</a>
           </div>
+        </div>
         </div>
       </div>
     </GoogleOAuthProvider>

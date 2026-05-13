@@ -1,26 +1,31 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useGetAdminOrdersQuery, useUpdateOrderStatusMutation } from "../redux/api/OrderApi";
 import { toast, Toaster } from "react-hot-toast";
 import AdminLayout from "../layout/AdminLayout";
 import MetaData from "../layout/MetaData";
 
-const STATUS_LIST = [
-  { value: "Processing", label: "ກຳລັງດຳເນີນການ", color: "#3b82f6" },
-  { value: "Shipped", label: "ກຳລັງຈັດສົ່ງ", color: "#f59e0b" },
-  { value: "Delivered", label: "ສົ່ງສຳເລັດແລ້ວ", color: "#10b981" },
-  { value: "Cancelled", label: "ຍົກເລີກ", color: "#ef4444" }
+const PAGE_SIZE = 10;
+
+// ✅ ใช้ fulfillmentStatus เป็นแหล่งความจริงเดียว
+const FULFILLMENT_LIST = [
+  { value: "Unfulfilled", label: "ລໍຖ້າຈັດການ", icon: "⏳", color: "#94a3b8" },
+  { value: "Processing", label: "ກຳລັງເຕີມ", icon: "📦", color: "#3b82f6" },
+  { value: "Shipped", label: "ກຳລັງຈັດສົ່ງ", icon: "🚚", color: "#f59e0b" },
+  { value: "Delivered", label: "ສົ່ງສຳເລັດ", icon: "✅", color: "#10b981" },
+  { value: "Cancelled", label: "ຍົກເລີກ", icon: "❌", color: "#ef4444" },
+  { value: "Returned", label: "ສົ່ງຄືນ", icon: "↩️", color: "#a855f7" },
 ];
 
-const SHIPMENT_LIST = [
-  { value: "pending", label: "ລໍຖ້າຈັດສົ່ງ", icon: "⏳" },
-  { value: "processing", label: "ກຳລັງກະກຽມ", icon: "📦" },
-  { value: "shipped", label: "ກຳລັງຈັດສົ່ງ", icon: "🚚" },
-  { value: "delivered", label: "ສົ່ງສຳເລັດ", icon: "✅" }
-];
+// Backward-compat สำหรับโค้ดเก่าที่อ้างถึงตัวแปรเดิม
+const STATUS_LIST = FULFILLMENT_LIST.filter((s) =>
+  ["Processing", "Shipped", "Delivered", "Cancelled"].includes(s.value)
+);
+const SHIPMENT_LIST = FULFILLMENT_LIST;
 
 export default function ShipmentsPage() {
   const [tab, setTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
   const { data, isLoading } = useGetAdminOrdersQuery(undefined, { pollingInterval: 30_000 });
   const [updateStatus, { isLoading: updating }] = useUpdateOrderStatusMutation();
 
@@ -37,7 +42,7 @@ export default function ShipmentsPage() {
 
     // Search filter
     const searchLower = searchTerm.toLowerCase();
-    const searchMatch = !searchTerm || 
+    const searchMatch = !searchTerm ||
       o._id.toLowerCase().includes(searchLower) ||
       o.user?.name?.toLowerCase().includes(searchLower) ||
       o.shippingInfo?.fullName?.toLowerCase().includes(searchLower) ||
@@ -46,12 +51,22 @@ export default function ShipmentsPage() {
     return tabMatch && searchMatch;
   });
 
+  // ✅ Pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedOrders = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  // Reset page เมื่อเปลี่ยน tab/search
+  useEffect(() => {
+    setPage(1);
+  }, [tab, searchTerm]);
+
   const handleUpdate = async (order) => {
     try {
       await updateStatus({
         id: order._id,
-        orderStatus: order.orderStatus,
-        shipmentStatus: order.shipmentStatus,
+        // ✅ ส่ง fulfillmentStatus — backend pre-save hook จะ sync legacy fields เอง
+        fulfillmentStatus: order.fulfillmentStatus || order.orderStatus,
         trackingCode: order.trackingCode,
       }).unwrap();
       toast.success("ອັບເດດສຳເລັດ!");
@@ -60,11 +75,13 @@ export default function ShipmentsPage() {
     }
   };
 
+  // ✅ ใช้ fulfillmentStatus + virtual `status` (รองรับ orders เก่า)
+  const getStatus = (o) => o.fulfillmentStatus || o.status || o.orderStatus;
   const stats = {
     total: orders.length,
-    pending: orders.filter(o => o.shipmentStatus === 'pending').length,
-    shipped: orders.filter(o => o.shipmentStatus === 'shipped').length,
-    delivered: orders.filter(o => o.shipmentStatus === 'delivered').length
+    pending: orders.filter((o) => ["Unfulfilled", "Processing"].includes(getStatus(o))).length,
+    shipped: orders.filter((o) => getStatus(o) === "Shipped").length,
+    delivered: orders.filter((o) => getStatus(o) === "Delivered").length,
   };
 
   if (isLoading) {
@@ -382,6 +399,58 @@ export default function ShipmentsPage() {
           font-size: 1.1rem;
         }
 
+        /* ✅ Pagination */
+        .sp-pagination {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+          padding: 20px 0 8px;
+          margin-top: 8px;
+        }
+        .sp-pagination-info {
+          color: #64748b;
+          font-size: 0.875rem;
+        }
+        .sp-pagination-list {
+          display: flex;
+          gap: 6px;
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+        .sp-page-btn {
+          min-width: 40px;
+          height: 40px;
+          padding: 0 14px;
+          border: 2px solid #e2e8f0;
+          background: white;
+          color: #64748b;
+          border-radius: 10px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 0.95rem;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .sp-page-btn:hover:not(:disabled) {
+          border-color: #667eea;
+          color: #667eea;
+          transform: translateY(-1px);
+        }
+        .sp-page-btn.active {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-color: #667eea;
+          color: white;
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .sp-page-btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
         /* Payment Method Badge */
         .payment-badge {
           display: inline-flex;
@@ -546,19 +615,18 @@ export default function ShipmentsPage() {
                       <th>ເລກອໍເດີ</th>
                       <th>ລູກຄ້າ</th>
                       <th>ວິທີຊຳລະ</th>
-                      <th>ສະຖານະອໍເດີ</th>
-                      <th>ສະຖານະຈັດສົ່ງ</th>
+                      <th colSpan={2}>ສະຖານະການຈັດການ</th>
                       <th>ເລກພັດດຸ</th>
                       <th>ດຳເນີນການ</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((order) => (
-                      <Row 
-                        key={order._id} 
-                        order={order} 
-                        onSave={handleUpdate} 
-                        updating={updating} 
+                    {pagedOrders.map((order) => (
+                      <Row
+                        key={order._id}
+                        order={order}
+                        onSave={handleUpdate}
+                        updating={updating}
                       />
                     ))}
                   </tbody>
@@ -566,6 +634,48 @@ export default function ShipmentsPage() {
               </div>
             )}
           </div>
+
+          {/* ✅ Pagination */}
+          {filtered.length > 0 && totalPages > 1 && (
+            <div className="sp-pagination">
+              <div className="sp-pagination-info">
+                ສະແດງ {(safePage - 1) * PAGE_SIZE + 1}–
+                {Math.min(safePage * PAGE_SIZE, filtered.length)} ຈາກ{' '}
+                {filtered.length} ລາຍການ
+              </div>
+              <ul className="sp-pagination-list">
+                <li>
+                  <button
+                    className="sp-page-btn"
+                    onClick={() => setPage(safePage - 1)}
+                    disabled={safePage === 1}
+                  >‹</button>
+                </li>
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                  let n;
+                  if (totalPages <= 7) n = i + 1;
+                  else if (safePage <= 4) n = i + 1;
+                  else if (safePage >= totalPages - 3) n = totalPages - 6 + i;
+                  else n = safePage - 3 + i;
+                  return (
+                    <li key={n}>
+                      <button
+                        className={`sp-page-btn ${n === safePage ? 'active' : ''}`}
+                        onClick={() => setPage(n)}
+                      >{n}</button>
+                    </li>
+                  );
+                })}
+                <li>
+                  <button
+                    className="sp-page-btn"
+                    onClick={() => setPage(safePage + 1)}
+                    disabled={safePage === totalPages}
+                  >›</button>
+                </li>
+              </ul>
+            </div>
+          )}
         </div>
       </AdminLayout>
     </>
@@ -573,13 +683,14 @@ export default function ShipmentsPage() {
 }
 
 function Row({ order, onSave, updating }) {
-  const [status, setStatus] = useState(order.orderStatus);
-  const [shipment, setShipment] = useState(order.shipmentStatus || "pending");
+  // ✅ ใช้ fulfillmentStatus เป็นหลัก (fallback orderStatus สำหรับ orders เก่า)
+  const initialStatus = order.fulfillmentStatus || order.status || order.orderStatus || "Unfulfilled";
+  const [fulfillmentStatus, setFulfillmentStatus] = useState(initialStatus);
   const [tracking, setTracking] = useState(order.trackingCode || "");
 
-  const canSave = status !== order.orderStatus || 
-                  shipment !== order.shipmentStatus || 
-                  tracking !== order.trackingCode;
+  const canSave =
+    fulfillmentStatus !== initialStatus ||
+    tracking !== order.trackingCode;
 
   const customerName = order.user?.name || order.shippingInfo?.fullName || "ບໍ່ມີຊື່";
 
@@ -601,25 +712,17 @@ function Row({ order, onSave, updating }) {
           {order.paymentMethod === 'COD' ? '💵 COD' : '🏦 ໂອນເງິນ'}
         </span>
       </td>
-      <td>
-        <select 
-          className="status-select" 
-          value={status} 
-          onChange={(e) => setStatus(e.target.value)}
-          style={{ color: STATUS_LIST.find(s => s.value === status)?.color }}
+      <td colSpan={2}>
+        <select
+          className="status-select"
+          value={fulfillmentStatus}
+          onChange={(e) => setFulfillmentStatus(e.target.value)}
+          style={{
+            color: FULFILLMENT_LIST.find((s) => s.value === fulfillmentStatus)?.color,
+            fontWeight: 600,
+          }}
         >
-          {STATUS_LIST.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
-        </select>
-      </td>
-      <td>
-        <select 
-          className="shipment-select" 
-          value={shipment} 
-          onChange={(e) => setShipment(e.target.value)}
-        >
-          {SHIPMENT_LIST.map((s) => (
+          {FULFILLMENT_LIST.map((s) => (
             <option key={s.value} value={s.value}>
               {s.icon} {s.label}
             </option>
@@ -638,12 +741,11 @@ function Row({ order, onSave, updating }) {
       <td>
         <button 
           className="save-btn" 
-          onClick={() => onSave({ 
-            ...order, 
-            orderStatus: status, 
-            shipmentStatus: shipment, 
-            trackingCode: tracking 
-          })} 
+          onClick={() => onSave({
+            ...order,
+            fulfillmentStatus,
+            trackingCode: tracking,
+          })}
           disabled={!canSave || updating}
         >
           {updating ? (

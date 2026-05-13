@@ -11,6 +11,7 @@ import {
   updateOrder,
   getSales,
   updateOrderStatus,
+  cancelMyOrder,
 } from "../controllers/orderController.js";
 
 import {
@@ -27,6 +28,9 @@ const router = express.Router();
 router.route("/orders/new").post(isAuthenticatedUser, newOrder);
 router.route("/orders/:id").get(isAuthenticatedUser, getOrderDetails);
 router.route("/me/orders").get(isAuthenticatedUser, myOrder);
+
+// ✅ User cancel own order — ก่อน Shipped + ยังไม่จ่าย
+router.route("/orders/:id/cancel").post(isAuthenticatedUser, cancelMyOrder);
 
 // อัปโหลดสลิป → Cloudinary (ใช้ memory)
 router.post(

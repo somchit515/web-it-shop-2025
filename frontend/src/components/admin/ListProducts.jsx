@@ -9,6 +9,11 @@ import {
   useDeleteProductMutation,
 } from "../redux/api/productsApi";
 import AdminLayout from "../layout/AdminLayout";
+import { confirmDialog } from "./_shared/confirmDialog";
+import Breadcrumb from "./_shared/Breadcrumb";
+import useBulkSelect from "./_shared/useBulkSelect";
+import BulkActionsBar from "./_shared/BulkActionsBar";
+import { exportToCSV } from "./_shared/exportCSV";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPlus,
@@ -40,6 +45,7 @@ function ListProducts() {
 
   const [deleteProduct] = useDeleteProductMutation();
   const [deletingId, setDeletingId] = useState(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [stockFilter, setStockFilter] = useState("");
@@ -73,9 +79,15 @@ function ListProducts() {
   const handleDelete = useCallback(
     async (id, productName) => {
       if (!id) return;
-      const ok = window.confirm(
-        `ທ່ານແນ່ໃຈບໍ່ວ່າຈະລົບສິນຄ້າ "${productName}" ການກະທຳນີ້ບໍ່ສາມາດຢ້ອນກັບໄດ້`
-      );
+      // ✅ ใช้ ConfirmDialog ที่สวยกว่า window.confirm
+      const ok = await confirmDialog.show({
+        title: 'ລົບສິນຄ້າ?',
+        message: `ທ່ານແນ່ໃຈບໍ່ວ່າຈະລົບ "${productName}"\nການກະທຳນີ້ບໍ່ສາມາດຢ້ອນກັບໄດ້`,
+        confirmText: 'ລົບເລີຍ',
+        cancelText: 'ຍົກເລີກ',
+        variant: 'danger',
+        icon: 'fa-trash',
+      });
       if (!ok) return;
 
       try {
@@ -115,61 +127,21 @@ function ListProducts() {
     }
   };
 
-  const exportToExcelOrCSV = async (rows) => {
-    const filenameBase = `products_export_${new Date()
-      .toISOString()
-      .slice(0, 10)}`;
-    try {
-      const headers = [
-        "ID",
-        "Name",
-        "Category",
-        "Price",
-        "Stock",
-        "Description",
-      ];
-      const csvRows = [headers.join(",")];
-      rows.forEach((p) => {
-        const values = [
-          p._id || p.id || "",
-          p.name || p.title || "",
-          p.category || "",
-          p.price ?? "",
-          p.stock ?? "",
-          (p.description || p.shortDescription || "").replace(/\r?\n|\r/g, " "),
-        ];
-        const safe = values.map((v) => {
-          const s = String(v).replace(/"/g, '""');
-          if (s.includes(",") || s.includes('"') || s.includes("\n"))
-            return `"${s}"`;
-          return s;
-        });
-        csvRows.push(safe.join(","));
-      });
-      const csvString = csvRows.join("\n");
-      const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.href = url;
-      link.setAttribute("download", `${filenameBase}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success("ສົ່ງອອກ CSV ສຳເລັດ");
-    } catch (e) {
-      console.error("Export failed:", e);
-      toast.error("ສົ່ງອອກລົ້ມເຫຼວ");
-    }
-  };
-
-  const handleExport = async () => {
+  // ✅ Export ผ่าน utility กลาง — รองรับการ format ค่าและ escape ที่ปลอดภัย
+  const handleExport = () => {
     const filtered = getFilteredProducts();
-    if (filtered.length === 0) {
-      toast.error("ບໍ່ມີສິນຄ້າສຳລັບສົ່ງອອກ");
-      return;
-    }
-    await exportToExcelOrCSV(filtered);
+    exportToCSV({
+      filename: 'products',
+      columns: [
+        { key: '_id', label: 'ID' },
+        { key: 'name', label: 'ຊື່ສິນຄ້າ' },
+        { key: 'category', label: 'ປະເພດ' },
+        { key: 'price', label: 'ລາຄາ', format: (v) => Number(v || 0).toLocaleString() },
+        { key: 'stock', label: 'ສາງ' },
+        { key: 'description', label: 'ລາຍລະອຽດ' },
+      ],
+      rows: filtered,
+    });
   };
 
   const getFilteredProducts = useCallback(() => {
@@ -226,9 +198,68 @@ function ListProducts() {
 
   const filteredProducts = getFilteredProducts();
 
+  // ✅ Bulk select hook — manage checkbox state อัตโนมัติ
+  const bulk = useBulkSelect(filteredProducts, (p) => p._id || p.id);
+
+  // Bulk delete handler ใช้ ConfirmDialog
+  const handleBulkDelete = async () => {
+    const ids = bulk.selectedIds;
+    if (ids.length === 0) return;
+    const ok = await confirmDialog.show({
+      title: `ລົບ ${ids.length} ສິນຄ້າ?`,
+      message: 'ການກະທຳນີ້ບໍ່ສາມາດຢ້ອນກັບໄດ້ ສິນຄ້າທີ່ເລືອກຈະຖືກລົບທັງໝົດ',
+      confirmText: `ລົບທັງໝົດ (${ids.length})`,
+      cancelText: 'ຍົກເລີກ',
+      variant: 'danger',
+      icon: 'fa-trash-can',
+    });
+    if (!ok) return;
+    setBulkDeleting(true);
+    try {
+      await Promise.all(ids.map((id) => deleteProduct(id).unwrap()));
+      toast.success(`ລົບ ${ids.length} ສິນຄ້າສຳເລັດ`);
+      bulk.clear();
+    } catch (err) {
+      toast.error(err?.data?.message || 'ການລົບບາງລາຍການລົ້ມເຫລວ');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const handleBulkExport = () => {
+    const selected = filteredProducts.filter((p) =>
+      bulk.isSelected(p._id || p.id)
+    );
+    exportToCSV({
+      filename: 'products_selected',
+      columns: [
+        { key: '_id', label: 'ID' },
+        { key: 'name', label: 'ຊື່ສິນຄ້າ' },
+        { key: 'category', label: 'ປະເພດ' },
+        { key: 'price', label: 'ລາຄາ' },
+        { key: 'stock', label: 'ສາງ' },
+      ],
+      rows: selected,
+    });
+  };
+
   const tableData = useMemo(() => {
     const dataTable = {
       columns: [
+        {
+          label: (
+            <input
+              type="checkbox"
+              checked={bulk.isAllSelected}
+              ref={(el) => { if (el) el.indeterminate = bulk.isPartial; }}
+              onChange={bulk.toggleAll}
+              aria-label="Select all"
+            />
+          ),
+          field: "select",
+          sort: "disabled",
+          width: 40,
+        },
         { label: "ສິນຄ້າ", field: "product", sort: "disabled", width: 300 },
         { label: "ປະເພດ", field: "category", sort: "asc" },
         { label: "ລາຄາ", field: "price", sort: "asc" },
@@ -257,6 +288,14 @@ function ListProducts() {
       }
 
       dataTable.rows.push({
+        select: (
+          <input
+            type="checkbox"
+            checked={bulk.isSelected(fullId)}
+            onChange={() => bulk.toggle(fullId)}
+            aria-label={`เลือก ${rawName}`}
+          />
+        ),
         product: (
           <div className="d-flex align-items-center">
             <div className="product-image me-3">
@@ -355,7 +394,7 @@ function ListProducts() {
     });
 
     return dataTable;
-  }, [filteredProducts, deletingId, handleDelete]);
+  }, [filteredProducts, deletingId, handleDelete, bulk]);
 
   const clearAllFilters = () => {
     setSearchTerm("");
@@ -749,13 +788,8 @@ function ListProducts() {
         <div className="list-products-container">
           {/* Page Header */}
           <div className="page-header">
-            <div className="breadcrumb-nav">
-              <Link to="/admin/dashboard">
-                <FontAwesomeIcon icon={faHome} /> Dashboard
-              </Link>
-              <span>/</span>
-              <span>ຈັດການສິນຄ້າ</span>
-            </div>
+            {/* ✅ ใช้ Breadcrumb ที่ reusable */}
+            <Breadcrumb items={[{ label: 'ຈັດການສິນຄ້າ' }]} />
             <h1 className="page-title">
               <FontAwesomeIcon icon={faBox} />
               ຈັດການສິນຄ້າ
@@ -939,6 +973,26 @@ function ListProducts() {
               </span>
             </div>
           </div>
+
+          {/* ✅ Bulk Actions Bar — แสดงเมื่อ user เลือกอย่างน้อย 1 รายการ */}
+          <BulkActionsBar
+            count={bulk.selectedCount}
+            onClear={bulk.clear}
+            actions={[
+              {
+                label: 'Export ທີ່ເລືອກ',
+                icon: 'fa-download',
+                onClick: handleBulkExport,
+              },
+              {
+                label: bulkDeleting ? 'ກຳລັງລົບ...' : 'ລົບທີ່ເລືອກ',
+                icon: 'fa-trash',
+                variant: 'danger',
+                onClick: handleBulkDelete,
+                disabled: bulkDeleting,
+              },
+            ]}
+          />
 
           {/* Products Table (Using product-card style for consistency) */}
           <div className="product-card p-0">
