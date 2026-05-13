@@ -15,11 +15,12 @@ import ProductItem from "./product/ProductItem";
 
 // สมมติฐาน: ต้องแก้ไข path ให้ถูกต้องตามโครงสร้าง
 import { useGetProductsQuery } from "../components/redux/api/productsApi";
-import { CATEGORIES } from "../utils/categories";
+import useCategories from "../utils/useCategories";
 
 import "./Home.css";
 
 const Home = () => {
+  const categories = useCategories();
   const [searchParams] = useSearchParams();
   // *** FIX 1: ดึง category จาก URL Path (ถ้ามี) ***
   const { category: categoryFromPath } = useParams();
@@ -83,10 +84,10 @@ const Home = () => {
       "outdoors",
     ];
     return preferSlugs
-      .map((s) => CATEGORIES.find((c) => c.slug === s))
+      .map((s) => categories.find((c) => c.slug === s))
       .filter(Boolean)
       .map((c) => ({ key: c.key || c.slug, title: c.title, slug: c.slug }));
-  }, []);
+  }, [categories]);
 
   // --- Scroll to top button state ---
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -125,7 +126,7 @@ const Home = () => {
               ເລືອກຊື້ສິນຄ້າຕາມໝວດໝູ່ທີ່ທ່ານສົນໃຈ
             </p>
             <div className="custom-grid-5">
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <Link
                   key={c.slug}
                   // *** FIX 3: ลิงก์ไปยัง /category/slug แทนที่จะเป็น ?category=slug ***
