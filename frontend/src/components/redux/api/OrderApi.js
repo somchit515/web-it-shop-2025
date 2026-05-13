@@ -4,9 +4,21 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 export const orderApi = createApi({
   reducerPath: "orderApi",
   baseQuery: fetchBaseQuery({
+ main
     baseUrl: "http://localhost:8000/api/v1",
     // ✅ ใช้ cookie auth อย่างเดียว (ลบ localStorage/Redux token ออก)
     credentials: "include",
+
+    baseUrl: "https://ithub-sy2u.onrender.com/api/v1",
+    prepareHeaders: (headers, { getState }) => {
+      // ถ้าคุณเก็บ token ใน state.auth.token ให้ส่งไปโดยอัตโนมัติ
+      const token = getState()?.auth?.token;
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
+ master
   }),
   tagTypes: ["Orders", "Dashboard"],
   endpoints: (builder) => ({

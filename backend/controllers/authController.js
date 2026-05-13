@@ -65,6 +65,8 @@ export const logoutUser = catchAsyncErrors(async (req, res, next) => {
   res.cookie("token", null, {
     expires: new Date(Date.now()),
     httpOnly: true,
+    secure: true,    // ເພີ່ມບ່ອນນີ້
+    sameSite: "none", // ເພີ່ມບ່ອນນີ້
     path: "/",
   });
   res.status(200).json({ message: "ອອກຈາກລະບົບສຳເລັດ" });

@@ -2,10 +2,23 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 export const blogApi = createApi({
   reducerPath: 'blogApi',
+ main
   baseQuery: fetchBaseQuery({
     baseUrl: '/api/v1',
     // ✅ ใช้ cookie auth อย่างเดียว (ลบ localStorage token ออก)
     credentials: 'include',
+
+  baseQuery: fetchBaseQuery({ 
+    baseUrl: "https://ithub-sy2u.onrender.com/api/v1",
+    prepareHeaders: (headers, { getState }) => {
+      // ດຶງ token ຈາກ auth state (ປັບຊື່ໃຫ້ກົງກັບ Store ຂອງທ່ານ)
+      const token = getState().auth?.token || localStorage.getItem('token');
+      if (token) {
+        headers.set('authorization', `Bearer ${token}`);
+      }
+      return headers;
+    }
+master
   }),
   tagTypes: ['Blog', 'Comment'],
   endpoints: (builder) => ({
@@ -186,5 +199,10 @@ export const {
   useDeleteBlogMutation,
   useLikeBlogMutation,
   useAddCommentMutation,
+ main
   useIncrementViewMutation,
 } = blogApi;
+
+  useIncrementViewMutation
+} = blogApi;
+master
