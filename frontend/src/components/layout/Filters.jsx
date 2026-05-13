@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getPriceQueryParams } from "../../helpers/helpers";
-import { PRODUCT_CATEGORIES, RATINGS } from "../../constans/constans";
+import { RATINGS } from "../../constans/constans";
+import useCategories from "../../utils/useCategories";
 
 function Filters() {
+  const { categories } = useCategories();
   const [min, setMin] = useState("");
   const [max, setMax] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -136,18 +138,18 @@ function Filters() {
 
       <hr />
       <h5 className="mb-3">Category</h5>
-      {PRODUCT_CATEGORIES.map((category) => (
-        <div className="form-check" key={category}>
+      {categories.map((category) => (
+        <div className="form-check" key={category.key || category.slug}>
           <input
             className="form-check-input"
             type="checkbox"
-            id={`cat-${category}`}
+            id={`cat-${category.key || category.slug}`}
             name="category"
-            value={category}
-            checked={selectedCategory === category}
+            value={category.key || category.slug}
+            checked={selectedCategory === (category.key || category.slug)}
             onChange={handleCategoryChange}
           />
-          <label className="form-check-label" htmlFor={`cat-${category}`}>{category}</label>
+          <label className="form-check-label" htmlFor={`cat-${category.key || category.slug}`}>{category.title || category.key || category.slug}</label>
         </div>
       ))}
 

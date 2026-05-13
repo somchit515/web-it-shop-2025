@@ -2,7 +2,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import MetaData from "../layout/MetaData";
-import { CATEGORIES } from "../../utils/categories";
+import useCategories from "../../utils/useCategories";
 import CategoryRow from "../layout/CategoryRow";
 
 const CategoryCard = ({ c }) => (
@@ -21,6 +21,7 @@ const CategoryCard = ({ c }) => (
 );
 
 export default function CategoryOverview() {
+  const { categories } = useCategories();
   const rowsToShow = [
     { slug: "smartphones", title: "Mobile phone" },
     { slug: "laptops", title: "Laptops" },
@@ -35,7 +36,7 @@ export default function CategoryOverview() {
       <div className="container py-4">
         <h2 className="mb-4">ໝວດສິນຄ້າ</h2>
         <div className="row">
-          {CATEGORIES.map((c) => <CategoryCard key={c.slug} c={c} />)}
+          {categories.map((c) => <CategoryCard key={c.slug} c={c} />)}
         </div>
 
         <div style={{ marginTop: 36 }}>

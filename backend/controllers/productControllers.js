@@ -1,5 +1,6 @@
 import catchAsyncErrors from "../middlewares/catchAsyncErrors.js";
 import Product from "../models/product.js";
+import Category from "../models/category.js";
 import Order from "../models/orders.js";
 import APIFilters from "../utils/apiFilter.js";
 import ErrorHandler from "../utils/errorHandler.js";
@@ -37,8 +38,13 @@ export const getProducts = catchAsyncErrors(async (req, res, next) => {
 });
 
 // Create new Product  => api/v1/admin/products
-export const newProduct = catchAsyncErrors(async (req, res) => {
+export const newProduct = catchAsyncErrors(async (req, res, next) => {
   req.body.user = req.user._id;
+
+  if (req.body.category) {
+    const exists = await Category.findOne({ key: req.body.category });
+    if (!exists) return next(new ErrorHandler("Invalid category", 400));
+  }
 
   const product = await Product.create(req.body);
 
@@ -78,6 +84,11 @@ export const updateProduct = catchAsyncErrors(async (req, res, next) => {
 
   if (!product) {
     return next(new ErrorHandler("Product not Found", 404));
+  }
+
+  if (req.body.category) {
+    const exists = await Category.findOne({ key: req.body.category });
+    if (!exists) return next(new ErrorHandler("Invalid category", 400));
   }
 
   product = await Product.findByIdAndUpdate(req.params.id, req.body, {
@@ -408,11 +419,11 @@ export const getProductsByCategory = catchAsyncErrors(async (req, res, next) => 
     return next(new ErrorHandler("Invalid category", 400));
   }
 
-  const products = await Product.find({ category })
+  const products = await Product.find({ category: exists.key })
     .limit(resPerPage)
     .skip(skip);
 
-  const totalProducts = await Product.countDocuments({ category });
+  const totalProducts = await Product.countDocuments({ category: exists.key });
 
   res.status(200).json({
     success: true,

@@ -12,7 +12,7 @@ export default function CustomersReport() {
 
     /* ---------- ตัวกรอง & ค้นหา ---------- */
     const [search, setSearch] = useState('');
-    const [genderFilter, setGenderFilter] = useState('all'); // all | male | female
+    const [genderFilter, setGenderFilter] = useState('all'); // all
     const [sortBy, setSortBy] = useState('newest'); // newest | oldest | name_asc | name_desc
 
     useEffect(() => {
@@ -32,24 +32,23 @@ export default function CustomersReport() {
             const q = search.toLowerCase();
             list = list.filter(
                 (c) =>
-                    c.fullName?.toLowerCase().includes(q) ||
-                    c.email?.toLowerCase().includes(q) ||
-                    c.phone?.includes(q)
+                    c.name?.toLowerCase().includes(q) ||
+                    c.email?.toLowerCase().includes(q)
             );
         }
 
         // เพศ
         if (genderFilter !== 'all') {
-            list = list.filter((c) => c.gender === genderFilter);
+            list = list;
         }
 
         // เรียง
         switch (sortBy) {
             case 'name_asc':
-                list.sort((a, b) => a.fullName?.localeCompare(b.fullName));
+                list.sort((a, b) => a.name?.localeCompare(b.name));
                 break;
             case 'name_desc':
-                list.sort((a, b) => b.fullName?.localeCompare(a.fullName));
+                list.sort((a, b) => b.name?.localeCompare(a.name));
                 break;
             case 'oldest':
                 list.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
@@ -63,9 +62,7 @@ export default function CustomersReport() {
     /* ---------- สรุปสถิติ ---------- */
     const stats = useMemo(() => {
         const total = data?.count || 0;
-        const male = data?.customers?.filter((c) => c.gender === 'male').length || 0;
-        const female = total - male;
-        return { total, male, female };
+        return { total };
     }, [data]);
 
     /* ---------- แบ่งหน้า ---------- */
@@ -179,11 +176,11 @@ export default function CustomersReport() {
                                 <div className="text-sm text-gray-500">ລວມລູກຄ້າ</div>
                             </div>
                             <div>
-                                <div className="text-2xl font-bold text-blue-600">{stats.male}</div>
+                                <div className="text-2xl font-bold text-blue-600">-</div>
                                 <div className="text-sm text-gray-500">ຊາຍ</div>
                             </div>
                             <div>
-                                <div className="text-2xl font-bold text-pink-600">{stats.female}</div>
+                                <div className="text-2xl font-bold text-pink-600">-</div>
                                 <div className="text-sm text-gray-500">ຍິງ</div>
                             </div>
                         </div>
@@ -204,8 +201,6 @@ export default function CustomersReport() {
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         >
                             <option value="all">ທຸກເພດ</option>
-                            <option value="male">ຊາຍ</option>
-                            <option value="female">ຍິງ</option>
                         </select>
 
                         <select
@@ -239,9 +234,7 @@ export default function CustomersReport() {
                                     <th>#</th>
                                     <th>ຊື່-ນາມສະກຸນ</th>
                                     <th>ອີເມວ</th>
-                                    <th>ເບີໂທ</th>
-                                    <th>ເພດ</th>
-                                    <th>ວັນທີສະໝັກ</th>
+                                                                        <th>ວັນທີສະໝັກ</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -249,24 +242,14 @@ export default function CustomersReport() {
                                     paginated.map((c, idx) => (
                                         <tr key={c._id}>
                                             <td>{(page - 1) * pageSize + idx + 1}</td>
-                                            <td className="font-semibold text-gray-800">{c.fullName || '-'}</td>
+                                            <td className="font-semibold text-gray-800">{c.name || '-'}</td>
                                             <td>{c.email || '-'}</td>
-                                            <td>{c.phone || '-'}</td>
-                                            <td>
-                                                {c.gender === 'male' ? (
-                                                    <span className="badge badge-male">ຊາຍ</span>
-                                                ) : c.gender === 'female' ? (
-                                                    <span className="badge badge-female">ຍິງ</span>
-                                                ) : (
-                                                    <span className="badge bg-gray-100 text-gray-600">ບໍ່ລະບຸ</span>
-                                                )}
-                                            </td>
-                                            <td>{new Date(c.createdAt).toLocaleDateString('lo-LA')}</td>
+                                                                                        <td>{new Date(c.createdAt).toLocaleDateString('lo-LA')}</td>
                                         </tr>
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={6} className="text-center py-6 text-gray-500">
+                                        <td colSpan={4} className="text-center py-6 text-gray-500">
                                             ບໍ່ພົບຂໍ້ມູນ
                                         </td>
                                     </tr>

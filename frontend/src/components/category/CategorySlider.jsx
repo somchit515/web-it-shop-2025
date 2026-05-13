@@ -1,20 +1,21 @@
 // src/components/category/CategorySlider.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CATEGORIES } from "../../utils/categories";
+import useCategories from "../../utils/useCategories";
 import "./CategorySlider.css";
 
 export default function CategorySlider({ interval = 4500 }) {
+  const { categories } = useCategories();
   const [idx, setIdx] = useState(0);
   const timerRef = useRef(null);
   const pausedRef = useRef(false);
-  const hasCats = CATEGORIES.length > 0;
+  const hasCats = categories.length > 0;
 
   /* ---------- autoplay ---------- */
   const start = () => {
     if (pausedRef.current) return;
     stop();
-    timerRef.current = setInterval(() => setIdx((i) => (i + 1) % CATEGORIES.length), interval);
+    timerRef.current = setInterval(() => setIdx((i) => (i + 1) % categories.length), interval);
   };
   const stop = () => clearInterval(timerRef.current);
 
@@ -25,8 +26,8 @@ export default function CategorySlider({ interval = 4500 }) {
   }, [idx]);
 
   /* ---------- control ---------- */
-  const prev = () => setIdx((i) => (i - 1 + CATEGORIES.length) % CATEGORIES.length);
-  const next = () => setIdx((i) => (i + 1) % CATEGORIES.length);
+  const prev = () => setIdx((i) => (i - 1 + categories.length) % categories.length);
+  const next = () => setIdx((i) => (i + 1) % categories.length);
   const go = (i) => setIdx(i);
 
   const pause = () => (pausedRef.current = true);
@@ -62,7 +63,7 @@ export default function CategorySlider({ interval = 4500 }) {
   if (!hasCats)
     return <div className="alert alert-warning text-center">ບໍ່ມີໝວດໝູ່ສິນຄ້າທີ່ຈະສະແດງ.</div>;
 
-  const cur = CATEGORIES[idx];
+  const cur = categories[idx];
 
   return (
     <section
@@ -101,7 +102,7 @@ export default function CategorySlider({ interval = 4500 }) {
 
       {/* indicators */}
       <div className="cat-dots">
-        {CATEGORIES.map((c, i) => (
+        {categories.map((c, i) => (
           <button
             key={c.slug}
             className={`cat-dot ${i === idx ? "active" : ""}`}

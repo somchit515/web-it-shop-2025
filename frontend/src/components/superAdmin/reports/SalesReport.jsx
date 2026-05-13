@@ -68,17 +68,17 @@ export default function SalesReport() {
         if (endDate)
             list = list.filter((o) => new Date(o.createdAt) <= new Date(endDate + 'T23:59:59'));
         if (statusFilter !== 'all')
-            list = list.filter((o) => o.orderStatus === statusFilter);
+            list = list.filter((o) => (o.fulfillmentStatus || o.orderStatus) === statusFilter);
 
         switch (sortBy) {
             case 'date_asc':
                 list.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
                 break;
             case 'total_desc':
-                list.sort((a, b) => b.totalPrice - a.totalPrice);
+                list.sort((a, b) => b.totalAmount - a.totalAmount);
                 break;
             case 'total_asc':
-                list.sort((a, b) => a.totalPrice - b.totalPrice);
+                list.sort((a, b) => a.totalAmount - b.totalAmount);
                 break;
             default:
                 list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -88,7 +88,7 @@ export default function SalesReport() {
 
     /* ---------- สรุปยอด ---------- */
     const summary = useMemo(() => {
-        const total = filteredOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+        const total = filteredOrders.reduce((sum, o) => sum + o.totalAmount, 0);
         const count = filteredOrders.length;
         const avg = count ? total / count : 0;
         return { total, count, avg };
@@ -128,11 +128,11 @@ export default function SalesReport() {
         const rows = filteredOrders.map((o, idx) => [
             idx + 1,
             o.orderNumber,
-            o.user?.fullName || '-',
+            o.user?.name || '-',
             new Date(o.createdAt).toLocaleDateString('lo-LA'),
-            formatLAK(o.totalPrice),
-            o.orderStatus === 'completed' ? 'ສຳເລັດ' :
-                o.orderStatus === 'pending' ? 'ກຳລັງດຳເນີນ' : 'ຍົກເລີກ'
+            formatLAK(o.totalAmount),
+            (o.fulfillmentStatus || o.orderStatus) === 'Delivered' ? 'ສຳເລັດ' :
+                (o.fulfillmentStatus || o.orderStatus) === 'Cancelled' ? 'ຍົກເລີກ' : 'ກຳລັງດຳເນີນ'
         ]);
 
         doc.autoTable({
@@ -246,9 +246,9 @@ export default function SalesReport() {
                                     onChange={(e) => setStatusFilter(e.target.value)}
                                 >
                                     <option value="all">ທຸກສະຖານະ</option>
-                                    <option value="completed">ສຳເລັດ</option>
-                                    <option value="pending">ກຳລັງດຳເນີນ</option>
-                                    <option value="cancelled">ຍົກເລີກ</option>
+                                    <option value="Delivered">ສຳເລັດ</option>
+                                    <option value="Processing">ກຳລັງດຳເນີນ</option>
+                                    <option value="Cancelled">ຍົກເລີກ</option>
                                 </select>
                             </div>
 
@@ -302,13 +302,13 @@ export default function SalesReport() {
                                         <tr key={o._id}>
                                             <td>{(page - 1) * pageSize + idx + 1}</td>
                                             <td className="fw-semibold text-gray-800">{o.orderNumber}</td>
-                                            <td>{o.user?.fullName || '-'}</td>
+                                            <td>{o.user?.name || '-'}</td>
                                             <td>{new Date(o.createdAt).toLocaleDateString('lo-LA')}</td>
-                                            <td className="fw-semibold">{formatLAK(o.totalPrice)}</td>
+                                            <td className="fw-semibold">{formatLAK(o.totalAmount)}</td>
                                             <td>
-                                                {o.orderStatus === 'completed' && <span className="badge badge-completed">ສຳເລັດ</span>}
-                                                {o.orderStatus === 'pending' && <span className="badge badge-pending">ກຳລັງດຳເນີນ</span>}
-                                                {o.orderStatus === 'cancelled' && <span className="badge badge-cancelled">ຍົກເລີກ</span>}
+                                                {(o.fulfillmentStatus || o.orderStatus) === 'Delivered' && <span className="badge badge-completed">ສຳເລັດ</span>}
+                                                {(o.fulfillmentStatus || o.orderStatus) === 'Cancelled' && <span className="badge badge-cancelled">ຍົກເລີກ</span>}
+                                                {['Unfulfilled','Processing','Shipped'].includes(o.fulfillmentStatus || o.orderStatus) && <span className="badge badge-pending">ກຳລັງດຳເນີນ</span>}
                                             </td>
                                         </tr>
                                     ))

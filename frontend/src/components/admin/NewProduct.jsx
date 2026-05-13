@@ -4,10 +4,11 @@ import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import AdminLayout from '../layout/AdminLayout';
 import { useCreateProductMutation } from '../redux/api/productsApi';
-import { PRODUCT_CATEGORIES } from '../../constans/constans';
 import { slugToKey } from '../../utils/categories';
+import useCategories from '../../utils/useCategories';
 
 function NewProduct() {
+  const { categories } = useCategories();
   const navigate = useNavigate();
   const fileRef = useRef(null);
 
@@ -180,7 +181,7 @@ function NewProduct() {
 
   const downloadTemplate = () => {
     const headers = ['name', 'description', 'price', 'category', 'stock', 'seller'];
-    const sample = ['Sample Product', 'Short description here', 19990, PRODUCT_CATEGORIES?.[0] || 'electronics', 10, 'YourSeller'];
+    const sample = ['Sample Product', 'Short description here', 19990, categories?.[0]?.key || 'electronics', 10, 'YourSeller'];
     const aoa = [headers, sample];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
@@ -940,9 +941,9 @@ function NewProduct() {
                     onChange={onChange}
                   >
                     <option value="">-- ເລືອກໝວດໝູ່ --</option>
-                    {PRODUCT_CATEGORIES?.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
+                    {categories?.map((cat) => (
+                      <option key={cat.key || cat.slug} value={cat.key || cat.slug}>
+                        {cat.title || cat.key || cat.slug}
                       </option>
                     ))}
                   </select>
