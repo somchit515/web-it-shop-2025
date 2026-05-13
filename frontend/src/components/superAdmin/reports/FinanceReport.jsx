@@ -1,5 +1,5 @@
 // src/components/superAdmin/reports/FinanceReport.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import Loader from '../../layout/Loader';
 import MetaData from '../../layout/MetaData';
@@ -24,14 +24,14 @@ const FinanceReport = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // ฟังก์ชันดึงข้อมูลจาก API
-  const fetchFinanceData = async () => {
+  // ✅ รับ dates เป็น argument → useCallback identity คงที่ → ไม่ trigger fetch
+  //    ทุกครั้งที่ user พิมพ์วันที่
+  const fetchFinanceData = useCallback(async (s = '', e = '') => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const config = { withCredentials: true };
       let url = '/api/v1/admin/reports/finance';
-      if (startDate && endDate) url += `?startDate=${startDate}&endDate=${endDate}`;
+      if (s && e) url += `?startDate=${s}&endDate=${e}`;
       const res = await axios.get(url, config);
       setData(res.data.report);
     } catch (err) {
@@ -39,15 +39,16 @@ const FinanceReport = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
+  // ดึงข้อมูลครั้งแรกเมื่อ mount
   useEffect(() => {
     fetchFinanceData();
-  }, []); // ไม่มี deps ภายนอก → ไม่มี warning
+  }, [fetchFinanceData]);
 
   const submitHandler = (e) => {
     e.preventDefault();
-    fetchFinanceData();
+    fetchFinanceData(startDate, endDate);
   };
 
   // ข้อมูลกราฟ (เปลี่ยนเป็นสีเทา-ดำ)

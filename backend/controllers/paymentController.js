@@ -2,6 +2,15 @@
 import catchAsyncErrors from "../middlewares/catchAsyncErrors.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import Order from "../models/orders.js";
+import {
+  validateStock,
+  decrementStockBatch,
+  restoreStockBatch,
+} from "../utils/stockManager.js";
+import { expectedShippingFee } from "../utils/shippingRates.js";
+import { tryNotifyOrder } from "../utils/mailer.js";
+import { releaseExpiredBankOrders } from "../utils/orderCleanup.js";
+import Coupon from "../models/coupon.js";
 
 /**
  * StripecheckoutSession
@@ -21,6 +30,43 @@ export const StripecheckoutSession = catchAsyncErrors(async (req, res, next) => 
 
   const paymentMethod = body.paymentMethod || "COD"; // default COD
 
+  // Validate paymentMethod ก่อนเริ่มงานหนัก
+  if (!["COD", "BankTransfer"].includes(paymentMethod)) {
+    return next(new ErrorHandler("Invalid payment method.", 400));
+  }
+
+  // ✅ STEP 0: Idempotency check — ป้องกัน double-click + retry
+  //    รับ key จาก header (มาตรฐาน) หรือ body (fallback)
+  const idempotencyKey =
+    req.headers["idempotency-key"] || req.headers["Idempotency-Key"] || body.idempotencyKey || null;
+
+  if (idempotencyKey) {
+    // กรอง user ด้วยเพื่อให้แต่ละ user มี keyspace ของตัวเอง (ปลอดภัยกว่า)
+    const existing = await Order.findOne({
+      idempotencyKey,
+      user: req.user._id,
+    });
+    if (existing) {
+      // ⚡ Return order เดิม — ไม่สร้างซ้ำ ไม่หัก stock ซ้ำ
+      console.log(`Idempotent replay: returning existing order ${existing._id} for key ${idempotencyKey}`);
+      return res.status(200).json({
+        success: true,
+        idempotent: true, // ส่งให้ frontend รู้ว่าเป็น replay
+        message: "Order already exists for this idempotency key.",
+        orderId: existing._id,
+        order: existing,
+        paymentInstructions:
+          existing.paymentMethod === "BankTransfer"
+            ? {
+                bankName: process.env.BANK_NAME || null,
+                accountNumber: process.env.BANK_ACCOUNT_NUMBER || null,
+                accountName: process.env.BANK_ACCOUNT_NAME || null,
+              }
+            : undefined,
+      });
+    }
+  }
+
   // prepare orderItems (validate basic fields)
   const orderItems = body.orderItems.map(i => ({
     name: i.name,
@@ -30,41 +76,156 @@ export const StripecheckoutSession = catchAsyncErrors(async (req, res, next) => 
     product: i.product,
   }));
 
+  // ✅ STEP 0.5: Lazy cleanup expired orders — คืน stock ก่อน validate
+  //    (best-effort, fire-and-forget แต่ await สั้นๆ เพื่อให้ stock ถูกคืนทันก่อน validate)
+  try {
+    await releaseExpiredBankOrders();
+  } catch (err) {
+    // อย่าให้ cleanup ทำให้ checkout fail
+    console.error("[checkout] lazy cleanup failed:", err.message);
+  }
+
+  // ✅ STEP 1: ตรวจสอบว่า stock ของทุกสินค้ามีพอหรือไม่ (pre-flight check)
+  const validation = await validateStock(orderItems);
+  if (!validation.ok) {
+    // สร้าง message ที่อ่านง่าย พร้อมรายละเอียดเพื่อให้ frontend แสดงได้
+    const lines = validation.errors.map((e) => {
+      if (e.reason === "insufficient_stock") {
+        return `"${e.name}": ขอ ${e.requested} แต่เหลือ ${e.available}`;
+      }
+      if (e.reason === "product_not_found") {
+        return `"${e.name}": ไม่พบสินค้า`;
+      }
+      return `"${e.name}": ${e.reason}`;
+    });
+    return res.status(409).json({
+      success: false,
+      message: `ສິນຄ້າບໍ່ພຽງພໍ:\n${lines.join("\n")}`,
+      errors: validation.errors,
+    });
+  }
+
+  // ✅ STEP 2: หัก stock แบบ atomic + rollback ถ้าล้มเหลว
+  const decrementResult = await decrementStockBatch(orderItems);
+  if (!decrementResult.ok) {
+    // มีคนซื้อตัดหน้าระหว่าง validate กับ decrement (race condition)
+    return res.status(409).json({
+      success: false,
+      message: `ສິນຄ້າ "${decrementResult.error.name}" ບໍ່ພຽງພໍ (ເຫຼືອ ${decrementResult.error.available}, ຕ້ອງການ ${decrementResult.error.requested})`,
+      error: decrementResult.error,
+    });
+  }
+
+  // ✅ STEP 3: Server-side recalculate (ป้องกัน user แก้ไข shippingAmount)
+  const itemsPriceCalc = orderItems.reduce((s, it) => s + it.price * it.quantity, 0);
+  const carrierCode = body.shippingInfo?.shippingCarrierCode;
+  const expectedFee = expectedShippingFee(carrierCode, itemsPriceCalc);
+  const sentFee = Number(body.shippingAmount) || 0;
+
+  if (Math.abs(sentFee - expectedFee) > 1) {
+    console.warn(
+      `Shipping fee mismatch — carrier: ${carrierCode}, expected: ${expectedFee}, got: ${sentFee} → using expected`
+    );
+  }
+  const finalShipping = expectedFee;
+
+  // ✅ STEP 3.5: Validate + apply coupon (server-side — ห้ามเชื่อ frontend)
+  let appliedCoupon = null;
+  let discountAmount = 0;
+  if (body.couponCode) {
+    const result = await Coupon.validateForOrder({
+      code: body.couponCode,
+      userId: req.user._id,
+      itemsPrice: itemsPriceCalc,
+    });
+    if (!result.valid) {
+      return res.status(400).json({
+        success: false,
+        message: `ລະຫັດສ່ວນຫຼຸດໃຊ້ບໍ່ໄດ້: ${result.reason}`,
+        couponError: result.reason,
+      });
+    }
+    appliedCoupon = result.coupon;
+    discountAmount = result.discountAmount;
+  }
+
+  const finalTotal = itemsPriceCalc + finalShipping - discountAmount;
+
+  // STEP 4: สร้าง order — ถ้าสร้างไม่สำเร็จ → คืน stock
   const baseData = {
     shippingInfo: body.shippingInfo || {},
     user: req.user._id,
     orderItems,
-    itemsPrice: Number(body.itemsPrice) || orderItems.reduce((s, it) => s + (it.price * it.quantity), 0),
+    itemsPrice: itemsPriceCalc,
     taxAmount: Number(body.taxAmount) || 0,
-    shippingAmount: Number(body.shippingAmount) || 0,
-    totalAmount: Number(body.totalAmount) || 0,
-    orderStatus: "Processing",
+    shippingAmount: finalShipping,
+    totalAmount: finalTotal,
+    fulfillmentStatus: "Unfulfilled",
+    // ✅ Coupon info
+    ...(appliedCoupon && {
+      couponCode: appliedCoupon.code,
+      discountAmount,
+    }),
+    ...(idempotencyKey && { idempotencyKey }),
   };
 
-  // CASE: COD
-  if (paymentMethod === "COD") {
-    const order = await Order.create({
-      ...baseData,
-      paymentMethod: "COD",
-      paymentStatus: "Pending", // awaiting cash collection
-    });
+  let order;
+  try {
+    if (paymentMethod === "COD") {
+      order = await Order.create({
+        ...baseData,
+        paymentMethod: "COD",
+        paymentStatus: "Pending",
+      });
+    } else if (paymentMethod === "BankTransfer") {
+      order = await Order.create({
+        ...baseData,
+        paymentMethod: "BankTransfer",
+        paymentStatus: "AwaitingProof",
+      });
+    }
 
-    return res.status(201).json({
-      success: true,
-      message: "COD Order created successfully.",
-      orderId: order._id,
-      order,
-    });
-  }
+    // ✅ Mark coupon as used (after order create success)
+    if (appliedCoupon && order) {
+      try {
+        appliedCoupon.usageCount += 1;
+        appliedCoupon.usedBy.push({
+          user: req.user._id,
+          order: order._id,
+          usedAt: new Date(),
+          discountAmount,
+        });
+        await appliedCoupon.save();
+      } catch (err) {
+        console.error("Failed to mark coupon used:", err.message);
+        // ไม่ block — order ถูกสร้างแล้ว
+      }
+    }
 
-  // CASE: BankTransfer / QR
-  if (paymentMethod === "BankTransfer") {
-    const order = await Order.create({
-      ...baseData,
-      paymentMethod: "BankTransfer",
-      paymentStatus: "AwaitingProof",
-    });
+    // ✅ ส่ง receipt email — fire-and-forget (ไม่บล็อก response)
+    const userEmail = req.user.email;
+    if (order && userEmail) {
+      // populate user info ให้ email template (ไม่ต้อง await — template ก็รับ user.name จาก req.user ได้)
+      tryNotifyOrder({
+        to: userEmail,
+        order: {
+          ...order.toObject(),
+          user: { name: req.user.name, email: userEmail },
+        },
+        action: "created",
+        lang: req.user.lang || "la",
+      });
+    }
 
+    // Response
+    if (paymentMethod === "COD") {
+      return res.status(201).json({
+        success: true,
+        message: "COD Order created successfully.",
+        orderId: order._id,
+        order,
+      });
+    }
     return res.status(201).json({
       success: true,
       message: "BankTransfer order created. Please upload payment slip.",
@@ -76,10 +237,32 @@ export const StripecheckoutSession = catchAsyncErrors(async (req, res, next) => 
       },
       order,
     });
-  }
+  } catch (err) {
+    // ✅ Duplicate idempotencyKey (race condition) — คืน order ที่มีอยู่
+    if (err.code === 11000 && err.keyPattern?.idempotencyKey) {
+      console.warn(`Race condition on idempotency key ${idempotencyKey} — returning existing order`);
+      // คืน stock เพราะเรา decrement ไปแล้วแต่ไม่ได้สร้าง order (อีก request สร้างไปแทน)
+      await restoreStockBatch(orderItems);
+      const existing = await Order.findOne({
+        idempotencyKey,
+        user: req.user._id,
+      });
+      if (existing) {
+        return res.status(200).json({
+          success: true,
+          idempotent: true,
+          message: "Order already exists for this idempotency key.",
+          orderId: existing._id,
+          order: existing,
+        });
+      }
+    }
 
-  // Fallback: unsupported method
-  return next(new ErrorHandler("Invalid payment method.", 400));
+    // ✅ Rollback stock ถ้า Order.create() ล้มเหลวด้วยเหตุอื่น
+    console.error("Order.create failed, restoring stock:", err.message);
+    await restoreStockBatch(orderItems);
+    return next(new ErrorHandler(`Failed to create order: ${err.message}`, 500));
+  }
 });
 
 /**

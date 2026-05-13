@@ -27,14 +27,14 @@ function Register() {
       setPasswordStrength(0);
       return;
     }
-    
+
     let strength = 0;
     if (password.length >= 8) strength++;
     if (password.length >= 12) strength++;
     if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
     if (/\d/.test(password)) strength++;
     if (/[^a-zA-Z0-9]/.test(password)) strength++;
-    
+
     setPasswordStrength(Math.min(strength, 4));
   }, [password]);
 
@@ -139,7 +139,7 @@ function Register() {
         html, body, #root {
           height: 100%;
           width: 100%;
-          overflow-x: hidden;
+          overflow-x: clip;
         }
 
         body {
@@ -148,32 +148,243 @@ function Register() {
           -moz-osx-font-smoothing: grayscale;
         }
 
+        /* ================ SPLIT SCREEN LAYOUT ================ */
         .register-container {
           min-height: 100vh;
           width: 100vw;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           position: fixed;
           top: 0;
           left: 0;
           right: 0;
           bottom: 0;
           display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 20px;
-          overflow-y: auto;
+          overflow: hidden;
+          background: #0f172a;
         }
 
-        .register-container::before {
+        /* ============ LEFT BRANDING PANEL ============ */
+        .register-brand-panel {
+          flex: 1.1;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 56px 64px;
+          overflow: hidden;
+          background:
+            radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.55) 0%, transparent 50%),
+            radial-gradient(circle at 85% 80%, rgba(236, 72, 153, 0.45) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.30) 0%, transparent 60%),
+            linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+        }
+
+        .register-brand-panel::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-image:
+            radial-gradient(rgba(255, 255, 255, 0.08) 1.5px, transparent 1.5px);
+          background-size: 28px 28px;
+          mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+          -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+          pointer-events: none;
+        }
+
+        .brand-orb {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(60px);
+          pointer-events: none;
+          animation: floatOrb 12s ease-in-out infinite;
+        }
+        .brand-orb-1 {
+          width: 320px;
+          height: 320px;
+          background: radial-gradient(circle, rgba(168, 85, 247, 0.6), transparent 70%);
+          top: -80px;
+          left: -80px;
+        }
+        .brand-orb-2 {
+          width: 280px;
+          height: 280px;
+          background: radial-gradient(circle, rgba(56, 189, 248, 0.5), transparent 70%);
+          bottom: -60px;
+          right: -60px;
+          animation-delay: -6s;
+        }
+        .brand-orb-3 {
+          width: 220px;
+          height: 220px;
+          background: radial-gradient(circle, rgba(236, 72, 153, 0.4), transparent 70%);
+          top: 40%;
+          right: 20%;
+          animation-delay: -3s;
+        }
+
+        @keyframes floatOrb {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -40px) scale(1.08); }
+          66% { transform: translate(-20px, 30px) scale(0.95); }
+        }
+
+        .brand-top {
+          position: relative;
+          z-index: 2;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .brand-top-logo {
+          width: 52px;
+          height: 52px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #818cf8, #c084fc);
+          display: grid;
+          place-items: center;
+          padding: 10px;
+          box-shadow: 0 12px 32px rgba(129, 140, 248, 0.5);
+        }
+        .brand-top-logo img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+
+        .brand-top-name {
+          color: white;
+          font-size: 22px;
+          font-weight: 800;
+          letter-spacing: 0.5px;
+        }
+
+        .brand-hero {
+          position: relative;
+          z-index: 2;
+          color: white;
+        }
+
+        .brand-hero-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 14px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 999px;
+          font-size: 12px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.9);
+          margin-bottom: 24px;
+          backdrop-filter: blur(10px);
+        }
+        .brand-hero-badge::before {
+          content: '🎁';
+          font-size: 12px;
+        }
+
+        .brand-hero h2 {
+          font-size: clamp(32px, 3.5vw, 48px);
+          font-weight: 800;
+          line-height: 1.15;
+          margin-bottom: 18px;
+          letter-spacing: -1px;
+        }
+        .brand-hero h2 span {
+          background: linear-gradient(135deg, #c084fc 0%, #f0abfc 50%, #fbcfe8 100%);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .brand-hero p {
+          font-size: 16px;
+          line-height: 1.7;
+          color: rgba(255, 255, 255, 0.75);
+          max-width: 480px;
+          margin-bottom: 32px;
+        }
+
+        .brand-perks {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          max-width: 520px;
+        }
+        .brand-perk {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 14px 16px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 14px;
+          backdrop-filter: blur(10px);
+          color: white;
+          transition: all 0.3s ease;
+        }
+        .brand-perk:hover {
+          background: rgba(255, 255, 255, 0.09);
+          transform: translateX(4px);
+          border-color: rgba(192, 132, 252, 0.4);
+        }
+        .brand-perk-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, rgba(129, 140, 248, 0.3), rgba(192, 132, 252, 0.3));
+          border: 1px solid rgba(192, 132, 252, 0.35);
+          display: grid;
+          place-items: center;
+          color: #e9d5ff;
+          font-size: 16px;
+          flex-shrink: 0;
+        }
+        .brand-perk-text {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .brand-perk-text strong {
+          font-size: 14px;
+          font-weight: 700;
+        }
+        .brand-perk-text small {
+          font-size: 12px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.6);
+        }
+
+        .brand-bottom {
+          position: relative;
+          z-index: 2;
+          color: rgba(255, 255, 255, 0.55);
+          font-size: 13px;
+          display: flex;
+          gap: 22px;
+        }
+        .brand-bottom span:hover { color: white; cursor: pointer; }
+
+        /* ============ RIGHT FORM PANEL ============ */
+        .register-form-panel {
+          flex: 0.9;
+          background: linear-gradient(180deg, #fafbff 0%, #f1f5f9 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 40px;
+          overflow-y: auto;
+          position: relative;
+        }
+
+        .register-form-panel::before {
           content: '';
           position: absolute;
           top: 0;
-          left: 0;
           right: 0;
-          bottom: 0;
-          background: 
-            radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
-            radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
+          width: 200px;
+          height: 200px;
+          background: radial-gradient(circle, rgba(102, 126, 234, 0.08), transparent 70%);
           pointer-events: none;
         }
 
@@ -181,14 +392,15 @@ function Register() {
           position: relative;
           z-index: 1;
           width: 100%;
-          max-width: 500px;
-          background: rgba(255, 255, 255, 0.95);
-          backdrop-filter: blur(20px);
-          border-radius: 24px;
-          padding: 48px 40px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          animation: slideUp 0.5s ease-out;
+          max-width: 520px;
+          background: white;
+          border-radius: 20px;
+          padding: 48px 44px;
+          box-shadow:
+            0 1px 3px rgba(0, 0, 0, 0.05),
+            0 20px 50px rgba(15, 23, 42, 0.08);
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
           margin: auto;
         }
 
@@ -203,73 +415,23 @@ function Register() {
           }
         }
 
-        .logo-section {
-          text-align: center;
-          margin-bottom: 32px;
-        }
-
-        .logo-wrapper {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 16px;
-          margin-bottom: 8px;
-        }
-
-        .brand-logo {
-          width: 64px;
-          height: 64px;
-          border-radius: 16px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
-          padding: 12px;
-          flex-shrink: 0;
-        }
-
-        .brand-logo img {
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-        }
-
-        .brand-text {
-          text-align: left;
-        }
-
-        .brand-name {
-          font-size: 28px;
-          font-weight: 800;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          line-height: 1.2;
-        }
-
-        .brand-tagline {
-          font-size: 13px;
-          color: #64748b;
-          margin-top: 2px;
-        }
-
         .welcome-text {
-          text-align: center;
-          margin-bottom: 32px;
+          text-align: left;
+          margin-bottom: 28px;
         }
 
         .welcome-text h1 {
-          font-size: 28px;
-          font-weight: 700;
-          color: #1e293b;
+          font-size: 32px;
+          font-weight: 800;
+          color: #0f172a;
           margin-bottom: 8px;
+          letter-spacing: -0.5px;
         }
 
         .welcome-text p {
-          font-size: 14px;
+          font-size: 15px;
           color: #64748b;
+          line-height: 1.5;
         }
 
         .form-group {
@@ -342,9 +504,9 @@ function Register() {
         }
 
         .password-strength {
-          margin-top: 8px;
+          margin-top: 10px;
           display: flex;
-          gap: 6px;
+          gap: 8px;
           align-items: center;
         }
 
@@ -355,10 +517,10 @@ function Register() {
         }
 
         .strength-bar {
-          height: 4px;
+          height: 5px;
           flex: 1;
           background: #e2e8f0;
-          border-radius: 2px;
+          border-radius: 3px;
           transition: all 0.3s ease;
         }
 
@@ -368,7 +530,7 @@ function Register() {
 
         .strength-text {
           font-size: 12px;
-          font-weight: 600;
+          font-weight: 700;
           min-width: 60px;
           text-align: right;
         }
@@ -429,7 +591,7 @@ function Register() {
         .login-link a {
           color: #667eea;
           text-decoration: none;
-          font-weight: 600;
+          font-weight: 700;
           transition: color 0.2s ease;
           cursor: pointer;
         }
@@ -440,42 +602,39 @@ function Register() {
 
         .terms-note {
           text-align: center;
-          margin-top: 16px;
+          margin-top: 18px;
           font-size: 12px;
           color: #94a3b8;
           line-height: 1.6;
+          padding: 12px 14px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
         }
 
-        /* Responsive Styles */
+        /* ================ RESPONSIVE ================ */
+        @media (max-width: 1024px) {
+          .register-brand-panel {
+            display: none;
+          }
+          .register-form-panel {
+            flex: 1;
+          }
+        }
+
         @media (max-width: 640px) {
-          .register-container {
+          .register-form-panel {
             padding: 16px;
           }
 
           .register-card {
             padding: 32px 24px;
             max-width: 100%;
-          }
-
-          .logo-wrapper {
-            flex-direction: column;
-            gap: 12px;
-          }
-
-          .brand-text {
-            text-align: center;
-          }
-
-          .brand-name {
-            font-size: 24px;
-          }
-
-          .brand-tagline {
-            font-size: 12px;
+            border-radius: 16px;
           }
 
           .welcome-text h1 {
-            font-size: 22px;
+            font-size: 24px;
           }
 
           .welcome-text p {
@@ -492,17 +651,8 @@ function Register() {
             padding: 28px 20px;
           }
 
-          .brand-logo {
-            width: 56px;
-            height: 56px;
-          }
-
-          .brand-name {
-            font-size: 22px;
-          }
-
           .welcome-text h1 {
-            font-size: 20px;
+            font-size: 22px;
           }
 
           .form-label {
@@ -516,7 +666,7 @@ function Register() {
         }
 
         @media (max-height: 650px) and (orientation: landscape) {
-          .register-container {
+          .register-form-panel {
             padding: 12px;
           }
 
@@ -526,20 +676,16 @@ function Register() {
             overflow-y: auto;
           }
 
-          .logo-section {
-            margin-bottom: 20px;
-          }
-
           .welcome-text {
-            margin-bottom: 20px;
+            margin-bottom: 18px;
           }
 
           .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 14px;
           }
 
           .btn-primary {
-            margin-top: 16px;
+            margin-top: 14px;
           }
         }
 
@@ -549,157 +695,202 @@ function Register() {
           }
 
           .welcome-text h1 {
-            font-size: 18px;
-          }
-
-          .brand-name {
             font-size: 20px;
           }
         }
       `}</style>
 
       <div className="register-container">
-        <div className="register-card">
-          {/* Logo Section */}
-          <div className="logo-section">
-            <div className="logo-wrapper">
-              <div className="brand-logo">
-                <img
-                  src="/images/logo.png"
-                  alt="IT HUBB Logo"
-                  onError={(e) =>
-                    (e.target.src =
-                      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='60' x='50' text-anchor='middle' font-size='40' font-weight='bold' fill='white'%3EIT%3C/text%3E%3C/svg%3E")
-                  }
-                />
+        {/* ============ LEFT BRANDING PANEL ============ */}
+        <div className="register-brand-panel">
+          <span className="brand-orb brand-orb-1" aria-hidden="true" />
+          <span className="brand-orb brand-orb-2" aria-hidden="true" />
+          <span className="brand-orb brand-orb-3" aria-hidden="true" />
+
+          <div className="brand-top">
+            <div className="brand-top-logo">
+              <img
+                src="/images/logo.png"
+                alt="IT HUBB Logo"
+                onError={(e) =>
+                  (e.target.src =
+                    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='60' x='50' text-anchor='middle' font-size='40' font-weight='bold' fill='white'%3EIT%3C/text%3E%3C/svg%3E")
+                }
+              />
+            </div>
+            <span className="brand-top-name">IT HUBB</span>
+          </div>
+
+          <div className="brand-hero">
+            <div className="brand-hero-badge">ສະມາຊິກໃໝ່ຮັບສ່ວນຫຼຸດ</div>
+            <h2>
+              ເຂົ້າຮ່ວມຄອບຄົວ<br />
+              <span>IT HUBB ມື້ນີ້</span>
+            </h2>
+            <p>
+              ລົງທະບຽນຟຣີ ແລະ ປົດລັອກສິດທິພິເສດສຳລັບສະມາຊິກ ຮ້ອຍກວ່າຍີ່ຫໍ້ສິນຄ້າ IT ລາຄາພິເສດ ລໍຖ້າທ່ານຢູ່.
+            </p>
+
+            <div className="brand-perks">
+              <div className="brand-perk">
+                <div className="brand-perk-icon">
+                  <i className="fas fa-gift"></i>
+                </div>
+                <div className="brand-perk-text">
+                  <strong>ສ່ວນຫຼຸດ 10% ສຳລັບສະມາຊິກໃໝ່</strong>
+                  <small>ໃຊ້ໄດ້ກັບການຊື້ຄັ້ງທຳອິດ</small>
+                </div>
               </div>
-              <div className="brand-text">
-                <div className="brand-name">IT HUBB</div>
-                <div className="brand-tagline">
-                  ຮ້ານເຄື່ອງຖື ແລະ ອຸປະກອນ IT
+              <div className="brand-perk">
+                <div className="brand-perk-icon">
+                  <i className="fas fa-bolt"></i>
+                </div>
+                <div className="brand-perk-text">
+                  <strong>ຈັດສົ່ງດ່ວນຟຣີ</strong>
+                  <small>ສຳລັບການສັ່ງຊື້ເກີນ 500,000 ກີບ</small>
+                </div>
+              </div>
+              <div className="brand-perk">
+                <div className="brand-perk-icon">
+                  <i className="fas fa-star"></i>
+                </div>
+                <div className="brand-perk-text">
+                  <strong>ສະສົມຄະແນນ ແລະ ແລກລາງວັນ</strong>
+                  <small>ຍິ່ງຊື້ ຍິ່ງໄດ້ສິດທິພິເສດ</small>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Welcome Text */}
-          <div className="welcome-text">
-            <h1>ສ້າງບັນຊີໃໝ່</h1>
-            <p>ລົງທະບຽນເພື່ອເລີ່ມໃຊ້ງານ IT HUBB</p>
+          <div className="brand-bottom">
+            <span>© 2026 IT HUBB</span>
+            <span>ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ</span>
+            <span>ຂໍ້ກຳນົດການໃຊ້ງານ</span>
           </div>
+        </div>
 
-          {/* Register Form */}
-          <div>
-            {/* Name Field */}
-            <div className="form-group">
-              <label htmlFor="name" className="form-label">
-                ຊື່
-              </label>
-              <input
-                id="name"
-                type="text"
-                name="name"
-                className="form-input"
-                value={name}
-                onChange={handleChange}
-                placeholder="ປ້ອນຊື່ຂອງທ່ານ"
-                disabled={isLoading}
-                required
-              />
+        {/* ============ RIGHT FORM PANEL ============ */}
+        <div className="register-form-panel">
+          <div className="register-card">
+            {/* Welcome Text */}
+            <div className="welcome-text">
+              <h1>ສ້າງບັນຊີໃໝ່</h1>
+              <p>ລົງທະບຽນເພື່ອເລີ່ມໃຊ້ງານ IT HUBB</p>
             </div>
 
-            {/* Email Field */}
-            <div className="form-group">
-              <label htmlFor="email" className="form-label">
-                ອີເມວ
-              </label>
-              <input
-                id="email"
-                type="email"
-                name="email"
-                className="form-input"
-                value={email}
-                onChange={handleChange}
-                placeholder="you@example.com"
-                disabled={isLoading}
-                required
-              />
-            </div>
-
-            {/* Password Field */}
-            <div className="form-group">
-              <label htmlFor="password" className="form-label">
-                ລະຫັດຜ່ານ
-              </label>
-              <div className="input-wrapper">
+            {/* Register Form */}
+            <div>
+              {/* Name Field */}
+              <div className="form-group">
+                <label htmlFor="name" className="form-label">
+                  ຊື່
+                </label>
                 <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  name="password"
+                  id="name"
+                  type="text"
+                  name="name"
                   className="form-input"
-                  value={password}
+                  value={name}
                   onChange={handleChange}
-                  placeholder="ປ້ອນລະຫັດຂອງທ່ານ (ຢ່າງໜ້ອຍ 6 ຕົວ)"
+                  placeholder="ປ້ອນຊື່ຂອງທ່ານ"
                   disabled={isLoading}
                   required
                 />
-                <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label="Toggle password visibility"
-                  disabled={isLoading}
-                >
-                  <EyeIcon open={showPassword} />
-                </button>
               </div>
 
-              {/* Password Strength Indicator */}
-              {password && (
-                <div className="password-strength" style={{ color: getStrengthColor() }}>
-                  <div className="strength-bars">
-                    {[1, 2, 3, 4].map((level) => (
-                      <div
-                        key={level}
-                        className={`strength-bar ${
-                          level <= passwordStrength ? "active" : ""
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className="strength-text">{getStrengthText()}</span>
+              {/* Email Field */}
+              <div className="form-group">
+                <label htmlFor="email" className="form-label">
+                  ອີເມວ
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  name="email"
+                  className="form-input"
+                  value={email}
+                  onChange={handleChange}
+                  placeholder="you@example.com"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+
+              {/* Password Field */}
+              <div className="form-group">
+                <label htmlFor="password" className="form-label">
+                  ລະຫັດຜ່ານ
+                </label>
+                <div className="input-wrapper">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    className="form-input"
+                    value={password}
+                    onChange={handleChange}
+                    placeholder="ປ້ອນລະຫັດຂອງທ່ານ (ຢ່າງໜ້ອຍ 6 ຕົວ)"
+                    disabled={isLoading}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label="Toggle password visibility"
+                    disabled={isLoading}
+                  >
+                    <EyeIcon open={showPassword} />
+                  </button>
                 </div>
-              )}
-            </div>
 
-            {/* Submit Button */}
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={isLoading}
-              onClick={handleSubmit}
-            >
-              {isLoading ? (
-                <>
-                  <span className="spinner"></span>
-                  <span>ກຳລັງລົງທະບຽນ...</span>
-                </>
-              ) : (
-                <span>ລົງທະບຽນ</span>
-              )}
-            </button>
+                {/* Password Strength Indicator */}
+                {password && (
+                  <div className="password-strength" style={{ color: getStrengthColor() }}>
+                    <div className="strength-bars">
+                      {[1, 2, 3, 4].map((level) => (
+                        <div
+                          key={level}
+                          className={`strength-bar ${
+                            level <= passwordStrength ? "active" : ""
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="strength-text">{getStrengthText()}</span>
+                  </div>
+                )}
+              </div>
 
-            {/* Terms Note */}
-            <div className="terms-note">
-              ການລົງທະບຽນແມ່ນເທົ່າກັບການຍອມຮັບ
-              <br />
-              ຂໍ້ກຳນົດ ແລະ ເງື່ອນໄຂຂອງ IT HUBB
-            </div>
+              {/* Submit Button */}
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={isLoading}
+                onClick={handleSubmit}
+              >
+                {isLoading ? (
+                  <>
+                    <span className="spinner"></span>
+                    <span>ກຳລັງລົງທະບຽນ...</span>
+                  </>
+                ) : (
+                  <span>ລົງທະບຽນ</span>
+                )}
+              </button>
 
-            {/* Login Link */}
-            <div className="login-link">
-              ມີບັນຊີແລ້ວ?{" "}
-              <a onClick={() => navigate("/login")}>ເຂົ້າສູ່ລະບົບ</a>
+              {/* Terms Note */}
+              <div className="terms-note">
+                ການລົງທະບຽນແມ່ນເທົ່າກັບການຍອມຮັບ
+                <strong style={{ color: '#667eea' }}> ຂໍ້ກຳນົດ </strong> ແລະ
+                <strong style={{ color: '#667eea' }}> ເງື່ອນໄຂ </strong> ຂອງ IT HUBB
+              </div>
+
+              {/* Login Link */}
+              <div className="login-link">
+                ມີບັນຊີແລ້ວ?{" "}
+                <a onClick={() => navigate("/login")}>ເຂົ້າສູ່ລະບົບ</a>
+              </div>
             </div>
           </div>
         </div>

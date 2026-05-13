@@ -1,29 +1,32 @@
-// auth/ProtectedRoute.jsx (โค้ดที่ถูกต้อง)
-
+// auth/ProtectedRoute.jsx
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import Loader from '../layout/Loader';
 import { useGetMeQuery } from '../redux/api/userApi';
 
-
-function ProtectedRoute({ admin, children }) {
-
-    const { isLoading } = useGetMeQuery();
-
-    const { isAuthenticate ,user} = useSelector((state) => state.auth);
+function ProtectedRoute({ admin, superAdmin, children }) {
+    const location = useLocation();
+    const { isLoading, isError, error } = useGetMeQuery();
+    const { isAuthenticate, user } = useSelector((state) => state.auth);
 
     if (isLoading) {
         return <Loader />;
     }
 
-    if (!isAuthenticate) {
-        return <Navigate to="/login" replace />;
+    // ถ้า session หมดอายุจริงๆ (401 จาก getMe) → redirect ไป login
+    const sessionExpired = isError && error?.status === 401;
+    if (sessionExpired || !isAuthenticate) {
+        return <Navigate to="/login" replace state={{ from: location.pathname }} />;
     }
-    
-    // *** แก้ไขตรงนี้: เปลี่ยน (user?.role !== 'admin', user?.role !== 'superAdmin') 
-    // เป็น (user?.role !== 'admin' && user?.role !== 'superAdmin') ***
-    if (admin && user?.role !== 'admin' && user?.role !== 'superAdmin') { 
+
+    // SuperAdmin guard
+    if (superAdmin && user?.role !== 'superAdmin') {
+        return <Navigate to="/" replace />;
+    }
+
+    // Admin guard (อนุญาตทั้ง admin และ superAdmin)
+    if (admin && user?.role !== 'admin' && user?.role !== 'superAdmin') {
         return <Navigate to="/" replace />;
     }
 

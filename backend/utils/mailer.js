@@ -12,9 +12,29 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-export async function sendOrderEmail({ to, order, action = 'confirm', lang = 'la', invoiceFromUrl } = {}) {
+/**
+ * ✅ Fire-and-forget wrapper — ใช้ในจุดที่ไม่ต้องการให้ email blocking
+ *    หรือทำให้ request fail ถ้า email error
+ */
+export function tryNotifyOrder({ to, order, action = 'confirm', lang = 'la', note = '', invoiceFromUrl } = {}) {
+  if (!to) {
+    console.warn(`tryNotifyOrder: skip — no recipient (action=${action}, orderId=${order?._id})`);
+    return Promise.resolve(false);
+  }
+  return sendOrderEmail({ to, order, action, lang, note, invoiceFromUrl })
+    .then(() => {
+      console.log(`Email sent: action=${action}, orderId=${order?._id}, to=${to}`);
+      return true;
+    })
+    .catch((err) => {
+      console.error(`Email failed (action=${action}, orderId=${order?._id}):`, err.message);
+      return false;
+    });
+}
+
+export async function sendOrderEmail({ to, order, action = 'confirm', lang = 'la', note = '', invoiceFromUrl } = {}) {
   if (!to) throw new Error('sendOrderEmail: "to" is required');
-  const template = getEmailTemplate({ lang, action, order, note: '' });
+  const template = getEmailTemplate({ lang, action, order, note });
 
   const attachments = [];
   if (action === 'confirm' && invoiceFromUrl) {

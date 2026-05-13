@@ -9,36 +9,8 @@ import { countries as countryData } from "countries-list";
 import "./Shipping.css";
 
 /* ----------  shipping carriers  ---------- */
-const SHIPPING_CARRIERS = [
-  {
-    name: "ອານຸສິດຂົນສົ່ງດ່ວນ",
-    code: "ANUSIT",
-    logo: "/images/carriers/Anusith.png",
-    description: "ບໍລິການຂົນສົ່ງດ່ວນທົ່ວລາວ",
-    deliveryTime: "1-2 ມື້",
-  },
-  {
-    name: "ມີໄຊຂົນສົ່ງດ່ວນ",
-    code: "MAISAY",
-    logo: "/images/carriers/mixay.png",
-    description: "ຂົນສົ່ງທົ່ວປະເທດ ລາຄາຖືກ",
-    deliveryTime: "2-3 ມື້",
-  },
-  {
-    name: "ຢູນິເທວ ຂົນສົ່ງ",
-    code: "UNITED",
-    logo: "/images/carriers/unitel.png",
-    description: "ບໍລິການຂົນສົ່ງສາກົນ",
-    deliveryTime: "3-7 ມື້",
-  },
-  {
-    name: "ອື່ນໆ (ຮັບສິນຄ້າທີ່ຫນ້າຮ້ານ)",
-    code: "OTHER_DOMESTIC",
-    logo: "/images/logo.png",
-    description: "ຜູ້ໃຫ້ບໍລິການອື່ນໆ",
-    deliveryTime: "ແປງໄປຕາມຜູ້ໃຫ້ບໍລິການ",
-  },
-];
+// ✅ ใช้ shared constants — single source of truth สำหรับทุกหน้า
+import { SHIPPING_CARRIERS } from "../../constans/shipping";
 
 /* ----------  country list  ---------- */
 const baseCountries = Object.entries(countryData)
@@ -199,25 +171,60 @@ export default function Shipping() {
       <div className="carrier-cards">
         {SHIPPING_CARRIERS.filter(
           (c) => country === "Laos" || c.code === "INTERNATIONAL"
-        ).map((c) => (
-          <div
-            key={c.code}
-            className={`carrier-card ${
-              shippingCarrier === c.code ? "selected" : ""
-            }`}
-            onClick={() => setShippingCarrier(c.code)}
-          >
-            <div className="carrier-logo">
-              <img src={c.logo} alt={c.name} />
+        ).map((c) => {
+          const feeText =
+            c.baseFee === 0
+              ? "ຟຣີ"
+              : `${c.baseFee.toLocaleString()} ກີບ`;
+          const freeNote =
+            c.freeShippingThreshold && c.freeShippingThreshold > 0
+              ? `ຟຣີຄ່າສົ່ງເມື່ອສັ່ງ ≥ ${c.freeShippingThreshold.toLocaleString()} ກີບ`
+              : null;
+          return (
+            <div
+              key={c.code}
+              className={`carrier-card ${
+                shippingCarrier === c.code ? "selected" : ""
+              }`}
+              onClick={() => setShippingCarrier(c.code)}
+            >
+              <div className="carrier-logo">
+                <img src={c.logo} alt={c.name} />
+              </div>
+              <div className="carrier-info">
+                <h4>{c.name}</h4>
+                <p>{c.description}</p>
+                <span className="delivery-time">🚚 {c.deliveryTime}</span>
+                {/* ✅ แสดงราคาค่าส่ง */}
+                <div
+                  style={{
+                    marginTop: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      color: c.baseFee === 0 ? '#10b981' : '#0f63ff',
+                      fontSize: '0.95rem',
+                    }}
+                  >
+                    💰 {feeText}
+                  </span>
+                  {freeNote && (
+                    <span style={{ fontSize: '0.78rem', color: '#10b981' }}>
+                      ✨ {freeNote}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="carrier-radio" />
             </div>
-            <div className="carrier-info">
-              <h4>{c.name}</h4>
-              <p>{c.description}</p>
-              <span className="delivery-time">🚚 {c.deliveryTime}</span>
-            </div>
-            <div className="carrier-radio" />
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

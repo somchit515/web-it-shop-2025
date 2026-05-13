@@ -27,6 +27,7 @@ import SalesReport from "../../components/superAdmin/reports/SalesReport";
 import ShipmentsPage from "../admin/ShipmentsPage";
 import UpdateOrderPage from "../admin/OrderStatusUpdate";
 import CompletedOrdersPage from "../admin/CompletedOrdersPage";
+import CouponsPage from "../admin/CouponsPage";
 import BlogDashboardOverview from "../blog/DashboardBlog"
 /**
  * ✅ คืนค่าเป็น Array ของ <Route> elements
@@ -202,29 +203,10 @@ export default function AdminRoutes() {
       }
     />,
     <Route
-      key="blog-admin"
+      key="blog-admin-list"
       path="/admin/blog"
       element={
-        <ProtectedRoute>
-          <BlogAdmin />
-        </ProtectedRoute>
-      }
-    />,
-
-    <Route
-      key="blog-admin-new"
-      path="/admin/blogs/new"
-      element={
-        <ProtectedRoute>
-          <BlogAdmin />
-        </ProtectedRoute>
-      }
-    />,
-    <Route
-      key="blog-admin-edit"
-      path="/admin/blogs/:id/edit"
-      element={
-        <ProtectedRoute>
+        <ProtectedRoute admin>
           <BlogAdmin />
         </ProtectedRoute>
       }
@@ -245,8 +227,44 @@ export default function AdminRoutes() {
       <Route path="sales" element={<SalesReport />} />
     </Route>,
 
-    <Route path="/admin/shipments" element={<ShipmentsPage />} />,
-    <Route path="/admin/orders/:id/status" element={<UpdateOrderPage />} />,
-    <Route path="/admin/completed-orders" element={<CompletedOrdersPage />} />,
+    // ===== 🚚 SHIPMENTS & COMPLETED ORDERS (admin guard) =====
+    <Route
+      key="admin-shipments"
+      path="/admin/shipments"
+      element={
+        <ProtectedRoute admin>
+          <ShipmentsPage />
+        </ProtectedRoute>
+      }
+    />,
+    <Route
+      key="admin-order-status-update"
+      path="/admin/orders/:id/status"
+      element={
+        <ProtectedRoute admin>
+          <UpdateOrderPage />
+        </ProtectedRoute>
+      }
+    />,
+    <Route
+      key="admin-completed-orders"
+      path="/admin/completed-orders"
+      element={
+        <ProtectedRoute admin>
+          <CompletedOrdersPage />
+        </ProtectedRoute>
+      }
+    />,
+
+    // ===== 🎟️ COUPONS (admin) =====
+    <Route
+      key="admin-coupons"
+      path="/admin/coupons"
+      element={
+        <ProtectedRoute admin>
+          <CouponsPage />
+        </ProtectedRoute>
+      }
+    />,
   ];
 }

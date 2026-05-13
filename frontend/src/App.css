@@ -7,7 +7,8 @@ body {
   min-height: 100%;
   margin: 0px;
   padding: 0px;
-  overflow-x: hidden;
+  /* ใช้ overflow-x: clip แทน hidden เพื่อให้ position: sticky ทำงาน */
+  overflow-x: clip;
   background: linear-gradient(160deg,
     #fdf8f2 0%,
     #fef6e8 40%,
@@ -130,16 +131,13 @@ nav {
 }
 
 .App {
+  /* ลบ sticky-footer flex pattern เพื่อให้ footer อยู่ท้าย content ตามปกติ
+     ไม่ถูกดันชิด viewport bottom เมื่อหน้าสั้น */
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
 
-/* Footer */
+/* Footer — อยู่ท้าย document ตามธรรมชาติ ไม่ fixed/sticky */
 footer {
-  margin-top: auto;
-  color: grey;
-  bottom: 0;
   width: 100%;
 }
 

@@ -4,13 +4,8 @@ export const blogApi = createApi({
   reducerPath: 'blogApi',
   baseQuery: fetchBaseQuery({
     baseUrl: '/api/v1',
-    prepareHeaders: (headers, { getState }) => {
-      const token = getState().auth?.token || localStorage.getItem('token');
-      if (token) {
-        headers.set('authorization', `Bearer ${token}`);
-      }
-      return headers;
-    },
+    // ✅ ใช้ cookie auth อย่างเดียว (ลบ localStorage token ออก)
+    credentials: 'include',
   }),
   tagTypes: ['Blog', 'Comment'],
   endpoints: (builder) => ({

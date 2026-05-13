@@ -1,9 +1,33 @@
 // controllers/orderController.js
 import catchAsyncErrors from "../middlewares/catchAsyncErrors.js";
 import Order from "../models/orders.js";
-import Product from "../models/product.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import { sendOrderEmail } from "../utils/mailer.js"; // ปรับ path ถ้าจำเป็น
+import { restoreStockBatch } from "../utils/stockManager.js";
+import { assertOwnershipOrAdmin } from "../utils/authHelpers.js";
+import { tryNotifyOrder } from "../utils/mailer.js";
+
+// ✅ Helper: ส่ง email ตาม status (รวม logic เพื่อใช้ได้หลายที่)
+function notifyStatusChange(order, newFulfillmentStatus, note = "") {
+  const userEmail = order.user?.email;
+  if (!userEmail) return;
+
+  let action = null;
+  if (newFulfillmentStatus === "Shipped") action = "shipped";
+  else if (newFulfillmentStatus === "Delivered") action = "delivered";
+  else if (newFulfillmentStatus === "Cancelled") action = "cancelled";
+
+  if (!action) return;
+
+  tryNotifyOrder({
+    to: userEmail,
+    order: order.toObject ? order.toObject() : order,
+    action,
+    lang: order.user?.lang || "la",
+    note,
+  });
+}
+// ⚠️ Product import ถูกย้ายไปใช้ผ่าน stockManager utility แล้ว
 
 // Create new Order => /api/v1/orders/new
 export const newOrder = catchAsyncErrors(async (req, res, next) => {
@@ -23,22 +47,49 @@ export const newOrder = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("orderItems is required and should be a non-empty array", 400));
   }
 
-  const order = await Order.create({
-    orderItems,
-    shippingInfo,
-    itemsPrice,
-    taxAmount,
-    totalAmount,
-    shippingAmount,
-    paymentMethod,
-    paymentInfo,
-    user: req.user._id,
-  });
+  // ✅ ตรวจ + หัก stock ก่อนสร้าง order (เหมือนใน paymentController)
+  const { validateStock, decrementStockBatch } = await import("../utils/stockManager.js");
 
-  res.status(201).json({
-    success: true,
-    order,
-  });
+  const validation = await validateStock(orderItems);
+  if (!validation.ok) {
+    return res.status(409).json({
+      success: false,
+      message: "ສິນຄ້າບໍ່ພຽງພໍ",
+      errors: validation.errors,
+    });
+  }
+
+  const decrementResult = await decrementStockBatch(orderItems);
+  if (!decrementResult.ok) {
+    return res.status(409).json({
+      success: false,
+      message: `ສິນຄ້າ "${decrementResult.error.name}" ບໍ່ພຽງພໍ`,
+      error: decrementResult.error,
+    });
+  }
+
+  try {
+    const order = await Order.create({
+      orderItems,
+      shippingInfo,
+      itemsPrice,
+      taxAmount,
+      totalAmount,
+      shippingAmount,
+      paymentMethod,
+      paymentInfo,
+      user: req.user._id,
+    });
+
+    res.status(201).json({
+      success: true,
+      order,
+    });
+  } catch (err) {
+    // Rollback stock ถ้า Order.create() ล้มเหลว
+    await restoreStockBatch(orderItems);
+    return next(new ErrorHandler(`Failed to create order: ${err.message}`, 500));
+  }
 });
 
 // Get current user orders => /api/v1/me/orders
@@ -63,6 +114,9 @@ export const getOrderDetails = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("No Order Found With This ID", 404));
   }
 
+  // ✅ เจ้าของเท่านั้น (หรือ admin) — กันผู้ใช้คนอื่นเปิดดู order
+  assertOwnershipOrAdmin(order, req.user, "order");
+
   res.status(200).json({
     success: true,
     order,
@@ -70,79 +124,144 @@ export const getOrderDetails = catchAsyncErrors(async (req, res, next) => {
 });
 
 // Get All orders => /api/v1/admin/orders
+// ✅ รองรับ filter + pagination ทั้งหมดผ่าน query params (ทุกอย่าง optional)
+//    ?paymentStatus=AwaitingProof
+//    ?fulfillmentStatus=Shipped
+//    ?paymentMethod=COD
+//    ?q=กฤษ                     (search ในชื่อลูกค้า/orderId)
+//    ?page=1&perPage=20         (pagination)
 export const allOrder = catchAsyncErrors(async (req, res, next) => {
-  const orders = await Order.find();
+  const {
+    paymentStatus,
+    fulfillmentStatus,
+    paymentMethod,
+    q,
+    page,
+    perPage,
+  } = req.query;
 
-  // เปลี่ยนให้คืน empty array แทน 404 — ปลอดภัยกว่าสำหรับ admin endpoint
-  res.status(200).json({
-    success: true,
-    orders: orders || [],
-  });
-});
+  // ────── Build filter ──────
+  const filter = {};
 
-/**
- * Atomic stock update using $inc to avoid race conditions.
- * Ensures stock does not go negative by checking condition in query.
- * If product missing or not enough stock, logs a warning.
- */
-async function updateStockAtomic(productId, quantity) {
-  if (!productId) return;
+  if (paymentStatus) {
+    // รองรับหลายค่าคั่นด้วย comma เช่น ?paymentStatus=Pending,AwaitingProof
+    const list = String(paymentStatus).split(",").map((s) => s.trim()).filter(Boolean);
+    filter.paymentStatus = list.length > 1 ? { $in: list } : list[0];
+  }
 
-  const qty = Number(quantity || 0);
-  if (qty <= 0) return;
+  if (fulfillmentStatus) {
+    const list = String(fulfillmentStatus).split(",").map((s) => s.trim()).filter(Boolean);
+    filter.fulfillmentStatus = list.length > 1 ? { $in: list } : list[0];
+  }
 
-  // Try to decrement stock only if enough stock exists
-  const updated = await Product.findOneAndUpdate(
-    { _id: productId, stock: { $gte: qty } },
-    { $inc: { stock: -qty } },
-    { new: true }
-  );
+  if (paymentMethod) {
+    filter.paymentMethod = paymentMethod;
+  }
 
-  if (!updated) {
-    // Could be missing product or insufficient stock
-    const exists = await Product.exists({ _id: productId });
-    if (!exists) {
-      console.warn(`updateStockAtomic: product not found ${productId}`);
-    } else {
-      console.warn(`updateStockAtomic: insufficient stock for product ${productId} (decrement ${qty})`);
+  // Search — match ใน orderId (suffix) หรือ shippingInfo.address (cheap-ish)
+  if (q && String(q).trim()) {
+    const term = String(q).trim();
+    // escape regex special chars
+    const safe = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(safe, "i");
+    filter.$or = [
+      { "shippingInfo.address": re },
+      { "shippingInfo.phoneNo": re },
+      { trackingCode: re },
+    ];
+    // ถ้าเป็น ObjectId ที่สมบูรณ์ — ค้นใน _id ด้วย
+    if (/^[0-9a-fA-F]{24}$/.test(term)) {
+      filter.$or.push({ _id: term });
     }
   }
-}
+
+  // ────── Pagination (optional, backward compat) ──────
+  const hasPagination = page !== undefined || perPage !== undefined;
+  const pageNum = Math.max(1, Number(page) || 1);
+  const perPageNum = Math.min(200, Math.max(1, Number(perPage) || 50));
+
+  // ────── Query DB ──────
+  let query = Order.find(filter).sort({ createdAt: -1 });
+  let total = null;
+
+  if (hasPagination) {
+    total = await Order.countDocuments(filter);
+    query = query.skip((pageNum - 1) * perPageNum).limit(perPageNum);
+  }
+
+  const orders = await query.populate("user", "name email").exec();
+
+  // ────── Response (เพิ่ม metadata เฉพาะตอนใช้ pagination) ──────
+  const response = {
+    success: true,
+    orders: orders || [],
+  };
+  if (hasPagination) {
+    response.total = total;
+    response.page = pageNum;
+    response.perPage = perPageNum;
+    response.totalPages = Math.ceil(total / perPageNum);
+  }
+
+  res.status(200).json(response);
+});
+
+// ⚠️ updateStockAtomic ถูกย้ายไป utils/stockManager.js แล้ว
+//    (ใช้ decrementStockBatch / restoreStockBatch แทน)
 
 // Get Update orders - Admin => /api/v1/admin/orders/:id
 export const updateOrder = catchAsyncErrors(async (req, res, next) => {
-  const order = await Order.findById(req.params.id);
+  // populate user เพื่อส่ง email
+  const order = await Order.findById(req.params.id).populate("user", "name email lang");
 
   if (!order) {
     return next(new ErrorHandler("No Order Found With This ID", 404));
   }
 
-  // Validate requested status
-  const newStatus = req.body.status;
+  // ✅ รับได้ทั้ง fulfillmentStatus (ใหม่) และ status (เก่า — backward compat)
+  const newStatus = req.body.fulfillmentStatus || req.body.status;
   if (!newStatus) {
-    return next(new ErrorHandler("No status provided", 400));
+    return next(new ErrorHandler("No fulfillmentStatus provided", 400));
   }
 
-  if (order.orderStatus === "Delivered") {
+  const VALID_STATUSES = ["Unfulfilled", "Processing", "Shipped", "Delivered", "Cancelled", "Returned"];
+  if (!VALID_STATUSES.includes(newStatus)) {
+    return next(new ErrorHandler(`Invalid status: ${newStatus}`, 400));
+  }
+
+  // ✅ ใช้ fulfillmentStatus เป็นหลักในการเช็ค (virtual ครอบคลุมทั้ง legacy)
+  const currentStatus = order.fulfillmentStatus || order.status;
+
+  if (currentStatus === "Delivered") {
     return next(new ErrorHandler("You have already Delivered this order", 400));
   }
 
-  // If changing to Delivered, update stock (atomic)
-  if (newStatus === "Delivered" && order.orderStatus !== "Delivered") {
-    for (const item of order.orderItems) {
-      // item.product may be ObjectId, ensure string id
-      await updateStockAtomic(String(item.product), item.quantity);
-    }
+  // ✅ Stock ถูกหักไปแล้วตั้งแต่ตอนสร้าง order — ตอน Delivered แค่บันทึกเวลา
+  if (newStatus === "Delivered" && currentStatus !== "Delivered") {
     order.deliveredAt = Date.now();
   }
 
-  // Update order status
-  order.orderStatus = newStatus;
+  if (newStatus === "Shipped" && currentStatus !== "Shipped") {
+    order.shippedAt = Date.now();
+  }
+
+  // ✅ ถ้าเปลี่ยนเป็น Cancelled → คืน stock กลับ (ยังไม่เคย cancel มาก่อน)
+  if (newStatus === "Cancelled" && currentStatus !== "Cancelled") {
+    await restoreStockBatch(order.orderItems);
+    order.cancelledAt = Date.now();
+  }
+
+  // ✅ ใช้ fulfillmentStatus — pre-save hook จะ sync orderStatus + shipmentStatus เอง
+  order.fulfillmentStatus = newStatus;
 
   await order.save();
 
+  // ✅ Send email notification (fire-and-forget)
+  notifyStatusChange(order, newStatus);
+
   res.status(200).json({
     success: true,
+    fulfillmentStatus: order.fulfillmentStatus,
   });
 });
 
@@ -155,13 +274,15 @@ export const confirmOrder = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("No Order Found With This ID", 404));
   }
 
-  if (order.orderStatus === "Delivered") {
+  const currentStatus = order.fulfillmentStatus || order.status;
+  if (currentStatus === "Delivered") {
     return next(new ErrorHandler("This order has already been delivered", 400));
   }
 
   // Mark paid
   order.isPaid = true;
   order.paidAt = Date.now();
+  order.paymentStatus = "Paid";
 
   // Merge/override paymentInfo if provided
   order.paymentInfo = Object.assign({}, order.paymentInfo || {}, {
@@ -170,13 +291,13 @@ export const confirmOrder = catchAsyncErrors(async (req, res, next) => {
     transactionId: req.body.transactionId || (order.paymentInfo && order.paymentInfo.transactionId) || null,
   });
 
-  // Optionally record who confirmed (if you have schema field confirmedBy)
+  // Optionally record who confirmed
   if (req.user && req.user._id) {
     order.confirmedBy = req.user._id;
   }
 
-  // Set orderStatus (default Processing)
-  order.orderStatus = req.body.orderStatus || "Processing";
+  // ✅ ใช้ fulfillmentStatus — pre-save hook จะ sync orderStatus + shipmentStatus เอง
+  order.fulfillmentStatus = req.body.fulfillmentStatus || req.body.orderStatus || "Processing";
 
   await order.save();
 
@@ -209,10 +330,21 @@ export const deleteOrder = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("No Order Found With This ID", 404));
   }
 
+  // ✅ คืน stock กลับเฉพาะ order ที่ยังไม่ Delivered/Cancelled (ป้องกันการคืนซ้ำ)
+  //    ใช้ fulfillmentStatus + virtual `status` (รองรับ orders เก่าที่ยังไม่มี fulfillmentStatus)
+  const currentStatus = order.fulfillmentStatus || order.status;
+  const alreadyReleased = currentStatus === "Cancelled" || currentStatus === "Delivered";
+  if (!alreadyReleased) {
+    await restoreStockBatch(order.orderItems);
+  }
+
   await order.deleteOne();
 
   res.status(200).json({
     success: true,
+    message: alreadyReleased
+      ? "Order deleted (no stock change)."
+      : "Order deleted and stock restored.",
   });
 });
 
@@ -334,6 +466,8 @@ export const getSales = catchAsyncErrors(async (req, res, next) => {
     sales: saleData,
   });
 });
+// ⚠️ DEPRECATED — endpoint นี้ไม่ถูกใช้แล้ว (เก็บไว้ backward-compat)
+//    ใช้ attachPaymentProof จาก paymentProofController.js แทน
 export const uploadOrderProof = async (req, res) => {
   try {
     if (!req.file) {
@@ -347,6 +481,11 @@ export const uploadOrderProof = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
+    }
+
+    // ✅ ตรวจสิทธิ์: เฉพาะเจ้าของ order เท่านั้น
+    if (!req.user || order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized to upload proof for this order" });
     }
 
     // push หลักฐานใหม่เข้า array
@@ -373,20 +512,115 @@ export const uploadOrderProof = async (req, res) => {
   }
 };
 
-// backend/controllers/orderController.js
-export const updateOrderStatus = catchAsyncErrors(async (req, res, next) => {
-  const { orderStatus, shipmentStatus, trackingCode } = req.body;
-  const order = await Order.findById(req.params.id);
+/**
+ * ✅ Cancel order by USER (เจ้าของเท่านั้น) → POST /api/v1/orders/:id/cancel
+ *    - อนุญาตให้ยกเลิกได้เฉพาะตอนที่ยังไม่ Shipped
+ *    - คืน stock อัตโนมัติ
+ *    - บันทึก cancelReason + cancelledAt
+ */
+export const cancelMyOrder = catchAsyncErrors(async (req, res, next) => {
+  const order = await Order.findById(req.params.id).populate("user", "name email lang");
   if (!order) return next(new ErrorHandler("Order not found", 404));
 
-  if (orderStatus) order.orderStatus = orderStatus;
-  if (shipmentStatus) {
-    order.shipmentStatus = shipmentStatus;
-    if (shipmentStatus === "shipped") order.shippedAt = new Date();
-    if (shipmentStatus === "delivered") order.deliveredAt = new Date();
+  // ✅ ตรวจสิทธิ์: เจ้าของเท่านั้น (admin ใช้ updateOrder/updateOrderStatus)
+  //    user เป็น populated object หลัง populate — เปรียบเทียบ _id
+  const ownerId = order.user?._id?.toString?.() || order.user?.toString?.();
+  if (ownerId !== req.user._id.toString()) {
+    return next(new ErrorHandler("You are not authorized to cancel this order", 403));
   }
-  if (trackingCode) order.trackingCode = trackingCode;
+
+  // ตรวจสถานะ: ยกเลิกได้เฉพาะก่อน Shipped
+  const currentStatus = order.fulfillmentStatus || order.status;
+  const cancellable = ["Unfulfilled", "Processing"];
+
+  if (!cancellable.includes(currentStatus)) {
+    return next(
+      new ErrorHandler(
+        `ບໍ່ສາມາດຍົກເລີກໄດ້ — ສະຖານະປະຈຸບັນ "${currentStatus}". ກະລຸນາຕິດຕໍ່ຝ່າຍຊ່ວຍເຫຼືອ.`,
+        400
+      )
+    );
+  }
+
+  // ห้ามยกเลิกถ้าเงินจ่ายแล้ว (Paid) — ต้อง refund flow ของ admin
+  if (order.paymentStatus === "Paid") {
+    return next(
+      new ErrorHandler(
+        "ບໍ່ສາມາດຍົກເລີກອໍເດີທີ່ຈ່າຍເງິນແລ້ວ ກະລຸນາຕິດຕໍ່ຝ່າຍຊ່ວຍເຫຼືອເພື່ອຂໍຄືນເງິນ",
+        400
+      )
+    );
+  }
+
+  // ✅ คืน stock + เปลี่ยนสถานะ
+  await restoreStockBatch(order.orderItems);
+
+  order.fulfillmentStatus = "Cancelled";
+  order.cancelReason = req.body.reason || "ຍົກເລີກໂດຍລູກຄ້າ";
+  order.cancelledAt = new Date();
+
+  // ถ้า Pending → mark Rejected เพื่อความชัดเจน (ไม่ใช่ Refunded เพราะยังไม่จ่าย)
+  if (order.paymentStatus === "Pending" || order.paymentStatus === "AwaitingProof") {
+    order.paymentStatus = "Rejected";
+  }
 
   await order.save();
+
+  // ✅ Send cancellation email (fire-and-forget)
+  notifyStatusChange(order, "Cancelled", order.cancelReason);
+
+  res.status(200).json({
+    success: true,
+    message: "ຍົກເລີກອໍເດີສຳເລັດ ສິນຄ້າຄືນສາງແລ້ວ",
+    order,
+  });
+});
+
+// backend/controllers/orderController.js
+// ✅ Endpoint นี้รองรับทั้ง fulfillmentStatus (ใหม่) และ orderStatus + shipmentStatus (เก่า)
+//    — pre-save hook จะ sync ทั้ง 3 ฟิลด์ให้สอดคล้องกัน
+export const updateOrderStatus = catchAsyncErrors(async (req, res, next) => {
+  const { orderStatus, shipmentStatus, fulfillmentStatus, trackingCode } = req.body;
+  const order = await Order.findById(req.params.id).populate("user", "name email lang");
+  if (!order) return next(new ErrorHandler("Order not found", 404));
+
+  const currentStatus = order.fulfillmentStatus || order.status;
+
+  // ตัดสินใจ status ใหม่ที่จะใช้ (priority: fulfillmentStatus > orderStatus > derive)
+  let newStatus = fulfillmentStatus || null;
+  if (!newStatus && orderStatus) {
+    newStatus = orderStatus; // legacy
+  }
+
+  const isBecomingCancelled =
+    newStatus === "Cancelled" && currentStatus !== "Cancelled";
+
+  // ✅ ใช้ fulfillmentStatus เป็นหลัก — pre-save hook sync ฟิลด์อื่นเอง
+  if (newStatus) {
+    order.fulfillmentStatus = newStatus;
+    if (newStatus === "Shipped") order.shippedAt = order.shippedAt || new Date();
+    if (newStatus === "Delivered") order.deliveredAt = order.deliveredAt || new Date();
+  }
+  // กรณีส่งแค่ shipmentStatus (legacy) — pre-save hook จะ derive fulfillmentStatus
+  else if (shipmentStatus) {
+    order.shipmentStatus = shipmentStatus;
+    if (shipmentStatus === "shipped") order.shippedAt = order.shippedAt || new Date();
+    if (shipmentStatus === "delivered") order.deliveredAt = order.deliveredAt || new Date();
+  }
+
+  if (trackingCode) order.trackingCode = trackingCode;
+
+  if (isBecomingCancelled) {
+    await restoreStockBatch(order.orderItems);
+    order.cancelledAt = new Date();
+  }
+
+  await order.save();
+
+  // ✅ Send email notification (fire-and-forget) — ใช้ค่าใหม่หลัง save
+  if (newStatus) {
+    notifyStatusChange(order, newStatus);
+  }
+
   res.status(200).json({ success: true, order });
 });

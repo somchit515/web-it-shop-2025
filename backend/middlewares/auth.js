@@ -16,11 +16,17 @@ const STAFF_ROLES  = ["admin", "superAdmin", "moderator"];
 export const isAuthenticatedUser = catchAsyncErrors(async (req, res, next) => {
   let token;
 
+  // 1. ກວດເຊັກຈາກ Authorization Header (Bearer Token)
   if (req.headers.authorization?.startsWith("Bearer")) {
     token = req.headers.authorization.split(" ")[1];
-  } else if (req.cookies?.token) {
+  } 
+  // 2. ກວດເຊັກຈາກ Cookies (ສຳຄັນ: ຕ້ອງຕົງກັບຊື່ທີ່ຕັ້ງໃນ sendToken.js)
+  else if (req.cookies?.token) {
     token = req.cookies.token;
   }
+
+  // Debug: ເບິ່ງວ່າ Token ມາຮອດ Backend ບໍ່? (ລຶບອອກຕອນ Production)
+  // console.log("Token received:", token);
 
   if (!token) {
     return next(new ErrorHandler("ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ", 401));
@@ -28,7 +34,8 @@ export const isAuthenticatedUser = catchAsyncErrors(async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user    = await User.findById(decoded.id);
+    // 🛑 ແນະນຳ: ໃຊ້ .select("-password") ເພື່ອບໍ່ໃຫ້ດຶງ Password ອອກມາເກັບໃນ req.user
+    const user = await User.findById(decoded.id).select("-password");
 
     if (!user) {
       return next(new ErrorHandler("ຜູ້ໃຊ້ສຳລັບ token ນີ້ບໍ່ມີອີກຕໍ່ໄປ", 401));
@@ -36,7 +43,7 @@ export const isAuthenticatedUser = catchAsyncErrors(async (req, res, next) => {
 
     req.user = user;
     next();
-  } catch {
+  } catch (error) {
     return next(new ErrorHandler("Token ບໍ່ຖືກຕ້ອງ ຫຼື ໝົດອາຍຸ. ກະລຸນາ Login ໃໝ່", 401));
   }
 });

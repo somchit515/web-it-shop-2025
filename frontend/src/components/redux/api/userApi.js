@@ -3,13 +3,19 @@ import { setIsAuthenticate, setUser, clearUser } from "../features/userSlice";
 
 export const userApi = createApi({
   reducerPath: "userApi",
-  baseQuery: fetchBaseQuery({ baseUrl: "https://necessary-lian-xxx-1-bf271a33.koyeb.app/api/v1" }),
+  // 🛑 FIX: ເພີ່ມ credentials: "include" ເພື່ອໃຫ້ສົ່ງ Cookie ໄປຫາ Backend (ແກ້ 401 Unauthorized)
+  baseQuery: fetchBaseQuery({ 
+    baseUrl: "http://localhost:8000/api/v1",
+    credentials: "include", 
+  }),
   tagTypes: ["User", "Users"],
 
   endpoints: (builder) => ({
     // ============================
     // 🔹 USER ENDPOINTS
     // ============================
+    
+    // ດຶງຂໍ້ມູນສ່ວນຕົວຂອງຂ້ອຍ (Profile)
     getMe: builder.query({
       query: () => `/me`,
       transformResponse: (result) => result.user,
@@ -21,11 +27,13 @@ export const userApi = createApi({
           dispatch(setUser(data));
           dispatch(setIsAuthenticate(true));
         } catch (error) {
+          // ຖ້າດຶງຂໍ້ມູນບໍ່ໄດ້ (ເຊັ່ນ Token ໝົດອາຍຸ) ໃຫ້ Clear ຂໍ້ມູນ User ອອກ
           dispatch(clearUser());
         }
       },
     }),
 
+    // ອັບເດດຂໍ້ມູນສ່ວນຕົວ
     updateProfile: builder.mutation({
       query(body) {
         return {
@@ -37,6 +45,7 @@ export const userApi = createApi({
       invalidatesTags: ["User"],
     }),
 
+    // ອັບເດດຮູບ Avatar
     uploadAvatar: builder.mutation({
       query(body) {
         return {
@@ -48,6 +57,7 @@ export const userApi = createApi({
       invalidatesTags: ["User"],
     }),
 
+    // ປ່ຽນລະຫັດຜ່ານ
     updatePassword: builder.mutation({
       query(body) {
         return {
@@ -59,6 +69,7 @@ export const userApi = createApi({
       invalidatesTags: ["User"],
     }),
 
+    // ລືມລະຫັດຜ່ານ (ສົ່ງ Email)
     forgotPassword: builder.mutation({
       query(body) {
         return {
@@ -69,6 +80,7 @@ export const userApi = createApi({
       },
     }),
 
+    // ຕັ້ງຄ່າລະຫັດຜ່ານໃໝ່
     resetPassword: builder.mutation({
       query({ token, body }) {
         return {
@@ -83,6 +95,7 @@ export const userApi = createApi({
     // 🔹 ADMIN ENDPOINTS
     // ============================
 
+    // ດຶງລາຍຊື່ຜູ້ໃຊ້ທັງໝົດ (ສຳລັບ Admin)
     getAdminUsers: builder.query({
       query: () => `/admin/users`,
       providesTags: (result) =>
@@ -94,11 +107,13 @@ export const userApi = createApi({
           : [{ type: "Users", id: "LIST" }],
     }),
 
+    // ດຶງຂໍ້ມູນລາຍລະອຽດຂອງຜູ້ໃຊ້ແຕ່ລະຄົນ
     getUsersDetails: builder.query({
       query: (id) => `/admin/users/${id}`,
       providesTags: (result, error, id) => [{ type: "Users", id }],
     }),
 
+    // ອັບເດດຂໍ້ມູນຜູ້ໃຊ້ (ໂດຍ Admin)
     updateUser: builder.mutation({
       query({ id, body }) {
         return {
@@ -113,6 +128,7 @@ export const userApi = createApi({
       ],
     }),
 
+    // ລຶບຜູ້ໃຊ້ (ໂດຍ Admin)
     deleteUser: builder.mutation({
       query: (id) => ({
         url: `/admin/users/${id}`,
@@ -124,7 +140,7 @@ export const userApi = createApi({
       ],
     }),
 
-    // ✅ CREATE USER ENDPOINT (แก้ไข Syntax ให้ถูกต้อง)
+    // ສ້າງຜູ້ໃຊ້ໃໝ່ (ໂດຍ Admin)
     createUser: builder.mutation({
       query: (body) => ({
         url: "/admin/users",
@@ -133,8 +149,8 @@ export const userApi = createApi({
       }),
       invalidatesTags: ["Users"],
     }),
-  }), // ✅ ปิด endpoints: (builder) => ({...}) ตรงนี้
-}); // ✅ ปิด createApi({...}) ตรงนี้
+  }),
+});
 
 // =====================
 // EXPORT HOOKS
@@ -154,5 +170,5 @@ export const {
   useGetUsersDetailsQuery,
   useUpdateUserMutation,
   useDeleteUserMutation,
-  useCreateUserMutation, // ✅ Hook สำหรับสร้างผู้ใช้ใหม่
+  useCreateUserMutation,
 } = userApi;

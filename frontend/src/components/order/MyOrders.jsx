@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import MetaData from "../layout/MetaData";
 import { useDispatch } from "react-redux";
 import { clearCart } from "../redux/features/cartSlice";
+import { clearShippingInfo } from "../redux/features/shippingSlice";
 
 function MyOrders() {
   const { data, isLoading, error, isError, refetch } = useGetMyOrdersQuery();
@@ -24,7 +25,9 @@ function MyOrders() {
     }
 
     if (orderSuccess) {
+      // ✅ เคลียร์ทั้ง cart + shippingInfo เผื่อ user เข้ามาที่หน้านี้โดยตรงหลัง order
       dispatch(clearCart());
+      dispatch(clearShippingInfo());
       (async () => {
         try {
           await refetch();
@@ -304,6 +307,37 @@ function MyOrders() {
                         <span>ອັບໂຫຼດໃບຊຳລະ</span>
                       </Link>
                     )}
+
+                    {/* ✅ Quick cancel hint — ໄປຍົກເລີກໃນໜ້າລາຍລະອຽດ */}
+                    {(() => {
+                      const cur = order.fulfillmentStatus || order.orderStatus;
+                      const showCancel =
+                        ["Unfulfilled", "Processing"].includes(cur) &&
+                        order.paymentStatus !== "Paid";
+                      if (!showCancel) return null;
+                      return (
+                        <Link
+                          to={`/me/orders/${orderId}`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '8px 14px',
+                            background: '#fee2e2',
+                            color: '#b91c1c',
+                            border: '1px solid #fecaca',
+                            borderRadius: 8,
+                            textDecoration: 'none',
+                            fontWeight: 600,
+                            fontSize: '0.85rem',
+                          }}
+                          title="ໄປໜ້າລາຍລະອຽດເພື່ອຍົກເລີກ"
+                        >
+                          <i className="fas fa-ban"></i>
+                          <span>ຍົກເລີກໄດ້</span>
+                        </Link>
+                      );
+                    })()}
                   </div>
                 </div>
               );

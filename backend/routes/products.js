@@ -14,7 +14,8 @@ import {
   deleteProductImage,
   getBestSellingProducts,
   getProductsByCategory,
-  getAllCategories
+  getAllCategories,
+  checkStock
 } from "../controllers/productControllers.js";
 import { authorizeRoles, isAuthenticatedUser } from "../middlewares/auth.js";
 const router = express.Router();
@@ -30,6 +31,9 @@ router
   .route("/admin/products")
   .get(isAuthenticatedUser, authorizeRoles("admin", "superAdmin"), getAdminProducts);
 router.route("/products/:id").get(getProductsDetails);
+
+// ✅ Batch stock check — ใช้ก่อน checkout
+router.route("/products/check-stock").post(checkStock);
 
 router
   .route('/admin/products/:id/upload_images') // หรืออาจจะเป็นชื่ออื่น แต่ต้องตรงกับ Frontend

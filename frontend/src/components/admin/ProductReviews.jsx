@@ -13,6 +13,7 @@ import {
     useLazyGetProductReviewsQuery,
     useDeleteReviewMutation
 } from '../redux/api/productsApi'; // ✅ FIX 2: Corrected import path from 'productsApi' to 'productApi'
+import { confirmDialog } from './_shared/confirmDialog';
 
 function ProductReviews() {
     // State for the Input field (used to capture user input)
@@ -83,12 +84,16 @@ function ProductReviews() {
         }
     };
 
-    const deleteReviewHandler = (id) => {
-        // 💡 NOTE: Should use custom Modal/Dialog instead of window.confirm
-        if (window.confirm("ທ່ານແນ່ໃຈບໍທີ່ຈະລຶບรีวิวນີ້ຢ່າງຖาวອນ?")) {
-            // Call the mutation, passing both review ID and product ID as required by the endpoint
-            deleteReview({ id, productId });
-        }
+    const deleteReviewHandler = async (id) => {
+        const ok = await confirmDialog.show({
+            title: 'ລຶບຄຳຄິດເຫັນ?',
+            message: 'ການກະທຳນີ້ບໍ່ສາມາດຢ້ອນກັບໄດ້',
+            confirmText: 'ລຶບເລີຍ',
+            variant: 'danger',
+            icon: 'fa-comment-slash',
+        });
+        if (!ok) return;
+        deleteReview({ id, productId });
     }
 
     // --- DATA FORMATTER ---

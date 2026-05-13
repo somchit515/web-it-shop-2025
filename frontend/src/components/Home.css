@@ -1,20 +1,66 @@
 /* src/components/Home.css */
 
 /* =========================================
+   0. Design Tokens (ตัวแปรกลาง)
+   ========================================= */
+:root {
+  /* ===== Pearl + Sky + Lavender Palette (Tech Premium) ===== */
+  /* Base — pearl white โทนเย็นนิดๆ */
+  --color-bg-1: #f8fbff;       /* ฟ้าขาวอ่อน */
+  --color-bg-2: #f4f6fb;       /* เทาฟ้าอ่อน */
+  --color-bg-3: #fdf6f3;       /* ครีมอุ่นนิดๆ (ปลายล่าง) */
+  --color-surface: #ffffff;    /* ขาวบริสุทธิ์ของการ์ด */
+  --color-surface-soft: #f1f5fb;
+  --color-border: #e6ecf5;
+  --color-border-strong: #c9d4e5;
+
+  /* Text — น้ำเงินเข้มลึก อ่านง่าย */
+  --color-text: #1a2540;
+  --color-text-soft: #3d4a6b;
+  --color-text-muted: #7e8aa6;
+
+  /* Accent — Sky blue หลัก + Coral รอง */
+  --color-primary: #3b82f6;        /* sky blue สด */
+  --color-primary-dark: #2563eb;
+  --color-primary-light: #93c5fd;
+  --color-accent: #f97362;         /* coral อุ่น (ตัดกับฟ้า) */
+  --color-accent-2: #a78bfa;       /* lavender ม่วงนวล */
+
+  /* Effects */
+  --shadow-sm: 0 2px 4px rgba(74, 53, 32, 0.04);
+  --shadow-md: 0 6px 16px rgba(74, 53, 32, 0.08);
+  --shadow-lg: 0 12px 32px rgba(196, 122, 58, 0.18);
+  --shadow-glow: 0 0 0 4px rgba(196, 122, 58, 0.15);
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* Motion */
+  --ease-smooth: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 0.2s;
+  --duration-base: 0.35s;
+  --duration-slow: 0.6s;
+}
+
+/* =========================================
    1. Custom Grid System (สำหรับหมวดหมู่)
    ========================================= */
 .custom-grid-5 {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
-  padding: 5px;
+  gap: 14px;
+  padding: 6px;
 }
 
 /* Tablet (iPad แนวตั้ง) */
 @media (min-width: 768px) {
   .custom-grid-5 {
     grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+    gap: 22px;
   }
 }
 
@@ -22,94 +68,1172 @@
 @media (min-width: 992px) {
   .custom-grid-5 {
     grid-template-columns: repeat(5, 1fr);
+    gap: 24px;
   }
 }
 
 /* =========================================
-   2. Warm Background Theme
+   2. Warm Background Theme + Decorative Layer
    ========================================= */
+/* ทะลุออกจาก .container ของ Bootstrap ให้กว้างเต็มจอ */
 .home-wrapper {
-  width: 100%;
-  max-width: 100%;
-  padding-left: 24px;
-  padding-right: 24px;
-  background: linear-gradient(160deg,
-    #fdf8f2 0%,
-    #fef6e8 40%,
-    #fdf2e9 100%
-  );
+  width: 100vw;
+  max-width: 100vw;
+  /* ดึงตัวเองออกจาก container ที่บีบไว้ */
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: clamp(16px, 4vw, 56px);
+  padding-right: clamp(16px, 4vw, 56px);
+  background:
+    /* Orbs หลากสี — Sky Blue, Lavender, Coral ผสมกัน */
+    radial-gradient(450px circle at 0% 10%,   rgba(147, 197, 253, 0.55) 0%, transparent 60%),  /* sky ซ้ายบน */
+    radial-gradient(420px circle at 100% 12%, rgba(167, 139, 250, 0.45) 0%, transparent 60%),  /* lavender ขวาบน */
+    radial-gradient(380px circle at 5% 55%,   rgba(249, 115, 98, 0.18) 0%, transparent 65%),   /* coral ซ้ายกลาง */
+    radial-gradient(360px circle at 95% 65%,  rgba(147, 197, 253, 0.40) 0%, transparent 65%),  /* sky ขวาล่าง */
+    radial-gradient(circle at 50% 100%,        rgba(167, 139, 250, 0.14) 0%, transparent 55%), /* lavender ล่าง */
+    /* Base — pearl white ไล่เฉดเย็น→อุ่นเล็กน้อย */
+    linear-gradient(160deg,
+      var(--color-bg-1) 0%,
+      var(--color-bg-2) 45%,
+      var(--color-bg-3) 100%
+    );
   min-height: 100vh;
+  color: var(--color-text);
+  position: relative;
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+/* Subtle dotted texture ทั่วทั้งหน้า — สี sky blue อ่อน */
+.home-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(59, 130, 246, 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+  pointer-events: none;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.55), transparent 75%);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.55), transparent 75%);
+  z-index: 0;
+}
+
+/* Decorative blob ขนาดใหญ่ฝั่งขวา — สี lavender นวลๆ */
+.home-wrapper::after {
+  content: "";
+  position: absolute;
+  top: 22%;
+  right: -8vw;
+  width: 28vw;
+  height: 28vw;
+  max-width: 460px;
+  max-height: 460px;
+  background: radial-gradient(circle,
+    rgba(167, 139, 250, 0.22) 0%,
+    rgba(147, 197, 253, 0.12) 45%,
+    transparent 70%);
+  border-radius: 50%;
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: 0;
+  animation: blob-drift 14s ease-in-out infinite alternate;
+}
+
+@keyframes blob-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-30px, 40px) scale(1.08); }
+}
+
+/* บีบ content ภายในให้กว้างพอเหมาะ (อ่านง่ายในจอใหญ่) */
+.home-wrapper > * {
+  position: relative;
+  z-index: 1;
+  max-width: 1480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* แถบ accent บางๆ ฝั่งซ้าย-ขวา — gradient sky→lavender */
+.home-wrapper .home-side-accent {
+  position: absolute;
+  top: 80px;
+  bottom: 80px;
+  width: 3px;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(59, 130, 246, 0.30) 25%,
+    rgba(167, 139, 250, 0.30) 60%,
+    rgba(249, 115, 98, 0.20) 90%,
+    transparent 100%);
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.home-wrapper .home-side-accent.left  { left: 18px; }
+.home-wrapper .home-side-accent.right { right: 18px; }
+
+@media (max-width: 992px) {
+  .home-wrapper .home-side-accent { display: none; }
+  .home-wrapper::after { display: none; }
 }
 
 /* =========================================
-   3. Category Card (การ์ดหมวดหมู่)
+   3. Section Headings
+   ========================================= */
+.section-title {
+  font-weight: 700;
+  font-size: clamp(1.25rem, 2vw + 0.6rem, 1.75rem);
+  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1.25rem;
+  position: relative;
+}
+
+.section-title::before {
+  content: "";
+  width: 6px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, var(--color-primary), var(--color-accent));
+  box-shadow: 0 4px 10px rgba(196, 122, 58, 0.35);
+}
+
+.section-subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  margin-bottom: 1.75rem;
+  margin-left: 18px;
+}
+
+/* =========================================
+   4. Category Card (การ์ดหมวดหมู่)
    ========================================= */
 .category-card {
-  background-color: #fffdf9;
-  border: 1px solid #f0e6d3;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition:
+    transform var(--duration-base) var(--ease-smooth),
+    box-shadow var(--duration-base) var(--ease-smooth),
+    border-color var(--duration-base) var(--ease-smooth);
+  box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
+  cursor: pointer;
+  isolation: isolate;
+}
+
+/* Glow gradient layer (เกิดเมื่อ hover) */
+.category-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg,
+    rgba(232, 165, 116, 0.0) 0%,
+    rgba(232, 165, 116, 0.08) 50%,
+    rgba(196, 122, 58, 0.12) 100%);
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-smooth);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Shimmer line ที่วิ่งผ่านการ์ด */
+.category-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
+  pointer-events: none;
+  z-index: 2;
+  transition: left 0.8s var(--ease-smooth);
 }
 
 /* Hover Effect */
 .category-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 24px rgba(196, 122, 58, 0.15) !important;
-  border-color: #c47a3a;
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: var(--shadow-lg) !important;
+  border-color: var(--color-primary);
   z-index: 2;
 }
 
-/* จัดการรูปภาพในหมวดหมู่ */
+.category-card:hover::before {
+  opacity: 1;
+}
+
+.category-card:hover::after {
+  left: 130%;
+}
+
+/* Focus state สำหรับ accessibility */
+.category-card:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-glow), var(--shadow-md);
+  border-color: var(--color-primary);
+}
+
+/* Active (กดค้าง) */
+.category-card:active {
+  transform: translateY(-2px) scale(0.99);
+  transition-duration: 0.1s;
+}
+
+/* รูปภาพในหมวดหมู่ */
+.category-img-wrapper {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
 .category-img-wrapper img {
-  transition: transform 0.5s ease;
-  filter: grayscale(10%);
+  transition: transform var(--duration-slow) var(--ease-smooth),
+              filter var(--duration-base) ease;
+  filter: grayscale(8%) saturate(0.95);
+  display: block;
+  width: 100%;
 }
 
 /* เมื่อ Hover การ์ด ให้รูปขยาย */
 .category-card:hover .category-img-wrapper img {
-  transform: scale(1.15);
-  filter: grayscale(0%);
+  transform: scale(1.12);
+  filter: grayscale(0%) saturate(1.1);
 }
 
 /* Text Styling */
 .category-card span {
-  color: #6b4c2a;
-  transition: color 0.3s ease;
+  color: var(--color-text-soft);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: color var(--duration-fast) ease;
 }
 
 .category-card:hover span {
-  color: #c47a3a;
+  color: var(--color-primary);
 }
 
 /* =========================================
-   4. Empty State (หน้าไม่พบสินค้า)
+   5. Empty State (หน้าไม่พบสินค้า)
    ========================================= */
+.empty-state {
+  padding: 4rem 1rem;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  max-width: 520px;
+  margin: 2rem auto;
+}
+
 .empty-state-icon {
   font-size: 5rem;
-  color: #e8d5b7;
+  color: var(--color-border-strong);
   margin-bottom: 1.5rem;
   animation: float 3s ease-in-out infinite;
+  display: inline-block;
+  filter: drop-shadow(0 8px 16px rgba(196, 122, 58, 0.18));
+}
+
+.empty-state h4 {
+  color: var(--color-text);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  color: var(--color-text-muted);
+  margin-bottom: 0;
 }
 
 @keyframes float {
-  0%   { transform: translateY(0px); }
-  50%  { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+  0%   { transform: translateY(0px) rotate(0deg); }
+  50%  { transform: translateY(-12px) rotate(-3deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
 }
 
 /* =========================================
-   5. General Tweaks
+   6. Product Cards
    ========================================= */
 #products .card {
   height: 100%;
-  border: 1px solid #f0e6d3;
-  background-color: #fffdf9;
-  transition: transform 0.2s;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  transition:
+    transform var(--duration-base) var(--ease-smooth),
+    box-shadow var(--duration-base) var(--ease-smooth),
+    border-color var(--duration-base) ease;
+  overflow: hidden;
+  position: relative;
+}
+
+#products .card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    var(--color-primary) 0%,
+    var(--color-accent) 50%,
+    var(--color-primary-light) 100%);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--duration-base) var(--ease-smooth);
+  z-index: 3;
 }
 
 #products .card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-primary-light);
+}
+
+#products .card:hover::before {
+  transform: scaleX(1);
+}
+
+#products .card img,
+#products .card .card-img-top {
+  transition: transform var(--duration-slow) var(--ease-smooth);
+}
+
+#products .card:hover img,
+#products .card:hover .card-img-top {
+  transform: scale(1.06);
+}
+
+#products .card .card-body {
+  padding: 1rem 1.1rem;
+}
+
+#products .card .card-title {
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.8em;
+}
+
+#products .card .price {
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+
+/* =========================================
+   7. Buttons (CTA)
+   ========================================= */
+.btn-warm {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 0.65rem 1.4rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  box-shadow: 0 6px 16px rgba(196, 122, 58, 0.28);
+  transition:
+    transform var(--duration-fast) var(--ease-smooth),
+    box-shadow var(--duration-fast) ease,
+    filter var(--duration-fast) ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-warm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(196, 122, 58, 0.38);
+  filter: brightness(1.05);
+  color: #fff;
+}
+
+.btn-warm:active {
+  transform: translateY(0);
+  box-shadow: 0 3px 8px rgba(196, 122, 58, 0.25);
+}
+
+.btn-warm-outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-primary);
+  border-radius: var(--radius-pill);
+  padding: 0.6rem 1.4rem;
+  font-weight: 600;
+  transition: all var(--duration-fast) ease;
+}
+
+.btn-warm-outline:hover {
+  background: var(--color-primary);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* =========================================
+   8. Badges / Chips (ป้ายแท็ก)
+   ========================================= */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--color-surface-soft);
+  color: var(--color-text-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all var(--duration-fast) ease;
+  cursor: pointer;
+}
+
+.chip:hover,
+.chip.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(196, 122, 58, 0.25);
+}
+
+.chip-hot {
+  background: linear-gradient(135deg, #ff7a59, #ffa066);
+  color: #fff;
+  border: none;
+}
+
+/* =========================================
+   9. Skeleton Loading
+   ========================================= */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-soft) 0%,
+    #f5e6d0 50%,
+    var(--color-surface-soft) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: var(--radius-sm);
+  min-height: 16px;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* =========================================
+   10. Scroll-to-top Button
+   ========================================= */
+.scroll-top {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  transition: all var(--duration-base) var(--ease-smooth);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 999;
+}
+
+.scroll-top.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.scroll-top:hover {
+  background: var(--color-primary-dark);
   transform: translateY(-3px);
-  box-shadow: 0 4px 15px rgba(196, 122, 58, 0.12);
+  box-shadow: var(--shadow-lg);
+}
+
+/* =========================================
+   11. Smooth scrolling + reduced motion
+   ========================================= */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =========================================
+   13. Category Page (Breadcrumb + Header)
+   ========================================= */
+.cat-breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.cat-breadcrumb-item {
+  color: var(--color-text-soft);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  transition: color var(--duration-fast) ease;
+}
+
+.cat-breadcrumb-item:hover {
+  color: var(--color-primary);
+}
+
+.cat-breadcrumb-item.active {
+  color: var(--color-text);
+  font-weight: 700;
+  cursor: default;
+}
+
+.cat-breadcrumb-sep {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+}
+
+.cat-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+  padding: 20px 24px;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.85) 0%,
+    rgba(241, 245, 251, 0.7) 100%);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.cat-page-title {
+  margin-bottom: 0.4rem !important;
+}
+
+/* =========================================
+   14. Product Detail Page
+   ========================================= */
+.pd-card {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(241, 245, 251, 0.85) 100%);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 28px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .pd-card { padding: 18px; }
+}
+
+/* ----- Image Gallery ----- */
+.pd-img-main {
+  background: #fff;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 380px;
+  overflow: hidden;
+}
+
+.pd-img-main img {
+  max-width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  transition: transform 0.4s var(--ease-smooth);
+}
+
+.pd-img-main:hover img {
+  transform: scale(1.05);
+}
+
+.pd-thumbs {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.pd-thumb {
+  width: 78px;
+  height: 78px;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--color-border);
+  background: #fff;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.pd-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.pd-thumb:hover {
+  border-color: var(--color-primary-light);
+  transform: translateY(-2px);
+}
+
+.pd-thumb.active {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+/* ----- Product Info ----- */
+.pd-title {
+  font-size: clamp(1.3rem, 1.8vw + 0.5rem, 1.8rem);
+  font-weight: 800;
+  color: var(--color-text);
+  line-height: 1.3;
+  margin: 0 0 8px;
+}
+
+.pd-sku {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin: 0 0 16px;
+}
+
+.pd-sku span {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--color-surface-soft);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--color-text-soft);
+  font-size: 0.78rem;
+}
+
+.pd-rating {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 16px;
+}
+
+.pd-rating-count {
+  color: var(--color-text-soft);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ----- Price Box ----- */
+.pd-price-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: linear-gradient(135deg,
+    rgba(59, 130, 246, 0.08) 0%,
+    rgba(167, 139, 250, 0.08) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.pd-price {
+  font-size: clamp(1.5rem, 2vw + 0.5rem, 2rem);
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  letter-spacing: -0.5px;
+}
+
+.pd-stock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.pd-stock.in {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.pd-stock.out {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+/* ----- Quantity + Cart ----- */
+.pd-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: stretch;
+  margin-bottom: 20px;
+}
+
+.pd-qty {
+  display: inline-flex;
+  align-items: center;
+  background: #fff;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.pd-qty button {
+  width: 42px;
+  height: 46px;
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background var(--duration-fast) ease;
+}
+
+.pd-qty button:hover:not(:disabled) {
+  background: var(--color-surface-soft);
+}
+
+.pd-qty button:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.pd-qty input {
+  width: 60px;
+  height: 46px;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  text-align: center;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-text);
+  background: transparent;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.pd-qty input::-webkit-outer-spin-button,
+.pd-qty input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pd-cart-btn {
+  flex: 1;
+  min-width: 200px;
+  justify-content: center;
+  font-size: 1rem;
+  padding: 12px 24px;
+}
+
+.pd-cart-btn:disabled {
+  background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* ----- Meta ----- */
+.pd-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-soft);
+  font-size: 0.9rem;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.pd-meta strong {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* ----- Description ----- */
+.pd-desc {
+  white-space: pre-wrap;
+  color: var(--color-text-soft);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* =========================================
+   15. Search Result Header (glass card)
+   ========================================= */
+.search-result-header {
+  margin-top: 1rem;
+}
+
+.search-result-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 24px;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(241, 245, 251, 0.78) 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.search-result-header-inner::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-accent-2) 50%, var(--color-accent) 100%);
+}
+
+.search-result-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.search-result-icon-box {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent-2));
+  color: white;
+  border-radius: var(--radius-md);
+  font-size: 1.2rem;
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.32);
+  flex-shrink: 0;
+}
+
+.search-result-title {
+  font-size: clamp(1.1rem, 1.5vw + 0.4rem, 1.4rem);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 4px 0;
+  line-height: 1.3;
+}
+
+.search-keyword {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+}
+
+.search-result-sub {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.search-result-sub strong {
+  color: var(--color-primary);
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+/* =========================================
+   16. Filters Glass Sidebar
+   ========================================= */
+.filters-glass-wrapper {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(241, 245, 251, 0.82) 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.filters-glass-wrapper::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg,
+    var(--color-primary) 0%,
+    var(--color-accent-2) 50%,
+    var(--color-accent) 100%);
+}
+
+/* Reset the inner Filters border */
+.filters-glass-wrapper .filter,
+.filters-glass-wrapper .border {
+  border: none !important;
+  padding: 0 !important;
+  background: transparent;
+}
+
+.filters-glass-wrapper h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--color-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filters-glass-wrapper h3::before {
+  content: "\f0b0"; /* fa-filter */
+  font-family: "Font Awesome 6 Free", "Font Awesome 5 Free";
+  font-weight: 900;
+  color: var(--color-primary);
+  font-size: 0.9rem;
+}
+
+.filters-glass-wrapper h5 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filters-glass-wrapper h5::before {
+  content: "";
+  width: 4px;
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--color-primary), var(--color-accent-2));
+}
+
+.filters-glass-wrapper hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-border-strong), transparent);
+  margin: 14px 0;
+  opacity: 0.7;
+}
+
+.filters-glass-wrapper .btn-outline-secondary {
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-border-strong);
+  color: var(--color-text-soft);
+  font-weight: 600;
+  font-size: 0.78rem;
+  padding: 4px 12px;
+  transition: all var(--duration-fast) ease;
+}
+
+.filters-glass-wrapper .btn-outline-secondary:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+}
+
+.filters-glass-wrapper .form-control {
+  background: white;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  padding: 8px 10px;
+  color: var(--color-text);
+  transition: all var(--duration-fast) ease;
+}
+
+.filters-glass-wrapper .form-control:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  outline: none;
+}
+
+.filters-glass-wrapper .btn-primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transition: all var(--duration-fast) ease;
+}
+
+.filters-glass-wrapper .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45);
+  filter: brightness(1.05);
+}
+
+.filters-glass-wrapper .form-check {
+  padding: 6px 8px 6px 30px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  transition: background var(--duration-fast) ease;
+  cursor: pointer;
+}
+
+.filters-glass-wrapper .form-check:hover {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.filters-glass-wrapper .form-check-input {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--color-border-strong);
+  cursor: pointer;
+  margin-left: -22px;
+  margin-top: 0.25rem;
+  transition: all var(--duration-fast) ease;
+}
+
+.filters-glass-wrapper .form-check-input:checked {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);
+}
+
+.filters-glass-wrapper .form-check-input:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.filters-glass-wrapper .form-check-label {
+  color: var(--color-text-soft);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-transform: capitalize;
+  user-select: none;
+}
+
+.filters-glass-wrapper .form-check-input:checked + .form-check-label {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* =========================================
+   17. Recommended divider
+   ========================================= */
+.recommended-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 1.75rem;
+  margin-top: 1rem;
+}
+
+.recommended-divider::before,
+.recommended-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-border-strong), transparent);
+}
+
+.recommended-divider span {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-text);
+  padding: 8px 18px;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(241, 245, 251, 0.78) 100%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+  letter-spacing: 0.3px;
+  position: relative;
+}
+
+.recommended-divider span::before {
+  content: "✨";
+  margin-right: 6px;
+}
+
+/* =========================================
+   12. Responsive Polish
+   ========================================= */
+@media (max-width: 576px) {
+  .home-wrapper {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .section-title {
+    font-size: 1.15rem;
+  }
+
+  .section-subtitle {
+    font-size: 0.85rem;
+  }
 }

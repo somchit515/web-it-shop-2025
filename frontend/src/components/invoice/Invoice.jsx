@@ -172,19 +172,16 @@ function Invoice() {
                   </tr>
                 ))}
 
-                {/* Price Details - Translated Labels */}
+                {/* ✅ Inclusive Tax Model — ใบกำกับภาษีถูกต้องตามมาตรฐานลาว
+                    - ลาคาสินค้า (รวม VAT) — ที่ลูกค้าจ่ายจริง
+                    - ค่าขนส่ง
+                    - ลวมทั้งหมด = ลาคาสินค้า + ค่าขนส่ง
+                    - หมายเหตุ: VAT 10% ที่ฝังอยู่ในลาคา = X */}
                 <tr>
                   <td colSpan="4">
-                    <b>ລວມລາຄາສິນຄ້າທັງໝົດ</b>
+                    <b>ລາຄາສິນຄ້າ (ລວມ VAT)</b>
                   </td>
                   <td className="total">{formatCurrency(itemsPrice)}</td>
-                </tr>
-
-                <tr>
-                  <td colSpan="4">
-                    <b>ອມພ (ອາກອນມູນຄ່າເພີ່ມ)</b>
-                  </td>
-                  <td className="total">{formatCurrency(taxAmount)}</td>
                 </tr>
 
                 <tr>
@@ -199,6 +196,16 @@ function Invoice() {
                     <b>ລວມລາຄາທັງໝົດ</b>
                   </td>
                   <td className="grand total">{formatCurrency(totalAmount)}</td>
+                </tr>
+
+                {/* แสดง VAT แยกเพื่อ compliance — ไม่บวกใน total */}
+                <tr style={{ background: '#f9fafb' }}>
+                  <td colSpan="4" style={{ fontStyle: 'italic', color: '#6b7280' }}>
+                    ★ ອມພ (VAT 10%) ທີ່ລວມໃນລາຄາສິນຄ້າແລ້ວ
+                  </td>
+                  <td style={{ fontStyle: 'italic', color: '#6b7280' }}>
+                    {formatCurrency(taxAmount)}
+                  </td>
                 </tr>
               </tbody>
             </table>

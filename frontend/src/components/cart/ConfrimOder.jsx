@@ -4,6 +4,7 @@ import MetaData from '../layout/MetaData';
 import { Link, useNavigate } from 'react-router-dom';
 import CheckoutStep from './CheckoutStep';
 import { motion } from 'framer-motion';
+import { calculateShippingFee } from '../../constans/shipping';
 import '../cart/ConfirmOrder.css';
 
 function ConfirmOrder() {
@@ -15,14 +16,21 @@ function ConfirmOrder() {
   const { cartItems = [] } = useSelector((state) => state.cart || {});
 
   // ------------------- CALCULATIONS -------------------
+  // ✅ Inclusive Tax + Carrier-based shipping (shared with PaymentMethod)
+  const TAX_RATE = 0.10;
+
   const itemsPrice = cartItems.reduce(
     (acc, item) => acc + Number(item.price || 0) * Number(item.quantity || 0),
     0
   );
 
-  const shippingPrice = itemsPrice > 1000 ? 0 : 10;
-  const taxPrice = 0.10 * itemsPrice;
-  const totalPrice = itemsPrice + shippingPrice + taxPrice;
+  // ค่าขนส่งคำนวณจาก carrier ที่เลือก
+  const { fee: shippingPrice, isFree: isFreeShipping } = calculateShippingFee(
+    shippingInfo.shippingCarrierCode,
+    itemsPrice
+  );
+  const taxPrice = Math.round(itemsPrice - itemsPrice / (1 + TAX_RATE));
+  const totalPrice = itemsPrice + shippingPrice;
 
   // NEW: Shipping carrier info
   const shippingCarrier = shippingInfo.shippingCarrier || 'ບໍ່ໄດ້ເລືອກ';
@@ -207,18 +215,13 @@ function ConfirmOrder() {
                         )}
                       </span>
                     </div>
-                    
-                    <div className="price-row">
-                      <span className="price-label">ພາສີ (10%)</span>
-                      <span className="price-value">{formatKip(taxPrice)}</span>
-                    </div>
 
-                    <div className="price-row discount-row">
-                      <span className="price-label">ສ່ວນລົດຄ່າຂົນສົ່ງ</span>
-                      <span className="price-value">
-                        {itemsPrice > 1000 ? '-₭ 10.00' : '-₭ 0.00'}
-                      </span>
-                    </div>
+                    {isFreeShipping && shippingPrice === 0 && (
+                      <div className="price-row discount-row">
+                        <span className="price-label">ສ່ວນລົດຄ່າຂົນສົ່ງ</span>
+                        <span className="price-value">ຟຣີ ✨</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="summary-divider"></div>
@@ -228,10 +231,22 @@ function ConfirmOrder() {
                     <span className="total-value">{formatKip(totalPrice)}</span>
                   </div>
 
+                  {/* ✅ ภาษีรวมในราคาแล้ว — แสดงเป็น informational */}
+                  <div
+                    style={{
+                      marginTop: 6,
+                      fontSize: '0.78rem',
+                      color: '#94a3b8',
+                      textAlign: 'right',
+                    }}
+                  >
+                    ★ ລາຄາລວມພາສີ 10% ແລ້ວ (VAT {formatKip(taxPrice)})
+                  </div>
+
                   <div className="savings-info">
-                    {itemsPrice > 1000 && (
+                    {isFreeShipping && (
                       <div className="savings-badge">
-                        <span>🎉 ທ່ານປະຫຍັດຄ່າຂົນສົ່ງ {formatKip(10)}</span>
+                        <span>🎉 ທ່ານໄດ້ຮັບສ່ວນຫຼຸດຄ່າຂົນສົ່ງ</span>
                       </div>
                     )}
                   </div>

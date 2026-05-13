@@ -1,40 +1,103 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import MetaData from '../layout/MetaData';
 import CheckoutStep from './CheckoutStep';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { clearCart } from '../redux/features/cartSlice';
+import { clearShippingInfo } from '../redux/features/shippingSlice';
+import { useCheckStockMutation } from '../redux/api/productsApi';
+import { useValidateCouponMutation } from '../redux/api/couponApi';
+import { calculateShippingFee } from '../../constans/shipping';
 import './PaymentMethod.css';
 
 export default function PaymentMethod() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [method, setMethod] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBankDetails, setShowBankDetails] = useState(false);
 
   const { cartItems = [] } = useSelector(state => state.cart || {});
   const { shippingInfo = {} } = useSelector(state => state.shipping || {});
+  const [checkStock] = useCheckStockMutation();
+  const [validateCouponApi, { isLoading: validatingCoupon }] = useValidateCouponMutation();
+
+  // ✅ Coupon state
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null); // {code, type, value, discountAmount}
+
+  // ✅ Idempotency key — UUID ที่คงที่ตลอด session ของ component นี้
+  //    ถ้า double-click หรือ network retry → ส่ง key เดิม → backend คืน order เดิม
+  //    ถ้า user navigate ออกแล้วกลับมา → mount ใหม่ → key ใหม่
+  const idempotencyKeyRef = useRef(null);
+  if (!idempotencyKeyRef.current) {
+    idempotencyKeyRef.current =
+      (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  }
 
   // --- totals calculation (memoized) ---
-const totals = useMemo(() => {
-  const itemsPriceGross = cartItems.reduce(
-    (s, i) => s + Number(i.price || 0) * Number(i.quantity || 0),
-    0
-  );
+  const totals = useMemo(() => {
+    const TAX_RATE = 0.10;
 
-  const itemsPriceNet = Math.round(itemsPriceGross / 1.1); // ราคาหักภาษีแล้ว
-  const taxAmount = itemsPriceGross - itemsPriceNet;       // ภาษีที่แยกออกมา
-  const shippingAmount = itemsPriceGross > 1000000 ? 0 : 20000;
-  const totalAmount = itemsPriceGross + shippingAmount;
+    const itemsPrice = cartItems.reduce(
+      (s, i) => s + Number(i.price || 0) * Number(i.quantity || 0),
+      0
+    );
 
-  return {
-    itemsPrice: itemsPriceGross, // แสดงราคาเดิม
-    shippingAmount,
-    taxAmount,                   // เก็บไว้ส่ง backend หากต้องการ
-    totalAmount,
+    const itemsPriceExVat = itemsPrice / (1 + TAX_RATE);
+    const taxAmount = Math.round(itemsPrice - itemsPriceExVat);
+
+    const carrierCode = shippingInfo.shippingCarrierCode;
+    const { fee: shippingAmount, isFree, carrier } = calculateShippingFee(
+      carrierCode,
+      itemsPrice
+    );
+
+    // ✅ Apply coupon discount
+    const discountAmount = appliedCoupon?.discountAmount || 0;
+    const totalAmount = Math.max(0, itemsPrice + shippingAmount - discountAmount);
+
+    return {
+      itemsPrice,
+      shippingAmount,
+      taxAmount,
+      discountAmount,
+      totalAmount,
+      isFreeShipping: isFree,
+      carrierName: carrier?.name,
+    };
+  }, [cartItems, shippingInfo.shippingCarrierCode, appliedCoupon]);
+
+  // ✅ Apply coupon handler
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return toast.error('ກະລຸນາໃສ່ລະຫັດ');
+    try {
+      const res = await validateCouponApi({
+        code: couponInput.trim(),
+        itemsPrice: totals.itemsPrice,
+      }).unwrap();
+      if (res.valid) {
+        setAppliedCoupon({
+          code: res.coupon.code,
+          type: res.coupon.type,
+          value: res.coupon.value,
+          discountAmount: res.discountAmount,
+        });
+        toast.success(`ໃຊ້ລະຫັດ ${res.coupon.code} ສຳເລັດ! ປະຫຍັດ ${res.discountAmount.toLocaleString()} ກີບ`);
+      }
+    } catch (err) {
+      toast.error(err?.data?.message || 'ລະຫັດສ່ວນຫຼຸດໃຊ້ບໍ່ໄດ້');
+    }
   };
-}, [cartItems]);
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+  };
 
   useEffect(() => {
     if (!cartItems || cartItems.length === 0) {
@@ -42,8 +105,6 @@ const totals = useMemo(() => {
       // navigate('/');
     }
   }, [cartItems]);
-
-  const token = localStorage.getItem('token');
 
   const formatKip = (v) => {
     try {
@@ -58,8 +119,39 @@ const totals = useMemo(() => {
     if (isSubmitting) return;
     if (!method) return toast.error('ກະລຸນາເລືອກວິທີການຊໍາລະ');
     if (!shippingInfo || Object.keys(shippingInfo).length === 0) return toast.error('ຂໍ້ມູນການຂົນສົ່ງຂາດຫາຍ');
+    if (!cartItems || cartItems.length === 0) return toast.error('ກະຕ່າຫວ່າງເປົ່າ');
 
     setIsSubmitting(true);
+
+    // ✅ Defense in depth: ກວດ stock ຄັ້ງສຸດທ້າຍກ່ອນສ້າງ order
+    //    (Cart ໄດ້ກວດແລ້ວແຕ່ stock ອາດປ່ຽນລະຫວ່າງທີ່ user ຢູ່ /shipping → /payment)
+    try {
+      const items = cartItems.map((i) => ({
+        product: i.product,
+        quantity: Number(i.quantity || 0),
+      }));
+      const stockRes = await checkStock(items).unwrap();
+      if (!stockRes.ok) {
+        const issues = (stockRes.items || []).filter((r) => !r.ok);
+        const lines = issues.map((e) => {
+          if (e.reason === 'insufficient_stock')
+            return `• "${e.name}" ເຫຼືອ ${e.available} (ສັ່ງ ${e.requested})`;
+          if (e.reason === 'out_of_stock') return `• "${e.name}" ໝົດແລ້ວ`;
+          return `• "${e.name}" ບໍ່ມີໃນລະບົບ`;
+        });
+        toast.error(
+          `ສິນຄ້າບໍ່ພຽງພໍ:\n${lines.join('\n')}\nກະລຸນາກັບໄປ /cart ເພື່ອປັບປະລິມານ`,
+          { duration: 7000 }
+        );
+        setIsSubmitting(false);
+        // ส่ง user กลับไปแก้ไข cart
+        setTimeout(() => navigate('/cart'), 2000);
+        return;
+      }
+    } catch (err) {
+      console.warn('Pre-submit stock check failed', err);
+      // ถ้า check ล้มเหลว → ปล่อยให้ผ่านไป backend จะ validate อีกที
+    }
 
     const body = {
       shippingInfo,
@@ -75,14 +167,18 @@ const totals = useMemo(() => {
       taxAmount: totals.taxAmount,
       totalAmount: totals.totalAmount,
       paymentMethod: method,
+      // ✅ Send coupon code — backend will re-validate + compute final discount
+      ...(appliedCoupon && { couponCode: appliedCoupon.code }),
     };
 
     try {
       const res = await fetch('/api/v1/payment/checkout_session', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          // ✅ ส่ง Idempotency-Key — ป้องกัน double-click + network retry
+          'Idempotency-Key': idempotencyKeyRef.current,
         },
         body: JSON.stringify(body),
       });
@@ -90,7 +186,27 @@ const totals = useMemo(() => {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        toast.error(data.message || 'Create order failed');
+        // ✅ จัดการ error stock (409) แบบเจาะจง — แสดงรายการที่มีปัญหา
+        if (res.status === 409 && Array.isArray(data.errors)) {
+          const messages = data.errors.map((e) => {
+            if (e.reason === 'insufficient_stock') {
+              return `• "${e.name}" ເຫຼືອ ${e.available} (ສັ່ງ ${e.requested})`;
+            }
+            if (e.reason === 'product_not_found') {
+              return `• "${e.name}" ບໍ່ມີໃນລະບົບແລ້ວ`;
+            }
+            return `• "${e.name}": ${e.reason}`;
+          });
+          toast.error(
+            `ສິນຄ້າບໍ່ພຽງພໍ:\n${messages.join('\n')}`,
+            { duration: 6000 }
+          );
+        } else if (res.status === 409) {
+          // single-item race condition
+          toast.error(data.message || 'ສິນຄ້າບໍ່ພຽງພໍ ກະລຸນາລອງໃໝ່');
+        } else {
+          toast.error(data.message || 'Create order failed');
+        }
         setIsSubmitting(false);
         return;
       }
@@ -98,7 +214,16 @@ const totals = useMemo(() => {
       const orderId = data.orderId || data.order?._id;
       const paymentInstructions = data.paymentInstructions || data.order?.paymentInstructions || null;
 
-      toast.success('ສ້າງຄໍາສັ່ງແລ້ວ');
+      // ✅ ล้าง cart + shippingInfo (แต่ละ slice รับผิดชอบของตัวเอง)
+      dispatch(clearCart());          // cartSlice → cartItems
+      dispatch(clearShippingInfo()); // shippingSlice → shippingInfo
+
+      // ✅ ถ้า backend ตอบว่า idempotent — แสดง message ต่างไป (debug-friendly)
+      if (data.idempotent) {
+        toast.success('ນຳທ່ານໄປສູ່ອໍເດີທີ່ສ້າງໄວ້ແລ້ວ', { icon: '🔄' });
+      } else {
+        toast.success('ສ້າງຄໍາສັ່ງແລ້ວ');
+      }
 
       if (method === 'COD') {
         navigate('/me/orders?order_success=true', { replace: true });
@@ -293,9 +418,116 @@ const totals = useMemo(() => {
                     </span>
                   </div>
 
-                  <div className="summary-row">
-                    <span className="summary-label">ພາສີ (10%)</span>
-                    <span className="summary-value">{formatKip(totals.taxAmount)}</span>
+                  {/* ✅ Discount row — สีเขียวเด่น */}
+                  {appliedCoupon && totals.discountAmount > 0 && (
+                    <div className="summary-row" style={{ color: '#10b981' }}>
+                      <span className="summary-label">
+                        🎁 ສ່ວນຫຼຸດ ({appliedCoupon.code})
+                      </span>
+                      <span className="summary-value" style={{ fontWeight: 700 }}>
+                        -{formatKip(totals.discountAmount)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* ✅ Coupon Input Section */}
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: 12,
+                      background: appliedCoupon ? '#f0fdf4' : '#f8fafc',
+                      borderRadius: 10,
+                      border: `1px solid ${appliedCoupon ? '#bbf7d0' : '#e2e8f0'}`,
+                    }}
+                  >
+                    {appliedCoupon ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, color: '#065f46', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            🎟️ {appliedCoupon.code}
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: '#16a34a' }}>
+                            {appliedCoupon.type === 'percentage'
+                              ? `ສ່ວນຫຼຸດ ${appliedCoupon.value}%`
+                              : `ສ່ວນຫຼຸດ ${appliedCoupon.value.toLocaleString()} ກີບ`}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoveCoupon}
+                          style={{
+                            padding: '4px 10px',
+                            background: 'white',
+                            border: '1px solid #ef4444',
+                            color: '#ef4444',
+                            borderRadius: 6,
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ລຶບ
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            color: '#475569',
+                            marginBottom: 6,
+                          }}
+                        >
+                          🎟️ ມີລະຫັດສ່ວນຫຼຸດ?
+                        </label>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <input
+                            type="text"
+                            value={couponInput}
+                            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                            placeholder="ໃສ່ລະຫັດ (ເຊັ່ນ WELCOME10)"
+                            style={{
+                              flex: 1,
+                              padding: '8px 12px',
+                              border: '1.5px solid #cbd5e1',
+                              borderRadius: 8,
+                              fontSize: '0.9rem',
+                              fontFamily: 'monospace',
+                              outline: 'none',
+                              textTransform: 'uppercase',
+                            }}
+                            disabled={validatingCoupon}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleApplyCoupon();
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleApplyCoupon}
+                            disabled={!couponInput.trim() || validatingCoupon}
+                            style={{
+                              padding: '8px 16px',
+                              background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 8,
+                              fontWeight: 600,
+                              fontSize: '0.85rem',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                              opacity: !couponInput.trim() || validatingCoupon ? 0.6 : 1,
+                            }}
+                          >
+                            {validatingCoupon ? '...' : 'ໃຊ້'}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <hr style={{ margin: '16px 0', border: 'none', height: '1px', background: '#e5e7eb' }} />
@@ -303,6 +535,18 @@ const totals = useMemo(() => {
                   <div className="summary-row summary-total">
                     <span>ລວມທັງໝົດ</span>
                     <span>{formatKip(totals.totalAmount)}</span>
+                  </div>
+
+                  {/* ✅ ลาคาลวมภาษีแล้ว — แสดงเป็นข้อมูลเชิงข้อมูลเล็กๆ */}
+                  <div
+                    style={{
+                      marginTop: 6,
+                      fontSize: '0.78rem',
+                      color: '#94a3b8',
+                      textAlign: 'right',
+                    }}
+                  >
+                    ★ ລາຄາລວມພາສີ 10% ແລ້ວ (VAT {formatKip(totals.taxAmount)})
                   </div>
 
                   {/* Shipping Info */}
