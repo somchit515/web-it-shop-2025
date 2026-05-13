@@ -1,4 +1,7 @@
+codex/add-a-greeting-feature-hj6ijz
+=======
 codex/add-a-greeting-feature-azctjh
+ master
 import { useCallback, useEffect, useState } from "react";
 
 export default function useCategories() {
@@ -23,6 +26,8 @@ export default function useCategories() {
   }, [refresh]);
 
   return { categories, isLoading, refresh };
+ codex/add-a-greeting-feature-hj6ijz
+
 
 import { useEffect, useState } from "react";
 import { getCategories } from "./categories";
@@ -41,5 +46,6 @@ export default function useCategories() {
   }, []);
 
   return categories;
+master
 master
 }

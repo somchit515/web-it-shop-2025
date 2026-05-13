@@ -1,13 +1,18 @@
 import React, { useMemo, useState } from "react";
 import AdminLayout from "../layout/AdminLayout";
 import toast from "react-hot-toast";
+codex/add-a-greeting-feature-hj6ijz
+
  codex/add-a-greeting-feature-azctjh
+master
 import useCategories from "../../utils/useCategories";
 import { normalizeSlug } from "../../utils/categories";
 
 export default function CategoriesManager() {
   const { categories, refresh } = useCategories();
   const [editingId, setEditingId] = useState("");
+ codex/add-a-greeting-feature-hj6ijz
+
 
 import {
   removeCategoryBySlug,
@@ -18,11 +23,15 @@ import useCategories from "../../utils/useCategories";
 export default function CategoriesManager() {
   const categories = useCategories();
  master
+ master
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [img, setImg] = useState("");
 
+ codex/add-a-greeting-feature-hj6ijz
+
  codex/add-a-greeting-feature-azctjh
+master
   const preview = useMemo(() => ({ title, slug: normalizeSlug(slug || title), img }), [title, slug, img]);
 
   const resetForm = () => { setEditingId(""); setTitle(""); setSlug(""); setImg(""); };
@@ -52,6 +61,8 @@ export default function CategoriesManager() {
     if (!res.ok) return toast.error(data?.message || "Delete failed");
     toast.success("Deleted category");
     refresh();
+ codex/add-a-greeting-feature-hj6ijz
+
 
   const preview = useMemo(() => ({ title, slug, img }), [title, slug, img]);
 
@@ -75,12 +86,16 @@ export default function CategoriesManager() {
     window.dispatchEvent(new Event("categories:updated"));
     toast.success("Reset ກັບຄ່າເລີ່ມຕົ້ນແລ້ວ");
  master
+master
   };
 
   return (
     <AdminLayout>
       <div className="container-fluid py-3">
+ codex/add-a-greeting-feature-hj6ijz
+
 codex/add-a-greeting-feature-azctjh
+ master
         <h3 className="mb-3">Category Management</h3>
         <div className="card p-3 mb-4">
           <h5>{editingId ? "Edit Category" : "Add Category"}</h5>
@@ -111,6 +126,7 @@ codex/add-a-greeting-feature-azctjh
                   </td>
                 </tr>
               ))}</tbody>
+codex/add-a-greeting-feature-hj6ijz
 
         <h3 className="mb-3">ຈັດການໝວດໝູ່ສິນຄ້າ</h3>
 
@@ -158,6 +174,7 @@ codex/add-a-greeting-feature-azctjh
                   </tr>
                 ))}
               </tbody>
+ master
  master
             </table>
           </div>

@@ -20,10 +20,14 @@ import useCategories from "../utils/useCategories";
 import "./Home.css";
 
 const Home = () => {
+codex/add-a-greeting-feature-hj6ijz
+  const { categories } = useCategories();
+
 codex/add-a-greeting-feature-azctjh
   const { categories } = useCategories();
-=======
+
   const categories = useCategories();
+ master
  master
   const [searchParams] = useSearchParams();
   // *** FIX 1: ดึง category จาก URL Path (ถ้ามี) ***

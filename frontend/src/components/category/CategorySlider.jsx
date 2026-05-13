@@ -5,10 +5,14 @@ import useCategories from "../../utils/useCategories";
 import "./CategorySlider.css";
 
 export default function CategorySlider({ interval = 4500 }) {
+ codex/add-a-greeting-feature-hj6ijz
+  const { categories } = useCategories();
+
 codex/add-a-greeting-feature-azctjh
   const { categories } = useCategories();
 
   const categories = useCategories();
+master
 master
   const [idx, setIdx] = useState(0);
   const timerRef = useRef(null);
