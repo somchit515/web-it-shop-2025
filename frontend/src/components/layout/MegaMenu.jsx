@@ -1,7 +1,7 @@
 // src/components/layout/MegaMenu.jsx
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { CATEGORIES } from "../../utils/categories";
+import useCategories from "../../utils/useCategories";
 
 /**
  * Simple MegaMenu
@@ -9,6 +9,7 @@ import { CATEGORIES } from "../../utils/categories";
  * - On mobile it becomes a simple link list (so you can navigate to /category/:slug)
  */
 export default function MegaMenu() {
+  const { categories } = useCategories();
   const [open, setOpen] = useState(false);
 
   return (
@@ -45,7 +46,7 @@ export default function MegaMenu() {
         onMouseEnter={() => setOpen(true)}
       >
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <Link
               key={c.slug}
               to={`/category/${c.slug}`}
@@ -74,7 +75,7 @@ export default function MegaMenu() {
       {/* Mobile fallback: simple list (visible on small screens via CSS) */}
       <div className="d-block d-md-none mt-2">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <Link key={c.slug} to={`/category/${c.slug}`} className="btn btn-sm btn-light">
               {c.title}
             </Link>

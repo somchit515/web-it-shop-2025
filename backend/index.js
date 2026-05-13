@@ -53,6 +53,7 @@ import paymentRoutes from "./routes/payment.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import couponRoutes from "./routes/coupons.js";
+import categoryRoutes from "./routes/categories.js";
 
 // --- 6. Mount Routes (ກວດສອບ Path ໃຫ້ດີ) ---
 app.use("/api/v1", productRoutes);
@@ -62,6 +63,7 @@ app.use("/api/v1", paymentRoutes);
 app.use("/api/v1", reportRoutes);
 app.use("/api/v1", blogRoutes);
 app.use("/api/v1", couponRoutes);
+app.use("/api/v1", categoryRoutes);
 
 // --- 7. Error Middleware ---
 app.use(errorsMiddleware);

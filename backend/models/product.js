@@ -34,21 +34,8 @@ const productSchema = new mongoose.Schema({
   category: {
     type: String,
     required: [true, "ກະລຸນາເລືອກໝວດສິນຄ້າ"],
-    enum: {
-      values: [
-        "laptops",
-      "cameras",
-      "headphones",
-      "outdoors",
-      "pc",
-      "electronics",
-      "gaming",
-      "smartphones",
-      "books",
-      "sports"
-      ],
-      message: "ໝວດສິນຄ້າບໍ່ຖືກຕ້ອງ",
-    }
+    trim: true,
+    lowercase: true
   },
 
   seller: {

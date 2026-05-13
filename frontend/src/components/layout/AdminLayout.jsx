@@ -148,6 +148,12 @@ function AdminLayout({ children }) {
       description: "ຈັດການຄຳຄິດເຫັນ",
     },
     {
+      name: "Category Management",
+      url: "/admin/categories",
+      icon: "fas fa-tags",
+      description: "Add/Edit/Delete categories",
+    },
+    {
       name: "ລະຫັດສ່ວນຫຼຸດ",
       url: "/admin/coupons",
       icon: "fas fa-ticket",
