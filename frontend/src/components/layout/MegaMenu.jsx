@@ -9,7 +9,11 @@ import useCategories from "../../utils/useCategories";
  * - On mobile it becomes a simple link list (so you can navigate to /category/:slug)
  */
 export default function MegaMenu() {
+codex/add-a-greeting-feature-azctjh
+  const { categories } = useCategories();
+
   const categories = useCategories();
+ master
   const [open, setOpen] = useState(false);
 
   return (

@@ -5,9 +5,10 @@ import toast from 'react-hot-toast';
 import Loader from '../layout/Loader';
 import { useGetProductDetailsQuery, useUpdateProductMutation } from '../redux/api/productsApi';
 import AdminLayout from '../layout/AdminLayout';
-import { PRODUCT_CATEGORIES } from '../../constans/constans';
+import useCategories from '../../utils/useCategories';
 
 function UpdateProduct() {
+  const { categories } = useCategories();
   const navigate = useNavigate();
   const params = useParams();
 
@@ -593,8 +594,8 @@ function UpdateProduct() {
                     onChange={onChange}
                   >
                     <option value="">-- ເລືອກໝວດໝູ່ --</option>
-                    {PRODUCT_CATEGORIES?.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
+                    {categories?.map((cat) => (
+                      <option key={cat.key || cat.slug} value={cat.key || cat.slug}>{cat.title || cat.key || cat.slug}</option>
                     ))}
                   </select>
                   {category && (
