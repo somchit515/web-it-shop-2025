@@ -169,12 +169,15 @@ export default function Header() {
                   )}
                 </div>
               ) : (
-                !isLoading && (
-                  <Link to="/login" className="btn-login" aria-label="Sign in">
-                    <i className="fas fa-sign-in-alt"></i>
-                    <span>ເຂົ້າລະບົບ</span>
-                  </Link>
-                )
+                <Link
+                  to="/login"
+                  className="btn-login"
+                  aria-label="Sign in"
+                  style={isLoading ? { opacity: 0, pointerEvents: "none" } : undefined}
+                >
+                  <i className="fas fa-sign-in-alt"></i>
+                  <span>ເຂົ້າລະບົບ</span>
+                </Link>
               )}
             </div>
           </div>

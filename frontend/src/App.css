@@ -2,7 +2,7 @@
 
 html,
 body {
-  font-family: "Noto Sans Lao", "Amazon Ember";
+  font-family: "Noto Sans Lao", "Inter", sans-serif;
   width: 100%;
   min-height: 100%;
   margin: 0px;
