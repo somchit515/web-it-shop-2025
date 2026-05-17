@@ -6,8 +6,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node backend/index.js",
-    "dev": "cross-env NODE_ENV=DEVELOPMENT nodemon backend/index.js",
-    "prod": "cross-env NODE_ENV=PRODUCTION nodemon backend/index.js",
+    "dev": "cross-env NODE_ENV=development nodemon backend/index.js",
+    "build": "npm install --prefix frontend && npm run build --prefix frontend",
     "seeder": "node backend/seeder/seeder.js"
   },
   "author": "somchit Amphavong",

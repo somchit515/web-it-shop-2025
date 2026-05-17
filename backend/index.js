@@ -69,7 +69,18 @@ app.use("/api/v1", categoryRoutes);
 app.use("/api/v1", pushRoutes);
 app.use("/api/v1", flashDealRoutes);
 
-// --- 7. Error Middleware ---
+// --- 7. Serve React build ใน production ---
+const __dirname = path.resolve();
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "frontend/build")));
+  app.get("*", (req, res) => {
+    if (!req.path.startsWith("/api")) {
+      res.sendFile(path.resolve(__dirname, "frontend/build/index.html"));
+    }
+  });
+}
+
+// --- 8. Error Middleware ---
 app.use(errorsMiddleware);
 
 const server = app.listen(process.env.PORT, () => {
