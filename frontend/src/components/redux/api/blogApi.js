@@ -5,7 +5,7 @@ export const blogApi = createApi({
  
   // 🚀 ປັບໃຫ້ເລືອກ URL ອັດຕະໂນມັດ ແລະ ເນັ້ນການໃຊ້ Cookie (credentials: "include")
   baseQuery: fetchBaseQuery({
-    baseUrl: "http://localhost:8000/api/v1",
+    baseUrl: "/api/v1",
     credentials: 'include',
   }),
 

@@ -6,7 +6,7 @@ export const userApi = createApi({
 
   // 🚀 ປັບໃຫ້ເລືອກ URL ອັດຕະໂນມັດ ແລະ ເພີ່ມ credentials: "include"
   baseQuery: fetchBaseQuery({
-    baseUrl: "http://localhost:8000/api/v1",
+    baseUrl: "/api/v1",
     credentials: "include",
   }),
 
