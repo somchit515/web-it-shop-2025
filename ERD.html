@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IT HUBB — ERD Database Design</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Segoe UI", "Noto Sans Lao", sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .erd-header {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a5f 100%);
+    padding: 40px 48px 32px;
+    border-bottom: 1px solid rgba(99,102,241,.3);
+    position: relative;
+    overflow: hidden;
+  }
+  .erd-header::before {
+    content: "";
+    position: absolute;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(99,102,241,.3), transparent 70%);
+    top: -150px; right: -100px;
+    border-radius: 50%;
+    filter: blur(60px);
+    pointer-events: none;
+  }
+  .erd-header-inner { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; }
+  .erd-logo  { font-size: 2rem; margin-bottom: 8px; }
+  .erd-title {
+    font-size: 2.2rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #818cf8, #c084fc, #67e8f9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 10px;
+  }
+  .erd-sub { color: #94a3b8; font-size: 1rem; }
+  .erd-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 20px;
+  }
+  .erd-chip {
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border: 1px solid;
+  }
+  .chip-blue   { background: rgba(59,130,246,.15);  border-color: rgba(59,130,246,.4);  color: #93c5fd; }
+  .chip-violet { background: rgba(139,92,246,.15);  border-color: rgba(139,92,246,.4);  color: #c4b5fd; }
+  .chip-green  { background: rgba(16,185,129,.15);  border-color: rgba(16,185,129,.4);  color: #6ee7b7; }
+  .chip-amber  { background: rgba(245,158,11,.15);  border-color: rgba(245,158,11,.4);  color: #fcd34d; }
+  .chip-rose   { background: rgba(239,68,68,.15);   border-color: rgba(239,68,68,.4);   color: #fca5a5; }
+  .chip-cyan   { background: rgba(6,182,212,.15);   border-color: rgba(6,182,212,.4);   color: #67e8f9; }
+
+  /* ── Legend ── */
+  .erd-legend {
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+    padding: 20px 48px;
+  }
+  .erd-legend-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+    align-items: center;
+  }
+  .legend-title { font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .08em; }
+  .legend-group { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+  .legend-item  { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #94a3b8; }
+  .legend-dot   { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .ld-user   { background: #6366f1; }
+  .ld-com    { background: #10b981; }
+  .ld-pay    { background: #f59e0b; }
+  .ld-cont   { background: #06b6d4; }
+  .ld-embed  { background: #334155; border: 1px dashed #64748b; }
+
+  .rel-line  { display: inline-block; width: 28px; height: 2px; background: #475569; vertical-align: middle; }
+  .rel-line.solid { }
+  .rel-line.dashed { background: repeating-linear-gradient(90deg,#475569 0,#475569 4px,transparent 4px,transparent 8px); }
+
+  /* ── Diagram ── */
+  .erd-diagram {
+    padding: 40px 24px 60px;
+    max-width: 1800px;
+    margin: 0 auto;
+    overflow-x: auto;
+  }
+  .mermaid { min-width: 900px; }
+
+  /* ── Summary table ── */
+  .erd-summary {
+    background: #1e293b;
+    border-top: 1px solid #334155;
+    padding: 40px 48px;
+  }
+  .erd-summary-inner { max-width: 1200px; margin: 0 auto; }
+  .erd-summary h2 {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #e2e8f0;
+    margin-bottom: 24px;
+  }
+  .erd-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  .erd-table th {
+    text-align: left;
+    padding: 10px 16px;
+    background: #0f172a;
+    color: #64748b;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-size: 0.75rem;
+    border-bottom: 2px solid #334155;
+  }
+  .erd-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid #1e293b;
+    color: #cbd5e1;
+    vertical-align: top;
+  }
+  .erd-table tr:hover td { background: rgba(99,102,241,.05); }
+  .erd-table .entity-name { font-weight: 700; color: #818cf8; }
+  .erd-table .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 100px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin-right: 4px;
+  }
+  .badge-main   { background: rgba(99,102,241,.2);  color: #a5b4fc; }
+  .badge-embed  { background: rgba(51,65,85,.6);    color: #94a3b8; }
+  .badge-ref    { background: rgba(16,185,129,.15); color: #6ee7b7; }
+
+  /* ── Footer ── */
+  .erd-footer {
+    text-align: center;
+    padding: 24px;
+    color: #334155;
+    font-size: 0.8rem;
+    border-top: 1px solid #1e293b;
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="erd-header">
+  <div class="erd-header-inner">
+    <div class="erd-logo">🗄️</div>
+    <h1 class="erd-title">IT HUBB — Entity Relationship Diagram</h1>
+    <p class="erd-sub">ແຜນຜັງຖານຂໍ້ມູນ MongoDB ລະບົບຂາຍສິນຄ້າ IT ອອນລາຍ</p>
+    <div class="erd-meta">
+      <span class="erd-chip chip-blue">🗄️ MongoDB (NoSQL)</span>
+      <span class="erd-chip chip-violet">📦 11 Collections</span>
+      <span class="erd-chip chip-green">🔗 Mongoose ODM</span>
+      <span class="erd-chip chip-amber">⚡ Node.js / Express</span>
+      <span class="erd-chip chip-cyan">📅 2025-2026</span>
+    </div>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="erd-legend">
+  <div class="erd-legend-inner">
+    <span class="legend-title">ຄຳອະທິບາຍ</span>
+    <div class="legend-group">
+      <div class="legend-item"><div class="legend-dot ld-user"></div> Auth / ຜູ້ໃຊ້</div>
+      <div class="legend-item"><div class="legend-dot ld-com"></div> Commerce / ການຄ້າ</div>
+      <div class="legend-item"><div class="legend-dot ld-pay"></div> Payment / ການຊຳລະ</div>
+      <div class="legend-item"><div class="legend-dot ld-cont"></div> Content / ເນື້ອຫາ</div>
+      <div class="legend-item"><div class="legend-dot ld-embed"></div> Embedded Document</div>
+    </div>
+    <div class="legend-group">
+      <div class="legend-item"><span style="font-family:monospace;color:#94a3b8">||--||</span> ໜຶ່ງຕໍ່ໜຶ່ງ</div>
+      <div class="legend-item"><span style="font-family:monospace;color:#94a3b8">||--o{</span> ໜຶ່ງຕໍ່ຫຼາຍ (optional)</div>
+      <div class="legend-item"><span style="font-family:monospace;color:#94a3b8">||--|{</span> ໜຶ່ງຕໍ່ຫຼາຍ (required)</div>
+      <div class="legend-item"><span style="font-family:monospace;color:#94a3b8">}o--|{</span> ຫຼາຍຕໍ່ຫຼາຍ</div>
+    </div>
+  </div>
+</div>
+
+<!-- Diagram -->
+<div class="erd-diagram">
+<div class="mermaid">
+%%{init: {"theme": "dark", "themeVariables": {"primaryColor": "#1e1b4b","primaryTextColor": "#e2e8f0","primaryBorderColor": "#6366f1","lineColor": "#64748b","secondaryColor": "#0f172a","tertiaryColor": "#1e293b","edgeLabelBackground": "#1e293b","fontFamily": "Segoe UI, sans-serif"}, "er": {"diagramPadding": 30, "layoutDirection": "TB", "minEntityWidth": 120, "minEntityHeight": 60, "entityPadding": 15, "useMaxWidth": true}} }%%
+erDiagram
+
+    %% ══════════════════════════════════════
+    %%  ENTITIES
+    %% ══════════════════════════════════════
+
+    USER {
+        ObjectId  _id              PK
+        string    name
+        string    email            UK
+        string    password         "bcrypt hashed"
+        string    authSource       "local | google"
+        string    role             "user | admin | superAdmin"
+        string    avatar_url
+        string    avatar_public_id
+        string    resetPasswordToken
+        date      resetPasswordExpire
+        date      createdAt
+        date      updatedAt
+    }
+
+    PRODUCT {
+        ObjectId  _id           PK
+        string    name
+        number    price         "LAK"
+        string    description
+        number    ratings       "0-5 avg"
+        string    category      FK "ref Category.slug"
+        string    seller
+        number    stock
+        number    numOfReviews
+        ObjectId  user          FK "creator admin"
+        date      createdAt
+        date      updatedAt
+    }
+
+    CATEGORY {
+        ObjectId  _id        PK
+        string    title
+        string    slug        UK "URL-safe"
+        string    key
+        string    img
+        string    imgPublicId
+        date      createdAt
+        date      updatedAt
+    }
+
+    ORDER {
+        ObjectId  _id              PK
+        ObjectId  user             FK
+        string    paymentMethod    "COD | BankTransfer | PayAtStore"
+        string    paymentStatus    "Pending | AwaitingProof | Paid | Rejected | Refunded"
+        ObjectId  verifiedBy       FK "admin who verified"
+        date      verifiedAt
+        string    verificationNote
+        number    itemsPrice
+        number    taxAmount        "VAT 10% inclusive"
+        number    shippingAmount
+        number    totalAmount
+        string    couponCode       "ref Coupon.code"
+        number    discountAmount
+        string    fulfillmentStatus "Unfulfilled|Processing|Shipped|Delivered|Cancelled|Returned"
+        string    orderStatus      "legacy sync"
+        string    shipmentStatus   "legacy sync"
+        string    trackingCode
+        date      shippedAt
+        date      deliveredAt
+        string    cancelReason
+        string    returnReason
+        number    refundAmount
+        string    idempotencyKey   UK "double-click guard"
+        date      createdAt
+        date      updatedAt
+    }
+
+    SHIPPING_INFO {
+        string    address
+        string    city
+        string    phoneNo
+        string    country
+        string    branch
+        string    shippingCarrier     "carrier name"
+        string    shippingCarrierCode "ANUSIT|MAISAY|UNITED|PICKUP"
+    }
+
+    ORDER_ITEM {
+        ObjectId  _id      PK
+        string    name
+        number    quantity
+        string    image
+        number    price    "snapshot at purchase"
+        ObjectId  product  FK
+    }
+
+    REVIEW {
+        ObjectId  _id       PK
+        ObjectId  user      FK
+        number    rating    "1-5"
+        string    comment
+        date      createdAt
+    }
+
+    PAYMENT_PROOF {
+        ObjectId  _id        PK
+        string    url
+        string    public_id
+        date      uploadedAt
+        ObjectId  uploadedBy FK
+    }
+
+    ORDER_EVENT {
+        ObjectId  _id       PK
+        string    type      "created|payment_confirmed|payment_rejected|shipped|delivered|cancelled|returned|proof_uploaded"
+        date      timestamp
+        string    note
+        ObjectId  actor     FK "optional admin"
+    }
+
+    COUPON {
+        ObjectId  _id          PK
+        string    code         UK "uppercase"
+        string    description
+        string    type         "percentage | fixed"
+        number    value        "% or LAK amount"
+        number    minOrderAmount
+        number    maxDiscount  "cap for % type"
+        number    usageLimit   "null = unlimited"
+        number    usageCount
+        number    perUserLimit "per user"
+        date      validFrom
+        date      validUntil   "null = no expiry"
+        boolean   active
+        ObjectId  createdBy    FK
+        date      createdAt
+        date      updatedAt
+    }
+
+    COUPON_USAGE {
+        ObjectId  user           FK
+        ObjectId  order          FK
+        date      usedAt
+        number    discountAmount
+    }
+
+    FLASH_DEAL {
+        ObjectId  _id            PK
+        string    label
+        date      endsAt
+        number    discountPercent "0-90%"
+        boolean   isActive
+        date      createdAt
+        date      updatedAt
+    }
+
+    BLOG {
+        ObjectId  _id          PK
+        string    title
+        string    excerpt
+        string    content
+        string    category     "tech | review | guide | news"
+        string    author       "display name"
+        ObjectId  authorId     FK
+        string    image
+        number    views
+        boolean   isPublished
+        date      publishedAt
+        string    seoTitle
+        string    seoDescription
+        string    slug         UK
+        date      createdAt
+        date      updatedAt
+    }
+
+    BLOG_COMMENT {
+        ObjectId  _id       PK
+        ObjectId  user      FK
+        string    text
+        date      createdAt
+    }
+
+    FINANCIAL_TRANSACTION {
+        ObjectId  _id             PK
+        string    type            "Income | Expense | Adjustment"
+        number    amount
+        string    description
+        string    category        "e.g. ຄ່າສິນຄ້າ, ຄ່າເຊົ່າ"
+        date      transactionDate
+        ObjectId  user            FK "recorder"
+        date      createdAt
+        date      updatedAt
+    }
+
+    PUSH_SUBSCRIPTION {
+        ObjectId  _id       PK
+        ObjectId  user      FK
+        string    endpoint  UK
+        string    p256dh    "VAPID key"
+        string    auth      "VAPID auth"
+        string    userAgent
+        date      createdAt
+    }
+
+    %% ══════════════════════════════════════
+    %%  RELATIONSHIPS
+    %% ══════════════════════════════════════
+
+    %% -- USER (central entity) --
+    USER             ||--o{  ORDER                : "ສ້າງ / ເຈົ້າຂອງ"
+    USER             ||--o{  PRODUCT              : "ສ້າງ (admin)"
+    USER             ||--o{  REVIEW               : "ຂຽນ"
+    USER             ||--o{  BLOG                 : "ຂຽນ Blog"
+    USER             ||--o{  BLOG_COMMENT         : "ຄອມເມັ້ນ"
+    USER             ||--o{  COUPON               : "ສ້າງ (superAdmin)"
+    USER             ||--o{  FINANCIAL_TRANSACTION: "ບັນທຶກ"
+    USER             ||--o{  PUSH_SUBSCRIPTION    : "ລົງທະບຽນ"
+    USER             ||--o{  PAYMENT_PROOF        : "ອັບໂຫຼດ"
+    USER             |o--o{  ORDER_EVENT          : "ດຳເນີນ (actor)"
+
+    %% -- ORDER structure (embedded docs) --
+    ORDER            ||--||  SHIPPING_INFO        : "ມີ (embedded)"
+    ORDER            ||--|{  ORDER_ITEM           : "ມີ (embedded)"
+    ORDER            ||--o{  PAYMENT_PROOF        : "ມີ (embedded)"
+    ORDER            ||--|{  ORDER_EVENT          : "ປະຫວັດ (embedded)"
+
+    %% -- ORDER ↔ COUPON --
+    ORDER            }o--o|  COUPON               : "ໃຊ້ (optional)"
+    COUPON           ||--o{  COUPON_USAGE         : "ຖືກໃຊ້ (embedded)"
+
+    %% -- PRODUCT relationships --
+    PRODUCT          ||--o{  REVIEW               : "ມີ (embedded)"
+    PRODUCT          }|--||  CATEGORY             : "ຢູ່ໃນ (by slug)"
+
+    %% -- ORDER_ITEM → PRODUCT --
+    ORDER_ITEM       }|--||  PRODUCT              : "ອ້າງອີງ"
+
+    %% -- FLASH_DEAL ↔ PRODUCT (many-to-many) --
+    FLASH_DEAL       }o--|{  PRODUCT              : "ລວມ (array ref)"
+
+    %% -- BLOG structure --
+    BLOG             ||--o{  BLOG_COMMENT         : "ມີ (embedded)"
+</div>
+</div>
+
+<!-- Summary Table -->
+<div class="erd-summary">
+  <div class="erd-summary-inner">
+    <h2>📋 ສຸດທ້າຍ Entity ທັງໝົດ</h2>
+    <table class="erd-table">
+      <thead>
+        <tr>
+          <th>Collection</th>
+          <th>ໜ້າທີ່</th>
+          <th>ປະເພດ</th>
+          <th>Relationships ຫຼັກ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="entity-name">User</td>
+          <td>ຜູ້ໃຊ້ທຸກ role (user / admin / superAdmin)</td>
+          <td><span class="badge badge-main">Main</span></td>
+          <td>→ Order, Product, Review, Blog, Coupon, FinancialTransaction, PushSubscription</td>
+        </tr>
+        <tr>
+          <td class="entity-name">Product</td>
+          <td>ສິນຄ້າ IT ທີ່ຈຳໜ່າຍ</td>
+          <td><span class="badge badge-main">Main</span></td>
+          <td>→ Category (by slug), ← User (creator), ← OrderItem, ← FlashDeal</td>
+        </tr>
+        <tr>
+          <td class="entity-name">Category</td>
+          <td>ໝວດໝູ່ສິນຄ້າ</td>
+          <td><span class="badge badge-main">Main</span></td>
+          <td>← Product (many products per category)</td>
+        </tr>
+        <tr>
+          <td class="entity-name">Order</td>
+          <td>ອໍເດີຂອງລູກຄ້າ — lifecycle ທຸກຂັ້ນຕອນ</td>
+          <td><span class="badge badge-main">Main</span></td>
+          <td>→ User, → Coupon, embeds: ShippingInfo, OrderItem[], PaymentProof[], OrderEvent[]</td>
+        </tr>
+        <tr>
+          <td class="entity-name">ShippingInfo</td>
+          <td>ທີ່ຢູ່ຈັດສົ່ງ + carrier ທີ່ເລືອກ</td>
+          <td><span class="badge badge-embed">Embedded in Order</span></td>
+          <td>— (embedded, ບໍ່ມີ collection ຕ່າງຫາກ)</td>
+        </tr>
+        <tr>
+          <td class="entity-name">OrderItem</td>
+          <td>ລາຍການສິນຄ້າໃນອໍເດີ (snapshot ລາຄາ)</td>
+          <td><span class="badge badge-embed">Embedded in Order</span></td>
+          <td>→ Product (ObjectId ref)</td>
+        </tr>
+        <tr>
+          <td class="entity-name">Review</td>
+          <td>ຄະແນນ + ຄຳຄິດເຫັນສິນຄ້າ</td>
+          <td><span class="badge badge-embed">Embedded in Product</span></td>
+          <td>→ User (reviewer)</td>
+        </tr>
+        <tr>
+          <td class="entity-name">PaymentProof</td>
+          <td>ສະຫຼິບການໂອນເງິນ (Cloudinary image)</td>
+          <td><span class="badge badge-embed">Embedded in Order</span></td>
+          <td>→ User (uploader)</td>
+        </tr>
+        <tr>
+          <td class="entity-name">OrderEvent</td>
+          <td>ປະຫວັດ / Timeline ຂອງ Order</td>
+          <td><span class="badge badge-embed">Embedded in Order</span></td>
+          <td>→ User? (actor — optional admin)</td>
+        </tr>
+        <tr>
+          <td class="entity-name">Coupon</td>
+          <td>ລະຫັດສ່ວນຫຼຸດ — percentage ຫຼື fixed</td>
+          <td><span class="badge badge-main">Main</span></td>
+          <td>→ User (createdBy), embeds: CouponUsage[]</td>
+        </tr>
+        <tr>
+          <td class="entity-name">CouponUsage</td>
+          <td>ຕິດຕາມວ່າໃຜໃຊ້ coupon ໃດ ໃນ Order ໃດ</td>
+          <td><span class="badge badge-embed">Embedded in Coupon</span></td>
+          <td>→ User, → Order</td>
+        </tr>
+        <tr>
+          <td class="entity-name">FlashDeal</td>
+          <td>Flash Sale — array of Product refs + discount%</td>
+          <td><span class="badge badge-main">Main</span></td>
+          <td>→ Product[] (many-to-many via array)</td>
+        </tr>
+        <tr>
+          <td class="entity-name">Blog</td>
+          <td>ບົດຄວາມ IT — tech, review, guide, news</td>
+          <td><span class="badge badge-main">Main</span></td>
+          <td>→ User (authorId), embeds: Comment[], Like[]</td>
+        </tr>
+        <tr>
+          <td class="entity-name">BlogComment</td>
+          <td>ຄຳຄິດເຫັນໃນ Blog</td>
+          <td><span class="badge badge-embed">Embedded in Blog</span></td>
+          <td>→ User</td>
+        </tr>
+        <tr>
+          <td class="entity-name">FinancialTransaction</td>
+          <td>ບັນທຶກລາຍຮັບ/ລາຍຈ່າຍ (SuperAdmin finance)</td>
+          <td><span class="badge badge-main">Main</span></td>
+          <td>→ User (recorder/admin)</td>
+        </tr>
+        <tr>
+          <td class="entity-name">PushSubscription</td>
+          <td>Web Push VAPID subscription ຂອງ User</td>
+          <td><span class="badge badge-main">Main</span></td>
+          <td>→ User (1 user, many devices)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Key Design Notes -->
+    <div style="margin-top:40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+
+      <div style="background:#0f172a;border:1px solid #334155;border-radius:16px;padding:24px;">
+        <div style="font-size:1.3rem;margin-bottom:10px;">🔄</div>
+        <h3 style="color:#818cf8;margin-bottom:10px;font-size:0.95rem;">Status Sync (Order)</h3>
+        <p style="color:#64748b;font-size:0.83rem;line-height:1.7;">
+          <code style="color:#c4b5fd">fulfillmentStatus</code> ເປັນ source of truth.<br>
+          Pre-save hook auto-sync <code style="color:#c4b5fd">orderStatus</code> + <code style="color:#c4b5fd">shipmentStatus</code> (legacy fields) ໃຫ້ match ຕະຫຼອດ.
+        </p>
+      </div>
+
+      <div style="background:#0f172a;border:1px solid #334155;border-radius:16px;padding:24px;">
+        <div style="font-size:1.3rem;margin-bottom:10px;">📦</div>
+        <h3 style="color:#10b981;margin-bottom:10px;font-size:0.95rem;">Embedded vs Referenced</h3>
+        <p style="color:#64748b;font-size:0.83rem;line-height:1.7;">
+          Embedded: Review, OrderItem, PaymentProof, OrderEvent, CouponUsage, BlogComment — ຂໍ້ມູນທີ່ belong to parent ສະເໝີ.<br>
+          Referenced: User, Product, Coupon, Category — ຂໍ້ມູນທີ່ share ໄດ້.
+        </p>
+      </div>
+
+      <div style="background:#0f172a;border:1px solid #334155;border-radius:16px;padding:24px;">
+        <div style="font-size:1.3rem;margin-bottom:10px;">🔒</div>
+        <h3 style="color:#f59e0b;margin-bottom:10px;font-size:0.95rem;">ຄວາມປອດໄພ</h3>
+        <p style="color:#64748b;font-size:0.83rem;line-height:1.7;">
+          Auth: Cookie-only httpOnly, ບໍ່ມີ JWT ໃນ localStorage.<br>
+          Role guard: user / admin / superAdmin.<br>
+          Order: <code style="color:#fcd34d">idempotencyKey</code> ກັນ double-submit.
+        </p>
+      </div>
+
+      <div style="background:#0f172a;border:1px solid #334155;border-radius:16px;padding:24px;">
+        <div style="font-size:1.3rem;margin-bottom:10px;">🏷️</div>
+        <h3 style="color:#06b6d4;margin-bottom:10px;font-size:0.95rem;">Category Reference</h3>
+        <p style="color:#64748b;font-size:0.83rem;line-height:1.7;">
+          Product.category ເກັບ string (slug) ບໍ່ແມ່ນ ObjectId.<br>
+          ເປັນ logical reference — query ດ້ວຍ <code style="color:#67e8f9">{ category: slug }</code>.<br>
+          FlashDeal.products ໃຊ້ ObjectId array ref.
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<div class="erd-footer">
+  IT HUBB E-Commerce System &nbsp;·&nbsp; MongoDB + Mongoose &nbsp;·&nbsp; Generated 2026
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "dark",
+    themeVariables: {
+      primaryColor: "#1e1b4b",
+      primaryTextColor: "#e2e8f0",
+      primaryBorderColor: "#6366f1",
+      lineColor: "#64748b",
+      secondaryColor: "#0f172a",
+      tertiaryColor: "#1e293b",
+      edgeLabelBackground: "#1e293b",
+      fontFamily: "Segoe UI, Noto Sans Lao, sans-serif",
+      fontSize: "13px"
+    },
+    er: {
+      diagramPadding: 30,
+      layoutDirection: "TB",
+      minEntityWidth: 140,
+      minEntityHeight: 70,
+      entityPadding: 16,
+      useMaxWidth: true
+    }
+  });
+</script>
+</body>
+</html>

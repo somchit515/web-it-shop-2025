@@ -1,0 +1,154 @@
+flowchart TD
+    classDef terminal  fill:#1e1b4b,stroke:#6366f1,stroke-width:3px,color:#c7d2fe,font-weight:bold
+    classDef process   fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#a7f3d0
+    classDef decision  fill:#1c1917,stroke:#f59e0b,stroke-width:2px,color:#fcd34d
+    classDef io        fill:#431407,stroke:#f97316,stroke-width:2px,color:#fed7aa
+    classDef error     fill:#450a0a,stroke:#ef4444,stroke-width:2px,color:#fca5a5
+    classDef db        fill:#0c1a2e,stroke:#3b82f6,stroke-width:2px,color:#93c5fd
+    classDef success   fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#86efac
+
+    %% ══════════════════════════════════════════════════
+    %%  PHASE 1 — ຄົ້ນຫາ & ເບິ່ງສິນຄ້າ
+    %% ══════════════════════════════════════════════════
+    START(["🏠 ໜ້າ Home"])
+
+    BROWSE{"ວິທີ ຄົ້ນຫາ?"}
+    KEYWORD["🔍 ພິມ Keyword"]
+    CATEGORY["📂 ເລືອກ ໝວດໝູ່"]
+    FLASHDEAL["⚡ Flash Deal"]
+
+    RESULTS[/"📦 ລາຍການ ສິນຄ້າ\n(ຊື່, ຮູບ, ລາຄາ, ຄະແນນ)"/]
+    FILTER["ກັ່ນຕອງ ລາຄາ / ຄະແນນ / sort"]
+
+    %% ══════════════════════════════════════════════════
+    %%  PHASE 2 — ລາຍລະອຽດ & Cart
+    %% ══════════════════════════════════════════════════
+    SELECT_P["👆 ເລືອກ ສິນຄ້າ"]
+    DETAIL[/"🖼️ ລາຍລະອຽດ ສິນຄ້າ\n(ຮູບ, ລາຄາ, stock, Flash Deal, Review)"/]
+
+    CHK_STOCK1{"stock > 0?"}
+    ERR_STOCK1[/"❌ ສິນຄ້າ ໝົດ ສຕ໋ອກ"/]
+
+    SET_QTY["ເລືອກ ຈຳນວນ"]
+    ADD_CART["🛒 ເພີ່ມ ໃສ່ Cart"]
+
+    VIEW_CART[/"🛒 ເບິ່ງ Cart\n(ລາຍການ, ລາຄາ, ລວມ)"/]
+    CHK_STOCK2{"ກວດ stock\nທຸກ item?"}
+    ADJ["⚠️ ປັບ qty ຫຼື ລຶບ item"]
+
+    MORE{"ຊື້ ສິນຄ້າ ເພີ່ມ?"}
+
+    %% ══════════════════════════════════════════════════
+    %%  PHASE 3 — Auth & Shipping
+    %% ══════════════════════════════════════════════════
+    CHK_LOGIN{"ເຂົ້າ ສູ່ລະບົບ\nແລ້ວ?"}
+    GO_LOGIN["➡️ ໄປ Login / Register"]
+
+    SHIPPING[/"📍 ກອກ ທີ່ຢູ່ຈັດສົ່ງ:\nຊື່, ທີ່ຢູ່, ເບີໂທ"/]
+    CARRIER["🚚 ເລືອກ Carrier:\nອານຸສິດ / ມີໄຊ / ຢູນິເທວ / ຮັບເອງ"]
+    CALC_SHIP["ຄຳນວນ ຄ່າສົ່ງ (server-side)"]
+
+    %% ══════════════════════════════════════════════════
+    %%  PHASE 4 — Coupon & Payment Method
+    %% ══════════════════════════════════════════════════
+    CHK_COUPON{"ມີ Coupon Code?"}
+    APPLY_COUPON["🏷️ ກອກ Coupon Code"]
+    VALIDATE_C{"Coupon\nຖືກຕ້ອງ?"}
+    ERR_COUPON[/"❌ Coupon ໃຊ້ ບໍ່ໄດ້\n(ໝົດອາຍຸ / ເກີນ limit)"/]
+    DISC_OK["✅ ສ່ວນຫຼຸດ ຖືກນຳໃຊ້"]
+
+    PAY_METHOD{"ເລືອກ\nວິທີຊຳລະ"}
+    COD["💵 COD\n(ຈ່າຍ ເມື່ອ ຮັບຂອງ)"]
+    BANK["🏦 Bank Transfer\n(ໂອນ ແລ້ວ ອັບສະຫຼິບ)"]
+    STORE_PAY["🏪 ຮັບ & ຈ່າຍ ທີ່ຮ້ານ"]
+
+    %% ══════════════════════════════════════════════════
+    %%  PHASE 5 — ຢືນຢັນ & Submit
+    %% ══════════════════════════════════════════════════
+    REVIEW[/"📋 ທົບທວນ Order Summary\n(items, ຄ່າສົ່ງ, ສ່ວນຫຼຸດ, ລວມ VAT 10%)"/]
+    SUBMIT["📤 ກົດ ຢືນຢັນ ສັ່ງຊື້\n(ສ້າງ Idempotency-Key)"]
+
+    %% Backend
+    BE_STOCK{"ກວດ Stock\n(server-side)"}
+    ERR_BE[/"❌ 409: ສິນຄ້າ ບໍ່ພໍ\nລາຍລະອຽດ item"/]
+    DECREMENT["⚡ Atomic decrement stock\n(MongoDB $inc)"]
+    SAVE_ORD[("💾 ບັນທຶກ Order\nD6 · Orders")]
+    CLEAR["🗑️ Clear Cart + shippingInfo"]
+    EMAIL_C["📧 Email: order created"]
+
+    %% ══════════════════════════════════════════════════
+    %%  PHASE 6 — ຊຳລະ ຕາມ ວິທີ
+    %% ══════════════════════════════════════════════════
+    IS_BANK{"paymentMethod\n= BankTransfer?"}
+
+    UPLOAD[/"📎 ອັບໂຫຼດ ສະຫຼິບ ໂອນ\n(ພາຍໃນ 15 ນາທີ)"/]
+    COUNTDOWN["⏱️ Countdown 15 min"]
+    CHK_TIME{"ສົ່ງ ສະຫຼິບ\nທັນ ເວລາ?"}
+    AUTO_CANCEL["🔄 Auto-Cancel + restore stock"]
+    WAIT_VERIFY["⏳ ລໍຖ້າ Admin Verify"]
+    VERIFY_OK{"Admin\nApprove?"}
+    ERR_REJECT[/"❌ Rejected:\nສະຫຼິບ ບໍ່ຖືກຕ້ອງ"/]
+
+    SUCCESS(["✅ Order ສຳເລັດ\nRedirect → MyOrders"])
+
+    %% ══════════════════════════════════════════════════
+    %%  CONNECTIONS — Phase 1
+    %% ══════════════════════════════════════════════════
+    START --> BROWSE
+    BROWSE -->|"Keyword"| KEYWORD --> RESULTS
+    BROWSE -->|"ໝວດໝູ່"| CATEGORY --> RESULTS
+    BROWSE -->|"Flash Deal"| FLASHDEAL --> RESULTS
+    RESULTS --> FILTER --> RESULTS
+    RESULTS --> SELECT_P
+
+    %% Phase 2
+    SELECT_P --> DETAIL
+    DETAIL --> CHK_STOCK1
+    CHK_STOCK1 -->|"ໝົດ"| ERR_STOCK1 --> RESULTS
+    CHK_STOCK1 -->|"ມີ"| SET_QTY --> ADD_CART --> VIEW_CART
+
+    VIEW_CART --> CHK_STOCK2
+    CHK_STOCK2 -->|"ບໍ່ OK"| ADJ --> VIEW_CART
+    CHK_STOCK2 -->|"OK ທັງໝົດ"| MORE
+    MORE -->|"ແມ່ນ"| START
+    MORE -->|"ບໍ່"| CHK_LOGIN
+
+    %% Phase 3
+    CHK_LOGIN -->|"ຍັງ ບໍ່"| GO_LOGIN --> CHK_LOGIN
+    CHK_LOGIN -->|"ແລ້ວ"| SHIPPING
+    SHIPPING --> CARRIER --> CALC_SHIP
+
+    %% Phase 4
+    CALC_SHIP --> CHK_COUPON
+    CHK_COUPON -->|"ມີ"| APPLY_COUPON --> VALIDATE_C
+    VALIDATE_C -->|"ບໍ່ຖືກ"| ERR_COUPON --> APPLY_COUPON
+    VALIDATE_C -->|"ຖືກ"| DISC_OK --> PAY_METHOD
+    CHK_COUPON -->|"ບໍ່ມີ"| PAY_METHOD
+
+    PAY_METHOD -->|"COD"| COD --> REVIEW
+    PAY_METHOD -->|"Bank Transfer"| BANK --> REVIEW
+    PAY_METHOD -->|"ຮັບເອງ"| STORE_PAY --> REVIEW
+
+    %% Phase 5
+    REVIEW --> SUBMIT --> BE_STOCK
+    BE_STOCK -->|"ບໍ່ພໍ"| ERR_BE --> VIEW_CART
+    BE_STOCK -->|"OK"| DECREMENT --> SAVE_ORD --> CLEAR --> EMAIL_C
+
+    %% Phase 6
+    EMAIL_C --> IS_BANK
+    IS_BANK -->|"ບໍ່"| SUCCESS
+    IS_BANK -->|"ແມ່ນ"| UPLOAD --> COUNTDOWN --> CHK_TIME
+    CHK_TIME -->|"ໝົດ ເວລາ"| AUTO_CANCEL --> RESULTS
+    CHK_TIME -->|"ທັນ"| WAIT_VERIFY --> VERIFY_OK
+    VERIFY_OK -->|"Approve"| SUCCESS
+    VERIFY_OK -->|"Reject"| ERR_REJECT --> UPLOAD
+
+    %% ══════════════════════════════════════════════════
+    %%  Apply Styles
+    %% ══════════════════════════════════════════════════
+    class START,SUCCESS terminal
+    class RESULTS,DETAIL,VIEW_CART,SHIPPING,REVIEW,UPLOAD io
+    class BROWSE,CHK_STOCK1,CHK_STOCK2,MORE,CHK_LOGIN,CHK_COUPON,VALIDATE_C,PAY_METHOD,BE_STOCK,IS_BANK,CHK_TIME,VERIFY_OK decision
+    class ERR_STOCK1,ERR_BE,ERR_COUPON,ERR_REJECT error
+    class KEYWORD,CATEGORY,FLASHDEAL,FILTER,SELECT_P,SET_QTY,ADD_CART,ADJ,GO_LOGIN,CARRIER,CALC_SHIP,APPLY_COUPON,DISC_OK,COD,BANK,STORE_PAY,SUBMIT,DECREMENT,CLEAR,EMAIL_C,COUNTDOWN,AUTO_CANCEL,WAIT_VERIFY process
+    class SAVE_ORD db

@@ -1,839 +1,889 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { Link, useParams } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { toast } from "react-hot-toast";
 import {
   useGetBlogDetailsQuery,
   useLikeBlogMutation,
   useAddCommentMutation,
-  useGetRelatedBlogsQuery
-} from '../redux/api/blogApi';
-import { useSelector } from 'react-redux';
-import { formatDistanceToNow } from 'date-fns';
-import MetaData from '../layout/MetaData';
-import { toast } from 'react-hot-toast';
+  useGetRelatedBlogsQuery,
+} from "../redux/api/blogApi";
+import MetaData from "../layout/MetaData";
 
-/* ══════════════════════════════════════════════════
-   STYLES — Editorial Dark Magazine
-══════════════════════════════════════════════════ */
-const STYLE = `
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;600;700;800&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Mono:wght@400;500&display=swap');
-
-:root {
-  --ink:     #0d0d0d;
-  --paper:   #fafaf7;
-  --cream:   #f2efe8;
-  --muted:   #8a8880;
-  --accent:  #c8432a;
-  --blue:    #1d4ed8;
-  --gold:    #b5922a;
-  --border:  #e0ddd6;
-  --white:   #ffffff;
-  --sans:    'Noto Sans Lao', 'Phetsarath OT', sans-serif;
-  --serif:   'Playfair Display', Georgia, serif;
-  --mono:    'DM Mono', monospace;
-}
-
-/* ── Reset & base ── */
-.bd-root * { box-sizing: border-box; margin: 0; padding: 0; }
-.bd-root {
-  font-family: var(--sans);
-  background: var(--paper);
-  color: var(--ink);
-  min-height: 100vh;
-}
-
-/* ── Progress bar ── */
-.bd-progress {
-  position: fixed; top: 0; left: 0; height: 3px;
-  background: var(--accent); z-index: 9999;
-  transition: width .1s linear;
-  box-shadow: 0 0 8px rgba(200,67,42,.5);
-}
-
-/* ── Wrapper ── */
-.bd-wrap {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 0 1.5rem 6rem;
-}
-
-/* ── Top bar ── */
-.bd-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem 1.5rem 0;
-  max-width: 760px;
-  margin: 0 auto;
-}
-.bd-back {
-  display: inline-flex; align-items: center; gap: .5rem;
-  font-size: .78rem; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--muted);
-  text-decoration: none; transition: color .2s;
-}
-.bd-back:hover { color: var(--accent); }
-.bd-breadcrumb {
-  font-size: .75rem; color: var(--muted);
-  font-family: var(--mono); letter-spacing: .05em;
-}
-
-/* ── Hero section ── */
-.bd-hero {
-  padding: 3.5rem 1.5rem 0;
-  max-width: 760px;
-  margin: 0 auto;
-}
-
-/* Category + date row */
-.bd-meta-row {
-  display: flex; align-items: center; gap: 1rem;
-  margin-bottom: 1.75rem; flex-wrap: wrap;
-}
-.bd-cat {
-  display: inline-flex; align-items: center; gap: .4rem;
-  font-size: .7rem; font-weight: 800; letter-spacing: .12em;
-  text-transform: uppercase;
-  padding: .35rem .9rem;
-  border-radius: 3px;
-  background: var(--accent); color: var(--white);
-}
-.bd-cat-tech   { background: #1d4ed8; }
-.bd-cat-review { background: #b5922a; }
-.bd-cat-guide  { background: #2d7a4e; }
-.bd-cat-news   { background: #6b21a8; }
-
-.bd-date {
-  font-size: .78rem; color: var(--muted);
-  font-family: var(--mono); letter-spacing: .04em;
-}
-.bd-readtime {
-  display: inline-flex; align-items: center; gap: .3rem;
-  font-size: .75rem; color: var(--muted);
-  font-family: var(--mono);
-  margin-left: auto;
-}
-
-/* Title */
-.bd-title {
-  font-family: var(--serif);
-  font-size: clamp(2rem, 5vw, 3rem);
-  font-weight: 900;
-  line-height: 1.2;
-  color: var(--ink);
-  margin-bottom: 1.5rem;
-  letter-spacing: -.02em;
-}
-
-/* Excerpt / deck */
-.bd-excerpt {
-  font-size: 1.15rem;
-  color: #4a4845;
-  line-height: 1.7;
-  border-left: 3px solid var(--accent);
-  padding-left: 1.25rem;
-  margin-bottom: 2rem;
-  font-weight: 300;
-}
-
-/* Author row */
-.bd-author-row {
-  display: flex; align-items: center; gap: 1rem;
-  padding: 1.25rem 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 2.5rem;
-}
-.bd-avatar {
-  width: 46px; height: 46px; border-radius: 50%;
-  object-fit: cover; flex-shrink: 0;
-  border: 2px solid var(--border);
-}
-.bd-avatar-placeholder {
-  width: 46px; height: 46px; border-radius: 50%;
-  background: var(--cream); display: flex;
-  align-items: center; justify-content: center;
-  font-size: 1.2rem; flex-shrink: 0;
-  border: 2px solid var(--border);
-}
-.bd-author-name {
-  font-weight: 700; font-size: .9rem; color: var(--ink);
-  display: block; margin-bottom: .15rem;
-}
-.bd-author-sub {
-  font-size: .75rem; color: var(--muted);
-  font-family: var(--mono);
-}
-.bd-share-btn {
-  margin-left: auto; display: inline-flex; align-items: center; gap: .4rem;
-  font-size: .75rem; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--muted);
-  background: none; border: 1px solid var(--border);
-  padding: .5rem 1rem; border-radius: 4px; cursor: pointer;
-  transition: all .2s;
-}
-.bd-share-btn:hover { border-color: var(--ink); color: var(--ink); }
-
-/* ── Cover image ── */
-.bd-cover {
-  width: calc(100% + 3rem);
-  margin-left: -1.5rem;
-  margin-bottom: 2.5rem;
-  max-height: 480px;
-  overflow: hidden;
-  position: relative;
-}
-.bd-cover img {
-  width: 100%; height: 100%;
-  object-fit: cover; display: block;
-  transition: transform .6s ease;
-}
-.bd-cover:hover img { transform: scale(1.02); }
-.bd-cover-placeholder {
-  width: 100%; height: 360px;
-  background: linear-gradient(135deg, var(--cream) 0%, var(--border) 100%);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 5rem; color: var(--border);
-}
-
-/* ── Article body ── */
-.bd-body {
-  font-size: 1.05rem;
-  line-height: 1.9;
-  color: #2c2a27;
-  margin-bottom: 3rem;
-  letter-spacing: .01em;
-}
-.bd-body h1, .bd-body h2, .bd-body h3,
-.bd-body h4, .bd-body h5, .bd-body h6 {
-  font-family: var(--serif);
-  color: var(--ink);
-  margin-top: 2.5rem;
-  margin-bottom: .75rem;
-  line-height: 1.3;
-}
-.bd-body h2 { font-size: 1.6rem; }
-.bd-body h3 { font-size: 1.3rem; }
-.bd-body p  { margin-bottom: 1.5rem; }
-.bd-body a  { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; }
-.bd-body img {
-  max-width: 100%; height: auto;
-  border-radius: 6px; margin: 2rem 0;
-  box-shadow: 0 4px 24px rgba(0,0,0,.1);
-}
-.bd-body blockquote {
-  border-left: 3px solid var(--accent);
-  margin: 2rem 0;
-  padding: 1rem 1.5rem;
-  background: var(--cream);
-  border-radius: 0 6px 6px 0;
-  font-style: italic;
-  font-family: var(--serif);
-  font-size: 1.1rem;
-  color: #3a3835;
-}
-.bd-body code {
-  background: #1a1a1a; color: #e8d5b7;
-  padding: .2rem .5rem; border-radius: 3px;
-  font-family: var(--mono); font-size: .85em;
-}
-.bd-body pre {
-  background: #1a1a1a; color: #e8d5b7;
-  padding: 1.5rem; border-radius: 8px;
-  overflow-x: auto; margin: 1.5rem 0;
-  font-family: var(--mono); font-size: .88rem;
-  line-height: 1.6;
-}
-.bd-body pre code { background: none; padding: 0; color: inherit; }
-
-/* ── Tags ── */
-.bd-tags {
-  display: flex; flex-wrap: wrap; gap: .5rem;
-  margin-bottom: 2.5rem;
-  padding-bottom: 2.5rem;
-  border-bottom: 1px solid var(--border);
-}
-.bd-tag {
-  font-size: .72rem; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--muted);
-  background: var(--cream); padding: .3rem .85rem;
-  border-radius: 3px; border: 1px solid var(--border);
-  transition: all .2s; cursor: default;
-}
-.bd-tag:hover { background: var(--ink); color: var(--white); border-color: var(--ink); }
-
-/* ── Engagement bar ── */
-.bd-engage {
-  display: flex; align-items: center; gap: 1.5rem;
-  margin-bottom: 3.5rem; flex-wrap: wrap;
-}
-.bd-like-btn {
-  display: inline-flex; align-items: center; gap: .6rem;
-  padding: .75rem 1.5rem;
-  border: 1.5px solid var(--border);
-  border-radius: 4px; background: none;
-  font-family: var(--sans);
-  font-size: .85rem; font-weight: 700;
-  color: var(--ink); cursor: pointer;
-  transition: all .25s; letter-spacing: .02em;
-}
-.bd-like-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(200,67,42,.04);
-}
-.bd-like-btn.liked {
-  background: rgba(200,67,42,.06);
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.bd-like-btn.liked i { animation: heartbeat .4s ease; }
-@keyframes heartbeat {
-  0%   { transform: scale(1); }
-  40%  { transform: scale(1.35); }
-  100% { transform: scale(1); }
-}
-.bd-stat {
-  display: inline-flex; align-items: center; gap: .4rem;
-  font-size: .8rem; color: var(--muted);
-  font-family: var(--mono); letter-spacing: .04em;
-}
-.bd-divider { color: var(--border); }
-
-/* ── Comments ── */
-.bd-comments {
-  margin-bottom: 4rem;
-}
-.bd-comments-hd {
-  font-family: var(--serif);
-  font-size: 1.6rem; font-weight: 700;
-  color: var(--ink);
-  margin-bottom: 2rem;
-  display: flex; align-items: baseline; gap: .75rem;
-}
-.bd-comments-hd span {
-  font-family: var(--mono);
-  font-size: .85rem; color: var(--muted);
-  font-weight: 400;
-}
-
-/* Comment form */
-.bd-form { margin-bottom: 2.5rem; }
-.bd-textarea {
-  width: 100%;
-  padding: 1rem 1.25rem;
-  border: 1.5px solid var(--border);
-  border-radius: 6px;
-  background: var(--white);
-  font-family: var(--sans);
-  font-size: .95rem;
-  color: var(--ink);
-  resize: vertical;
-  min-height: 110px;
-  outline: none;
-  transition: border-color .2s;
-  margin-bottom: .75rem;
-}
-.bd-textarea:focus { border-color: var(--ink); }
-.bd-textarea::placeholder { color: var(--muted); }
-.bd-submit {
-  display: inline-flex; align-items: center; gap: .5rem;
-  padding: .72rem 1.5rem;
-  background: var(--ink); color: var(--white);
-  border: none; border-radius: 4px;
-  font-family: var(--sans);
-  font-size: .82rem; font-weight: 700;
-  letter-spacing: .06em; text-transform: uppercase;
-  cursor: pointer; transition: all .2s;
-}
-.bd-submit:hover { background: var(--accent); transform: translateY(-1px); }
-.bd-submit:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-
-/* Login prompt */
-.bd-login-prompt {
-  text-align: center; padding: 1.5rem;
-  border: 1.5px dashed var(--border);
-  border-radius: 6px; margin-bottom: 2rem;
-  background: var(--cream);
-  font-size: .9rem; color: var(--muted);
-}
-.bd-login-link {
-  color: var(--ink); font-weight: 700;
-  text-decoration: underline; text-underline-offset: 3px;
-}
-
-/* Comment list */
-.bd-comment-list { display: flex; flex-direction: column; gap: 0; }
-.bd-comment {
-  display: flex; gap: 1rem;
-  padding: 1.5rem 0;
-  border-bottom: 1px solid var(--border);
-  animation: fadeUp .3s ease both;
-}
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.bd-comment-avatar {
-  width: 38px; height: 38px; border-radius: 50%;
-  object-fit: cover; flex-shrink: 0;
-  border: 1.5px solid var(--border);
-}
-.bd-comment-avatar-ph {
-  width: 38px; height: 38px; border-radius: 50%;
-  background: var(--cream); flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: .9rem; border: 1.5px solid var(--border);
-}
-.bd-comment-body { flex: 1; }
-.bd-comment-hd {
-  display: flex; align-items: baseline;
-  gap: .75rem; margin-bottom: .4rem;
-}
-.bd-comment-name {
-  font-weight: 700; font-size: .9rem; color: var(--ink);
-}
-.bd-comment-time {
-  font-size: .72rem; color: var(--muted);
-  font-family: var(--mono);
-}
-.bd-comment-text {
-  font-size: .92rem; color: #3a3835; line-height: 1.65;
-}
-
-/* ── Related ── */
-.bd-related { margin-top: 4rem; }
-.bd-related-hd {
-  font-family: var(--serif);
-  font-size: 1.4rem; font-weight: 700;
-  color: var(--ink); margin-bottom: 1.75rem;
-  display: flex; align-items: center; gap: .75rem;
-}
-.bd-related-hd::after {
-  content: ''; flex: 1;
-  height: 1px; background: var(--border);
-}
-.bd-related-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.25rem;
-}
-.bd-rel-card {
-  display: block; text-decoration: none; color: inherit;
-  border: 1.5px solid var(--border); border-radius: 6px;
-  padding: 1.25rem; background: var(--white);
-  transition: all .25s; position: relative; overflow: hidden;
-}
-.bd-rel-card::before {
-  content: ''; position: absolute;
-  top: 0; left: 0; right: 0; height: 3px;
-  background: var(--accent); transform: scaleX(0);
-  transform-origin: left; transition: transform .3s;
-}
-.bd-rel-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
-.bd-rel-card:hover::before { transform: scaleX(1); }
-.bd-rel-cat {
-  font-size: .65rem; font-weight: 800; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--muted);
-  margin-bottom: .75rem; display: block;
-}
-.bd-rel-title {
-  font-family: var(--serif);
-  font-size: 1rem; font-weight: 700;
-  line-height: 1.4; color: var(--ink);
-  margin-bottom: .6rem;
-}
-.bd-rel-more {
-  font-size: .72rem; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--accent);
-  display: flex; align-items: center; gap: .3rem;
-}
-
-/* ── Skeleton ── */
-.bd-skeleton { padding: 3rem 1.5rem; max-width: 760px; margin: 0 auto; }
-.bd-skel {
-  background: linear-gradient(90deg, #eeece8 25%, #e4e2dd 50%, #eeece8 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: 4px;
-}
-@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
-/* ── Error ── */
-.bd-error {
-  text-align: center; padding: 5rem 2rem;
-  max-width: 480px; margin: 0 auto;
-}
-.bd-error-icon { font-size: 3.5rem; margin-bottom: 1.25rem; opacity: .35; }
-.bd-error-title { font-family: var(--serif); font-size: 1.5rem; color: var(--ink); margin-bottom: .5rem; }
-.bd-error-msg { color: var(--muted); font-size: .9rem; margin-bottom: 2rem; }
-.bd-error-link {
-  display: inline-flex; align-items: center; gap: .5rem;
-  padding: .75rem 1.5rem; border-radius: 4px;
-  background: var(--ink); color: var(--white);
-  font-size: .8rem; font-weight: 700;
-  letter-spacing: .08em; text-transform: uppercase;
-  text-decoration: none; transition: background .2s;
-}
-.bd-error-link:hover { background: var(--accent); }
-
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .bd-title   { font-size: 1.7rem; }
-  .bd-cover   { width: calc(100% + 2rem); margin-left: -1rem; }
-  .bd-engage  { gap: 1rem; }
-  .bd-related-grid { grid-template-columns: 1fr; }
-  .bd-wrap    { padding: 0 1rem 5rem; }
-  .bd-hero    { padding: 2rem 1rem 0; }
-  .bd-topbar  { padding: 1.25rem 1rem 0; }
-}
-`;
-
-/* ══════════════════════════════════════════════════
-   HELPERS
-══════════════════════════════════════════════════ */
-const CAT_MAP = {
-  tech:   { icon: '💻', label: 'ເທັກໂນໂລຢີ', cls: 'bd-cat-tech'   },
-  review: { icon: '⭐', label: 'ລີວິວ',       cls: 'bd-cat-review' },
-  guide:  { icon: '📖', label: 'ຄູ່ມື',       cls: 'bd-cat-guide'  },
-  news:   { icon: '📰', label: 'ຂ່າວສານ',    cls: 'bd-cat-news'   },
+/* ─── Config ──────────────────────────────────────── */
+const CATS = {
+  tech:   { icon: "💻", label: "ເທັກໂນໂລຢີ", color: "#2563eb", bg: "#eff6ff" },
+  review: { icon: "⭐", label: "ລີວິວ",        color: "#d97706", bg: "#fffbeb" },
+  guide:  { icon: "📖", label: "ຄູ່ມື",        color: "#059669", bg: "#f0fdf4" },
+  news:   { icon: "📰", label: "ຂ່າວສານ",     color: "#7c3aed", bg: "#faf5ff" },
 };
 
-const formatLao = (date) => {
-  try {
-    if (!date) return '';
-    const diff = Date.now() - new Date(date).getTime();
-    const m = Math.floor(diff / 60000);
-    if (m < 1)  return 'ຫາກໍ່ຜ່ານມາ';
-    if (m < 60) return `${m} ນາທີຜ່ານມາ`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h} ຊົ່ວໂມງຜ່ານມາ`;
-    const d = Math.floor(h / 24);
-    if (d < 7)  return `${d} ມື້ຜ່ານມາ`;
-    const w = Math.floor(d / 7);
-    if (w < 4)  return `${w} ອາທິດຜ່ານມາ`;
-    const mo = Math.floor(d / 30);
-    if (mo < 12) return `${mo} ເດືອນຜ່ານມາ`;
-    return `${Math.floor(mo / 12)} ປີຜ່ານມາ`;
-  } catch { return 'ບໍ່ນານມານີ້'; }
+/* ─── Helpers ─────────────────────────────────────── */
+const timeAgo = (d) => {
+  if (!d) return "";
+  const s = (Date.now() - new Date(d)) / 1000;
+  if (s < 60)    return "ຫາກໍ່ຜ່ານມາ";
+  if (s < 3600)  return `${Math.floor(s / 60)} ນາທີກ່ອນ`;
+  if (s < 86400) return `${Math.floor(s / 3600)} ຊຊ.ກ່ອນ`;
+  const d2 = Math.floor(s / 86400);
+  if (d2 < 7)    return `${d2} ວັນກ່ອນ`;
+  return new Date(d).toLocaleDateString("lo-LA", { year: "numeric", month: "long", day: "numeric" });
 };
 
-const formatFullDate = (date) => {
-  try {
-    return new Date(date).toLocaleDateString('lo-LA', {
-      year: 'numeric', month: 'long', day: 'numeric'
-    });
-  } catch { return ''; }
-};
+const fmtNum = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n || 0));
 
-/* ══════════════════════════════════════════════════
-   MAIN COMPONENT
-══════════════════════════════════════════════════ */
-const BlogDetail = () => {
-  const { id } = useParams();
-  const { user } = useSelector((s) => s.auth);
+const blogImg = (b) => b?.image?.url || b?.image ||
+  (Array.isArray(b?.images) && b.images[0]) || null;
 
-  const [commentText, setCommentText] = useState('');
-  const [scroll, setScroll] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Reading progress
-  useEffect(() => {
-    const onScroll = () => {
-      const el = document.documentElement;
-      const pct = (el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100;
-      setScroll(Math.min(100, pct));
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const { data, isLoading, error } = useGetBlogDetailsQuery(id);
-  const [likeBlog]    = useLikeBlogMutation();
-  const [addComment]  = useAddCommentMutation();
-
-  const blog = data?.blog || data;
-
-  const handleLike = async () => {
-    if (!user) { toast.error('ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ'); return; }
-    try {
-      await likeBlog(id).unwrap();
-    } catch {
-      toast.error('ບໍ່ສາມາດຖືກໃຈໄດ້');
-    }
-  };
-
-  const handleComment = async (e) => {
-    e.preventDefault();
-    if (!user) { toast.error('ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ'); return; }
-    const t = commentText.trim();
-    if (!t || t.length < 3) { toast.error('ຄອມເມັນຕ້ອງມີ ≥ 3 ຕົວອັກສອນ'); return; }
-    setSubmitting(true);
-    try {
-      await addComment({ id, comment: t }).unwrap();
-      setCommentText('');
-      toast.success('ສົ່ງຄວາມຄິດເຫັນສຳເລັດ');
-    } catch {
-      toast.error('ບໍ່ສາມາດສົ່ງຄວາມຄິດເຫັນໄດ້');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      await navigator.share({ title: blog?.title, url: window.location.href });
-    } else {
-      await navigator.clipboard.writeText(window.location.href);
-      toast.success('ຄັດລອກ URL ສຳເລັດ');
-    }
-  };
-
-  /* ── States ── */
-  if (isLoading) return <BlogSkeleton />;
-  if (error)     return <BlogError error={error} />;
-  if (!blog)     return <BlogNotFound />;
-
-  const cat     = CAT_MAP[blog.category] || CAT_MAP.tech;
-  const isLiked = blog.likes?.some((l) => (l?.user || l)?.toString() === user?._id);
-  const authorImg = blog.authorId?.avatar?.url;
-  const authorName = blog.author || blog.authorId?.name || 'Admin';
-
+/* ─── Skeleton ────────────────────────────────────── */
+function Skeleton() {
   return (
     <>
-      <style>{STYLE}</style>
-      <MetaData title={`${blog.title} — ບລັອກເທັກໂນໂລຢີ`} />
-
-      <div className="bd-root">
-        {/* Reading progress */}
-        <div className="bd-progress" style={{ width: `${scroll}%` }} />
-
-        {/* Top bar */}
-        <div className="bd-topbar">
-          <Link to="/blogs" className="bd-back">
-            <i className="fas fa-arrow-left" style={{ fontSize: '.7rem' }}></i>
-            ກັບໄປລາຍຊື່
-          </Link>
-          <span className="bd-breadcrumb">
-            blogs / {blog.category} / {blog.slug || id}
-          </span>
-        </div>
-
-        {/* Hero */}
-        <div className="bd-hero">
-          <div className="bd-meta-row">
-            <span className={`bd-cat ${cat.cls}`}>
-              {cat.icon} {cat.label}
-            </span>
-            <span className="bd-date">{formatFullDate(blog.createdAt)}</span>
-            <span className="bd-readtime">
-              <i className="far fa-clock" style={{ fontSize: '.7rem' }}></i>
-              {blog.readTime || '5 ນາທີ'}
-            </span>
+      <style>{css}</style>
+      <div className="bdt-sk-hero" />
+      <div className="bdt-container">
+        <div className="bdt-layout">
+          <div className="bdt-main">
+            {[100, 85, 95, 70, 90, 75, 60].map((w, i) => (
+              <div key={i} className="bdt-sk" style={{ height: i < 2 ? 20 : 14, width: `${w}%`, marginBottom: 12 }} />
+            ))}
           </div>
-
-          <h1 className="bd-title">{blog.title}</h1>
-
-          {blog.excerpt && (
-            <p className="bd-excerpt">{blog.excerpt}</p>
-          )}
-
-          <div className="bd-author-row">
-            {authorImg
-              ? <img src={authorImg} alt={authorName} className="bd-avatar" />
-              : <div className="bd-avatar-placeholder">👤</div>
-            }
-            <div>
-              <span className="bd-author-name">{authorName}</span>
-              <span className="bd-author-sub">
-                {blog.authorId?.email || 'ຜູ້ຂຽນ'} · {formatLao(blog.createdAt)}
-              </span>
-            </div>
-            <button className="bd-share-btn" onClick={handleShare}>
-              <i className="fas fa-share-nodes" style={{ fontSize: '.75rem' }}></i>
-              ແຊ
-            </button>
-          </div>
-        </div>
-
-        {/* Main wrap */}
-        <div className="bd-wrap">
-
-          {/* Cover image */}
-          <div className="bd-cover">
-            {blog.image?.url || blog.image
-              ? <img src={blog.image?.url || blog.image} alt={blog.title} />
-              : <div className="bd-cover-placeholder">{cat.icon}</div>
-            }
-          </div>
-
-          {/* Body */}
-          <div
-            className="bd-body"
-            dangerouslySetInnerHTML={{ __html: blog.content }}
-          />
-
-          {/* Tags */}
-          {blog.tags?.length > 0 && (
-            <div className="bd-tags">
-              {blog.tags.map((t) => (
-                <span key={t} className="bd-tag">#{t}</span>
-              ))}
-            </div>
-          )}
-
-          {/* Engagement */}
-          <div className="bd-engage">
-            <button
-              className={`bd-like-btn ${isLiked ? 'liked' : ''}`}
-              onClick={handleLike}
-            >
-              <i className={`${isLiked ? 'fas' : 'far'} fa-heart`}></i>
-              {blog.likes?.length || 0} ຖືກໃຈ
-            </button>
-
-            <span className="bd-divider">|</span>
-
-            <span className="bd-stat">
-              <i className="far fa-eye"></i>
-              {(blog.views || 0).toLocaleString()} ວິວ
-            </span>
-
-            <span className="bd-stat">
-              <i className="far fa-comment"></i>
-              {blog.comments?.length || 0} ຄວາມຄິດເຫັນ
-            </span>
-          </div>
-
-          {/* Comments */}
-          <div className="bd-comments">
-            <h3 className="bd-comments-hd">
-              ຄວາມຄິດເຫັນ
-              <span>( {blog.comments?.length || 0} )</span>
-            </h3>
-
-            {user ? (
-              <form onSubmit={handleComment} className="bd-form">
-                <textarea
-                  className="bd-textarea"
-                  placeholder="ແບ່ງປັນຄວາມຄິດເຫັນຂອງທ່ານ..."
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  rows={4}
-                />
-                <button type="submit" className="bd-submit" disabled={submitting}>
-                  {submitting
-                    ? <><i className="fas fa-spinner fa-spin"></i> ກຳລັງສົ່ງ...</>
-                    : <><i className="far fa-paper-plane"></i> ສົ່ງຄວາມຄິດເຫັນ</>
-                  }
-                </button>
-              </form>
-            ) : (
-              <div className="bd-login-prompt">
-                ກະລຸນາ{' '}
-                <Link to="/login" className="bd-login-link">ເຂົ້າສູ່ລະບົບ</Link>
-                {' '}ເພື່ອຄອມເມັນ
-              </div>
-            )}
-
-            <div className="bd-comment-list">
-              {blog.comments?.length > 0
-                ? blog.comments.map((c, i) => (
-                    <div key={c._id || i} className="bd-comment" style={{ animationDelay: `${i * 0.05}s` }}>
-                      {c.user?.avatar?.url
-                        ? <img src={c.user.avatar.url} alt={c.user?.name} className="bd-comment-avatar" />
-                        : <div className="bd-comment-avatar-ph">👤</div>
-                      }
-                      <div className="bd-comment-body">
-                        <div className="bd-comment-hd">
-                          <span className="bd-comment-name">{c.user?.name || 'ຜູ້ໃຊ້'}</span>
-                          <span className="bd-comment-time">{formatLao(c.createdAt)}</span>
-                        </div>
-                        <p className="bd-comment-text">{c.text || c.comment}</p>
-                      </div>
-                    </div>
-                  ))
-                : (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--muted)', fontSize: '.9rem' }}>
-                    ຍັງບໍ່ມີຄວາມຄິດເຫັນ — ເປັນຄົນທຳອິດ!
-                  </div>
-                )
-              }
-            </div>
-          </div>
-
-          {/* Related */}
-          <RelatedBlogs currentBlogId={id} />
-
+          <div className="bdt-sidebar" />
         </div>
       </div>
     </>
   );
-};
+}
 
-/* ══════════════════════════════════════════════════
-   SUB-COMPONENTS
-══════════════════════════════════════════════════ */
-const RelatedBlogs = ({ currentBlogId }) => {
-  const { data: relatedData } = useGetRelatedBlogsQuery(currentBlogId);
-  const blogs = Array.isArray(relatedData) ? relatedData : relatedData?.blogs;
-  if (!blogs?.length) return null;
-
+/* ─── Error / NotFound ────────────────────────────── */
+function ErrorState({ icon, title, msg }) {
   return (
-    <div className="bd-related">
-      <h3 className="bd-related-hd">ບົດຄວາມທີ່ກ່ຽວຂ້ອງ</h3>
-      <div className="bd-related-grid">
-        {blogs.slice(0, 3).map((b) => {
-          const cat = CAT_MAP[b.category] || CAT_MAP.tech;
-          return (
-            <Link key={b._id} to={`/blogs/${b.slug || b._id}`} className="bd-rel-card">
-              <span className="bd-rel-cat">{cat.icon} {cat.label}</span>
-              <h4 className="bd-rel-title">{b.title}</h4>
-              <span className="bd-rel-more">
-                ອ່ານຕໍ່ <i className="fas fa-arrow-right" style={{ fontSize: '.65rem' }}></i>
-              </span>
-            </Link>
-          );
-        })}
+    <>
+      <style>{css}</style>
+      <div className="bdt-errorpage">
+        <div className="bdt-error-icon">{icon}</div>
+        <h2 className="bdt-error-title">{title}</h2>
+        <p className="bdt-error-msg">{msg}</p>
+        <Link to="/blog" className="bdt-error-btn">← ກັບໄປໜ້າບລັອກ</Link>
+      </div>
+    </>
+  );
+}
+
+/* ─── Related card ────────────────────────────────── */
+function RelCard({ blog }) {
+  const cat = CATS[blog.category] || CATS.tech;
+  const img = blogImg(blog);
+  return (
+    <Link to={`/blog/${blog.slug || blog._id}`} className="bdt-rel-card">
+      <div className="bdt-rel-img" style={{ background: cat.bg }}>
+        {img
+          ? <img src={img} alt={blog.title} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          : <span className="bdt-rel-placeholder">{cat.icon}</span>
+        }
+      </div>
+      <div className="bdt-rel-body">
+        <span className="bdt-rel-cat" style={{ color: cat.color }}>{cat.icon} {cat.label}</span>
+        <h4 className="bdt-rel-title">{blog.title}</h4>
+        <span className="bdt-rel-time">{timeAgo(blog.publishedAt || blog.createdAt)}</span>
+      </div>
+    </Link>
+  );
+}
+
+/* ─── Comment item ────────────────────────────────── */
+function CommentItem({ c, idx }) {
+  const avatar = c.user?.avatar?.url;
+  const name   = c.user?.name || "ຜູ້ໃຊ້";
+  const letter = name[0]?.toUpperCase() || "U";
+  return (
+    <div className="bdt-cmt" style={{ animationDelay: `${idx * 50}ms` }}>
+      {avatar
+        ? <img src={avatar} alt={name} className="bdt-cmt-av" />
+        : <div className="bdt-cmt-av bdt-cmt-ph">{letter}</div>
+      }
+      <div className="bdt-cmt-body">
+        <div className="bdt-cmt-head">
+          <span className="bdt-cmt-name">{name}</span>
+          <span className="bdt-cmt-time">{timeAgo(c.createdAt)}</span>
+        </div>
+        <p className="bdt-cmt-text">{c.text || c.comment}</p>
       </div>
     </div>
   );
-};
+}
 
-const BlogSkeleton = () => (
-  <div className="bd-skeleton">
-    <div className="bd-skel" style={{ height: 16, width: 120, marginBottom: 32 }} />
-    <div className="bd-skel" style={{ height: 14, width: 80, marginBottom: 16 }} />
-    <div className="bd-skel" style={{ height: 48, width: '90%', marginBottom: 12 }} />
-    <div className="bd-skel" style={{ height: 48, width: '70%', marginBottom: 24 }} />
-    <div className="bd-skel" style={{ height: 20, marginBottom: 8 }} />
-    <div className="bd-skel" style={{ height: 20, width: '80%', marginBottom: 32 }} />
-    <div className="bd-skel" style={{ height: 400, borderRadius: 8, marginBottom: 32 }} />
-    {[1,2,3,4,5].map((i) => (
-      <div key={i} className="bd-skel" style={{ height: 16, width: `${75 + Math.random()*25}%`, marginBottom: 12 }} />
-    ))}
-  </div>
-);
+/* ─── Main ────────────────────────────────────────── */
+export default function BlogDetail() {
+  const { id }   = useParams();
+  const { user } = useSelector((s) => s.auth);
 
-const BlogError = ({ error }) => (
-  <div className="bd-error">
-    <div className="bd-error-icon">🔌</div>
-    <h3 className="bd-error-title">ໂຫຼດບໍ່ສຳເລັດ</h3>
-    <p className="bd-error-msg">{error?.data?.message || 'ບໍ່ສາມາດເຊື່ອມຕໍ່ກັບ Server ໄດ້'}</p>
-    <Link to="/blogs" className="bd-error-link">
-      <i className="fas fa-arrow-left"></i> ກັບໄປໜ້າບລັອກ
-    </Link>
-  </div>
-);
+  const [comment,    setComment]    = useState("");
+  const [progress,   setProgress]   = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [copied,     setCopied]     = useState(false);
 
-const BlogNotFound = () => (
-  <div className="bd-error">
-    <div className="bd-error-icon">🔍</div>
-    <h3 className="bd-error-title">ບໍ່ພົບບົດຄວາມ</h3>
-    <p className="bd-error-msg">ບົດຄວາມທີ່ທ່ານຊອກຫາບໍ່ມີໃນລະບົບ</p>
-    <Link to="/blogs" className="bd-error-link">
-      <i className="fas fa-arrow-left"></i> ກັບໄປໜ້າບລັອກ
-    </Link>
-  </div>
-);
+  /* Reading progress */
+  useEffect(() => {
+    const fn = () => {
+      const el  = document.documentElement;
+      const pct = (el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100;
+      setProgress(Math.min(100, Math.max(0, pct)));
+    };
+    window.addEventListener("scroll", fn, { passive: true });
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
 
-export default BlogDetail;
+  /* API */
+  const { data, isLoading, error } = useGetBlogDetailsQuery(id);
+  const [likeBlog]   = useLikeBlogMutation();
+  const [addComment] = useAddCommentMutation();
+
+  const blog = data?.blog || data;
+
+  /* Related */
+  const { data: relData } = useGetRelatedBlogsQuery(id, { skip: !blog });
+  const related = Array.isArray(relData) ? relData : relData?.blogs || [];
+
+  const handleLike = async () => {
+    if (!user) { toast.error("ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ"); return; }
+    try { await likeBlog(id).unwrap(); }
+    catch { toast.error("ບໍ່ສາມາດຖືກໃຈໄດ້"); }
+  };
+
+  const handleComment = async (e) => {
+    e.preventDefault();
+    if (!user) { toast.error("ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ"); return; }
+    const t = comment.trim();
+    if (t.length < 3) { toast.error("ຕ້ອງ ≥ 3 ຕົວ"); return; }
+    setSubmitting(true);
+    try {
+      await addComment({ id, comment: t }).unwrap();
+      setComment("");
+      toast.success("ສົ່ງຄວາມຄິດເຫັນສຳເລັດ ✅");
+    } catch { toast.error("ສົ່ງບໍ່ໄດ້"); }
+    finally { setSubmitting(false); }
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      await navigator.share({ title: blog?.title, url: window.location.href }).catch(() => {});
+    } else {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      toast.success("ຄັດລອກ URL ແລ້ວ");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  /* ── States ── */
+  if (isLoading) return <Skeleton />;
+  if (error)     return <ErrorState icon="🔌" title="ໂຫຼດບໍ່ສຳເລັດ" msg={error?.data?.message || "ບໍ່ສາມາດເຊື່ອມຕໍ່ server"} />;
+  if (!blog)     return <ErrorState icon="🔍" title="ບໍ່ພົບບົດຄວາມ" msg="ບົດຄວາມທີ່ທ່ານຊອກຫາບໍ່ມີໃນລະບົບ" />;
+
+  const cat        = CATS[blog.category] || CATS.tech;
+  const coverImg   = blogImg(blog);
+  const isLiked    = blog.likes?.some((l) => (l?.user || l)?.toString() === user?._id);
+  const authorName = blog.author || blog.authorId?.name || "IT HUBB";
+  const authorAv   = blog.authorId?.avatar?.url;
+  const comments   = blog.comments || [];
+  const likeCount  = blog.likes?.length || 0;
+
+  return (
+    <>
+      <MetaData title={`${blog.title} — IT HUBB Blog`} />
+      <style>{css}</style>
+
+      {/* Reading progress */}
+      <div className="bdt-progress" style={{ width: `${progress}%` }} />
+
+      {/* ══ HERO ══ */}
+      <div className="bdt-hero" style={coverImg ? { backgroundImage: `url(${coverImg})` } : {}}>
+        <div className={`bdt-hero-overlay${!coverImg ? " bdt-hero-grad" : ""}`} />
+
+        {/* Topbar */}
+        <div className="bdt-topbar">
+          <Link to="/blog" className="bdt-back">← ກັບໄປ</Link>
+          <span className="bdt-breadcrumb">blog / {cat.label}</span>
+        </div>
+
+        {/* Hero content */}
+        <div className="bdt-hero-content">
+          <div className="bdt-hero-meta">
+            <span className="bdt-cat-pill" style={{ background: cat.color }}>
+              {cat.icon} {cat.label}
+            </span>
+            <span className="bdt-hero-date">
+              {timeAgo(blog.publishedAt || blog.createdAt)}
+            </span>
+            <span className="bdt-hero-rt">⏱ {blog.readTime || "5 ນາທີ"}</span>
+          </div>
+
+          <h1 className="bdt-hero-title">{blog.title}</h1>
+
+          {blog.excerpt && (
+            <p className="bdt-hero-excerpt">{blog.excerpt}</p>
+          )}
+
+          <div className="bdt-hero-author">
+            {authorAv
+              ? <img src={authorAv} alt={authorName} className="bdt-av" />
+              : <div className="bdt-av bdt-av-ph">{authorName[0]?.toUpperCase()}</div>
+            }
+            <div>
+              <span className="bdt-av-name">{authorName}</span>
+              <span className="bdt-av-sub">{blog.authorId?.email || "IT HUBB"}</span>
+            </div>
+            <button className="bdt-share-hero" onClick={handleShare}>
+              {copied ? "✅ คัดลอกแล้ว" : "↗ ແຊ"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ══ MAIN LAYOUT ══ */}
+      <div className="bdt-container">
+        <div className="bdt-layout">
+
+          {/* ── Article ── */}
+          <main className="bdt-main">
+
+            {/* Content */}
+            <div
+              className="bdt-content"
+              dangerouslySetInnerHTML={{ __html: blog.content }}
+            />
+
+            {/* Tags */}
+            {blog.tags?.length > 0 && (
+              <div className="bdt-tags">
+                {blog.tags.map((t) => (
+                  <span key={t} className="bdt-tag">#{t}</span>
+                ))}
+              </div>
+            )}
+
+            {/* Engagement bar */}
+            <div className="bdt-engage">
+              <button
+                className={`bdt-like${isLiked ? " liked" : ""}`}
+                onClick={handleLike}
+              >
+                <span className="bdt-heart">{isLiked ? "❤️" : "🤍"}</span>
+                <span>{likeCount} ຖືກໃຈ</span>
+              </button>
+              <div className="bdt-engage-stats">
+                <span>👁 {fmtNum(blog.views)} ວິວ</span>
+                <span>💬 {comments.length} ຄຳເຫັນ</span>
+              </div>
+              <button className="bdt-share-btn" onClick={handleShare}>
+                {copied ? "✅" : "↗"} ແຊ
+              </button>
+            </div>
+
+            {/* ── Comments ── */}
+            <section className="bdt-comments">
+              <h3 className="bdt-cmt-hd">
+                💬 ຄຳເຫັນ
+                <span className="bdt-cmt-count">{comments.length}</span>
+              </h3>
+
+              {/* Form */}
+              {user ? (
+                <form onSubmit={handleComment} className="bdt-cmt-form">
+                  <div className="bdt-cmt-form-row">
+                    <div className="bdt-av bdt-av-ph bdt-av-sm">
+                      {user.name?.[0]?.toUpperCase() || "U"}
+                    </div>
+                    <div className="bdt-cmt-input-wrap">
+                      <textarea
+                        className="bdt-cmt-input"
+                        placeholder="ແບ່ງປັນຄວາມຄິດເຫັນ..."
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        rows={3}
+                      />
+                      <div className="bdt-cmt-form-foot">
+                        <span className={`bdt-cmt-len ${comment.length > 450 ? "warn" : ""}`}>
+                          {comment.length}/500
+                        </span>
+                        <button type="submit" className="bdt-cmt-submit" disabled={submitting || comment.trim().length < 3}>
+                          {submitting ? "ກຳລັງສົ່ງ..." : "ສົ່ງ →"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              ) : (
+                <div className="bdt-login-prompt">
+                  <span>💬</span>
+                  <span>
+                    <Link to="/login" className="bdt-login-link">ເຂົ້າສູ່ລະບົບ</Link>
+                    {" "}ເພື່ອຄອມເມັນ
+                  </span>
+                </div>
+              )}
+
+              {/* List */}
+              <div className="bdt-cmt-list">
+                {comments.length > 0
+                  ? comments.map((c, i) => <CommentItem key={c._id || i} c={c} idx={i} />)
+                  : (
+                    <div className="bdt-cmt-empty">
+                      <span>💬</span>
+                      <p>ຍັງບໍ່ມີຄຳເຫັນ — ເປັນຄົນທຳອິດ!</p>
+                    </div>
+                  )
+                }
+              </div>
+            </section>
+
+            {/* Related (mobile) */}
+            {related.length > 0 && (
+              <section className="bdt-related-mobile">
+                <h3 className="bdt-rel-hd">📚 ບົດຄວາມທີ່ກ່ຽວຂ້ອງ</h3>
+                <div className="bdt-rel-grid-mobile">
+                  {related.slice(0, 3).map((b) => <RelCard key={b._id} blog={b} />)}
+                </div>
+              </section>
+            )}
+
+          </main>
+
+          {/* ── Sticky Sidebar ── */}
+          <aside className="bdt-sidebar">
+
+            {/* Author card */}
+            <div className="bdt-side-card">
+              <div className="bdt-side-author">
+                {authorAv
+                  ? <img src={authorAv} alt={authorName} className="bdt-side-av" />
+                  : <div className="bdt-side-av bdt-side-av-ph">{authorName[0]?.toUpperCase()}</div>
+                }
+                <span className="bdt-side-name">{authorName}</span>
+                <span className="bdt-side-role">ຜູ້ຂຽນ</span>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="bdt-side-card">
+              <div className="bdt-side-title">📊 ສະຖິຕິ</div>
+              <div className="bdt-side-stats">
+                <div className="bdt-side-stat">
+                  <span className="bdt-side-stat-val">{fmtNum(blog.views)}</span>
+                  <span className="bdt-side-stat-label">ວິວ</span>
+                </div>
+                <div className="bdt-side-stat">
+                  <span className="bdt-side-stat-val">{likeCount}</span>
+                  <span className="bdt-side-stat-label">ຖືກໃຈ</span>
+                </div>
+                <div className="bdt-side-stat">
+                  <span className="bdt-side-stat-val">{comments.length}</span>
+                  <span className="bdt-side-stat-label">ຄຳເຫັນ</span>
+                </div>
+              </div>
+              <div className="bdt-side-rt">⏱ ໃຊ້ເວລາອ່ານ {blog.readTime || "5 ນາທີ"}</div>
+            </div>
+
+            {/* Actions */}
+            <div className="bdt-side-card">
+              <div className="bdt-side-title">⚡ ການກະທຳ</div>
+              <button
+                className={`bdt-side-like${isLiked ? " liked" : ""}`}
+                onClick={handleLike}
+              >
+                {isLiked ? "❤️" : "🤍"} {isLiked ? "ຖືກໃຈແລ້ວ" : "ຖືກໃຈ"}
+              </button>
+              <button className="bdt-side-share" onClick={handleShare}>
+                {copied ? "✅ ຄັດລອກແລ້ວ" : "↗ ແຊ URL"}
+              </button>
+            </div>
+
+            {/* Category */}
+            <div className="bdt-side-card">
+              <div className="bdt-side-title">🏷️ ໝວດໝູ່</div>
+              <span className="bdt-side-catpill" style={{ background: cat.bg, color: cat.color }}>
+                {cat.icon} {cat.label}
+              </span>
+              {blog.tags?.length > 0 && (
+                <div className="bdt-side-tags">
+                  {blog.tags.map((t) => (
+                    <span key={t} className="bdt-side-tag">#{t}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Related (desktop) */}
+            {related.length > 0 && (
+              <div className="bdt-side-card">
+                <div className="bdt-side-title">📚 ກ່ຽວຂ້ອງ</div>
+                <div className="bdt-rel-grid">
+                  {related.slice(0, 4).map((b) => <RelCard key={b._id} blog={b} />)}
+                </div>
+              </div>
+            )}
+
+          </aside>
+        </div>
+      </div>
+
+      {/* Back to top */}
+      <button className="bdt-top" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>↑</button>
+    </>
+  );
+}
+
+/* ─── CSS ─────────────────────────────────────────── */
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;600;700;800&family=Lora:ital,wght@0,600;1,500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+.bdt-progress, .bdt-hero, .bdt-container, .bdt-main, .bdt-sidebar,
+.bdt-errorpage, .bdt-sk-hero {
+  font-family: 'Noto Sans Lao', 'Phetsarath OT', sans-serif;
+}
+
+/* ── Progress bar ── */
+.bdt-progress {
+  position: fixed; top: 0; left: 0; height: 3px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  z-index: 9999; transition: width .1s linear;
+  box-shadow: 0 0 8px rgba(102,126,234,.5);
+}
+
+/* ── Hero ── */
+.bdt-hero {
+  position: relative;
+  min-height: 520px;
+  background-color: #1e1b4b;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+}
+.bdt-hero-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom,
+    rgba(0,0,0,.15) 0%,
+    rgba(0,0,0,.55) 60%,
+    rgba(0,0,0,.85) 100%
+  );
+}
+.bdt-hero-grad {
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  opacity: 1;
+}
+
+/* Topbar inside hero */
+.bdt-topbar {
+  position: relative; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.25rem 2rem;
+  max-width: 1200px; margin: 0 auto; width: 100%;
+}
+.bdt-back {
+  font-size: .82rem; font-weight: 700; color: rgba(255,255,255,.85);
+  text-decoration: none; letter-spacing: .06em;
+  transition: color .15s;
+}
+.bdt-back:hover { color: #fff; }
+.bdt-breadcrumb { font-size: .72rem; color: rgba(255,255,255,.5); letter-spacing: .06em; }
+
+/* Hero content */
+.bdt-hero-content {
+  position: relative; z-index: 2;
+  max-width: 860px;
+  margin: auto 0 0;
+  padding: 2rem 2rem 2.5rem;
+  width: 100%;
+  align-self: center;
+}
+.bdt-hero-meta {
+  display: flex; align-items: center; gap: .75rem;
+  margin-bottom: 1.25rem; flex-wrap: wrap;
+}
+.bdt-cat-pill {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .3rem .9rem; border-radius: 50px;
+  color: white; font-size: .72rem; font-weight: 700;
+  letter-spacing: .04em;
+}
+.bdt-hero-date, .bdt-hero-rt {
+  font-size: .75rem; color: rgba(255,255,255,.7);
+}
+.bdt-hero-title {
+  font-family: 'Lora', Georgia, serif;
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.3;
+  margin-bottom: 1rem;
+  letter-spacing: -.01em;
+}
+.bdt-hero-excerpt {
+  font-size: 1.05rem;
+  color: rgba(255,255,255,.8);
+  line-height: 1.65;
+  margin-bottom: 1.5rem;
+  max-width: 680px;
+}
+.bdt-hero-author {
+  display: flex; align-items: center; gap: .85rem;
+  flex-wrap: wrap;
+}
+.bdt-av {
+  width: 42px; height: 42px;
+  border-radius: 50%; object-fit: cover;
+  border: 2px solid rgba(255,255,255,.4);
+  flex-shrink: 0;
+}
+.bdt-av-ph {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white; font-size: 1rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.bdt-av-sm { width: 36px; height: 36px; font-size: .85rem; }
+.bdt-av-name { display: block; font-size: .88rem; font-weight: 700; color: #fff; }
+.bdt-av-sub  { display: block; font-size: .72rem; color: rgba(255,255,255,.6); }
+.bdt-share-hero {
+  margin-left: auto;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
+  color: #fff; border-radius: 8px;
+  padding: .45rem 1.1rem; font-size: .8rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: background .15s;
+}
+.bdt-share-hero:hover { background: rgba(255,255,255,.22); }
+
+/* ── Layout ── */
+.bdt-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 5rem;
+}
+.bdt-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 2.5rem;
+  align-items: start;
+}
+.bdt-sidebar {
+  position: sticky;
+  top: 76px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+.bdt-sidebar::-webkit-scrollbar { width: 3px; }
+.bdt-sidebar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
+
+/* ── Article content ── */
+.bdt-content {
+  font-size: 1.05rem;
+  line-height: 1.9;
+  color: #1e293b;
+  margin-bottom: 2.5rem;
+}
+.bdt-content h1, .bdt-content h2, .bdt-content h3,
+.bdt-content h4, .bdt-content h5, .bdt-content h6 {
+  font-family: 'Lora', Georgia, serif;
+  color: #0f172a; margin-top: 2.5rem; margin-bottom: .85rem; line-height: 1.3;
+}
+.bdt-content h2 { font-size: 1.6rem; border-bottom: 2px solid #f1f5f9; padding-bottom: .5rem; }
+.bdt-content h3 { font-size: 1.3rem; }
+.bdt-content p  { margin-bottom: 1.4rem; }
+.bdt-content a  { color: #667eea; text-decoration: underline; text-underline-offset: 3px; }
+.bdt-content a:hover { color: #764ba2; }
+.bdt-content img {
+  max-width: 100%; height: auto;
+  border-radius: 12px; margin: 2rem 0;
+  box-shadow: 0 4px 20px rgba(0,0,0,.1);
+}
+.bdt-content blockquote {
+  border-left: 4px solid #667eea;
+  margin: 2rem 0; padding: 1rem 1.5rem;
+  background: #f8f7ff; border-radius: 0 10px 10px 0;
+  font-style: italic; font-family: 'Lora', Georgia, serif;
+  font-size: 1.05rem; color: #374151;
+}
+.bdt-content code {
+  background: #1e293b; color: #7dd3fc;
+  padding: .2rem .55rem; border-radius: 5px;
+  font-size: .85em; font-family: 'Courier New', monospace;
+}
+.bdt-content pre {
+  background: #0f172a; color: #e2e8f0;
+  padding: 1.5rem; border-radius: 12px;
+  overflow-x: auto; margin: 1.5rem 0;
+  font-family: 'Courier New', monospace;
+  font-size: .875rem; line-height: 1.65;
+}
+.bdt-content pre code { background: none; padding: 0; color: inherit; }
+.bdt-content ul, .bdt-content ol { padding-left: 1.5rem; margin-bottom: 1.4rem; }
+.bdt-content li { margin-bottom: .4rem; }
+
+/* ── Tags ── */
+.bdt-tags {
+  display: flex; flex-wrap: wrap; gap: .45rem;
+  margin-bottom: 2rem; padding-bottom: 2rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+.bdt-tag {
+  padding: .3rem .85rem; border-radius: 50px;
+  background: #f1f5f9; color: #64748b;
+  font-size: .75rem; font-weight: 600;
+  border: 1px solid #e2e8f0; transition: all .15s;
+}
+.bdt-tag:hover { background: #667eea; color: white; border-color: #667eea; cursor: pointer; }
+
+/* ── Engagement ── */
+.bdt-engage {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg, #f8f7ff, #f0f4ff);
+  border-radius: 14px; margin-bottom: 2.5rem;
+  border: 1px solid #e0e7ff; flex-wrap: wrap;
+}
+.bdt-like {
+  display: inline-flex; align-items: center; gap: .55rem;
+  padding: .6rem 1.3rem; border-radius: 50px;
+  border: 1.5px solid #e2e8f0; background: white;
+  font-size: .875rem; font-weight: 700; color: #374151;
+  cursor: pointer; font-family: inherit; transition: all .2s;
+}
+.bdt-like:hover   { border-color: #f43f5e; color: #f43f5e; }
+.bdt-like.liked   { background: #fff1f2; border-color: #f43f5e; color: #f43f5e; }
+.bdt-heart { font-size: 1rem; transition: transform .25s; }
+.bdt-like.liked .bdt-heart { animation: bdt-pulse .35s ease; }
+@keyframes bdt-pulse { 0%{transform:scale(1)} 50%{transform:scale(1.35)} 100%{transform:scale(1)} }
+.bdt-engage-stats { display: flex; gap: 1rem; font-size: .82rem; color: #64748b; }
+.bdt-share-btn {
+  margin-left: auto; padding: .55rem 1.1rem;
+  border-radius: 50px; border: 1.5px solid #e2e8f0;
+  background: white; font-size: .82rem; font-weight: 600;
+  color: #374151; cursor: pointer; font-family: inherit; transition: all .18s;
+}
+.bdt-share-btn:hover { border-color: #667eea; color: #667eea; }
+
+/* ── Comments ── */
+.bdt-comments { margin-bottom: 3rem; }
+.bdt-cmt-hd {
+  font-size: 1.2rem; font-weight: 800; color: #0f172a;
+  margin-bottom: 1.5rem; display: flex; align-items: center; gap: .6rem;
+}
+.bdt-cmt-count {
+  background: #667eea; color: white;
+  border-radius: 50px; padding: .1rem .55rem;
+  font-size: .72rem; font-weight: 700;
+}
+.bdt-cmt-form { margin-bottom: 2rem; }
+.bdt-cmt-form-row { display: flex; gap: .85rem; align-items: flex-start; }
+.bdt-cmt-input-wrap { flex: 1; }
+.bdt-cmt-input {
+  width: 100%; padding: .85rem 1rem;
+  border: 2px solid #e5e7eb; border-radius: 12px;
+  font-family: inherit; font-size: .9rem; color: #1e293b;
+  background: #fafafa; resize: vertical; min-height: 90px;
+  outline: none; transition: border-color .2s, background .2s;
+  margin-bottom: .5rem;
+}
+.bdt-cmt-input:focus { border-color: #667eea; background: white; box-shadow: 0 0 0 3px rgba(102,126,234,.08); }
+.bdt-cmt-form-foot {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.bdt-cmt-len { font-size: .72rem; color: #9ca3af; }
+.bdt-cmt-len.warn { color: #f59e0b; }
+.bdt-cmt-submit {
+  padding: .5rem 1.3rem; border-radius: 50px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white; border: none; font-size: .82rem; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: all .2s;
+}
+.bdt-cmt-submit:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(102,126,234,.4); transform: translateY(-1px); }
+.bdt-cmt-submit:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.bdt-login-prompt {
+  display: flex; align-items: center; gap: .75rem;
+  padding: 1.25rem 1.5rem; border-radius: 14px;
+  background: #f8f7ff; border: 1.5px dashed #c4b5fd;
+  font-size: .9rem; color: #64748b; margin-bottom: 2rem;
+}
+.bdt-login-link { color: #667eea; font-weight: 700; text-decoration: none; }
+.bdt-login-link:hover { text-decoration: underline; }
+
+.bdt-cmt-list { display: flex; flex-direction: column; gap: 0; }
+.bdt-cmt {
+  display: flex; gap: .85rem;
+  padding: 1.25rem 0; border-bottom: 1px solid #f1f5f9;
+  animation: bdt-fade .3s ease both;
+}
+@keyframes bdt-fade { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+.bdt-cmt-av {
+  width: 38px; height: 38px; border-radius: 50%;
+  object-fit: cover; flex-shrink: 0;
+  border: 2px solid #e5e7eb;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .85rem; font-weight: 700;
+}
+.bdt-cmt-ph { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+.bdt-cmt-body { flex: 1; }
+.bdt-cmt-head { display: flex; align-items: baseline; gap: .65rem; margin-bottom: .35rem; }
+.bdt-cmt-name { font-size: .88rem; font-weight: 700; color: #0f172a; }
+.bdt-cmt-time { font-size: .72rem; color: #9ca3af; }
+.bdt-cmt-text { font-size: .9rem; color: #374151; line-height: 1.6; }
+.bdt-cmt-empty {
+  text-align: center; padding: 2.5rem 1rem;
+  display: flex; flex-direction: column; align-items: center; gap: .5rem;
+  font-size: .9rem; color: #94a3b8;
+}
+.bdt-cmt-empty span { font-size: 2rem; opacity: .4; }
+
+/* ── Sidebar cards ── */
+.bdt-side-card {
+  background: white; border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 6px rgba(0,0,0,.04);
+  padding: 1.1rem; margin-bottom: .75rem;
+}
+.bdt-side-title {
+  font-size: .78rem; font-weight: 700; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: .06em;
+  margin-bottom: .85rem;
+}
+.bdt-side-author {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; gap: .5rem; padding: .5rem 0;
+}
+.bdt-side-av {
+  width: 60px; height: 60px; border-radius: 50%; object-fit: cover;
+  border: 3px solid #f1f5f9;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; font-weight: 700;
+}
+.bdt-side-av-ph { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+.bdt-side-name { font-size: .92rem; font-weight: 700; color: #0f172a; }
+.bdt-side-role { font-size: .72rem; color: #9ca3af; }
+
+.bdt-side-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: .5rem; margin-bottom: .75rem;
+}
+.bdt-side-stat { text-align: center; }
+.bdt-side-stat-val { display: block; font-size: 1.3rem; font-weight: 800; color: #0f172a; }
+.bdt-side-stat-label { font-size: .68rem; color: #9ca3af; }
+.bdt-side-rt { font-size: .75rem; color: #64748b; text-align: center; padding-top: .5rem; border-top: 1px solid #f1f5f9; }
+
+.bdt-side-like, .bdt-side-share {
+  display: block; width: 100%;
+  padding: .6rem; border-radius: 10px; margin-bottom: .4rem;
+  font-size: .82rem; font-weight: 700; text-align: center;
+  cursor: pointer; font-family: inherit; transition: all .18s;
+}
+.bdt-side-like {
+  border: 1.5px solid #e5e7eb; background: white; color: #374151;
+}
+.bdt-side-like:hover { border-color: #f43f5e; color: #f43f5e; }
+.bdt-side-like.liked { background: #fff1f2; border-color: #f43f5e; color: #f43f5e; }
+.bdt-side-share {
+  border: 1.5px solid #e5e7eb; background: white; color: #374151;
+}
+.bdt-side-share:hover { border-color: #667eea; color: #667eea; }
+
+.bdt-side-catpill {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .3rem .85rem; border-radius: 50px;
+  font-size: .78rem; font-weight: 700; margin-bottom: .75rem;
+}
+.bdt-side-tags { display: flex; flex-wrap: wrap; gap: .35rem; }
+.bdt-side-tag {
+  font-size: .68rem; font-weight: 600; color: #64748b;
+  background: #f1f5f9; border-radius: 50px;
+  padding: .18rem .65rem; border: 1px solid #e2e8f0;
+}
+
+/* ── Related cards ── */
+.bdt-rel-grid { display: flex; flex-direction: column; gap: .6rem; }
+.bdt-rel-card {
+  display: flex; gap: .65rem; text-decoration: none;
+  border-radius: 10px; padding: .5rem;
+  transition: background .15s;
+}
+.bdt-rel-card:hover { background: #f8fafc; }
+.bdt-rel-img {
+  width: 56px; height: 56px; border-radius: 8px;
+  overflow: hidden; flex-shrink: 0; background: #f1f5f9;
+  display: flex; align-items: center; justify-content: center;
+}
+.bdt-rel-img img { width: 100%; height: 100%; object-fit: cover; }
+.bdt-rel-placeholder { font-size: 1.4rem; }
+.bdt-rel-body { flex: 1; min-width: 0; }
+.bdt-rel-cat { font-size: .65rem; font-weight: 700; display: block; margin-bottom: .15rem; }
+.bdt-rel-title {
+  font-size: .8rem; font-weight: 700; color: #0f172a; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  margin-bottom: .2rem;
+}
+.bdt-rel-time { font-size: .65rem; color: #9ca3af; }
+
+/* Related mobile (hidden on desktop) */
+.bdt-related-mobile { display: none; }
+.bdt-rel-grid-mobile {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 1rem;
+}
+.bdt-rel-grid-mobile .bdt-rel-card {
+  border: 1px solid #e5e7eb; border-radius: 12px; padding: .85rem;
+}
+.bdt-rel-grid-mobile .bdt-rel-img { width: 64px; height: 64px; }
+.bdt-rel-hd { font-size: 1.1rem; font-weight: 800; color: #0f172a; margin-bottom: 1rem; }
+
+/* ── Skeleton ── */
+.bdt-sk-hero { height: 480px; background: linear-gradient(90deg,#e2e8f0 0%,#f1f5f9 50%,#e2e8f0 100%); background-size:200% 100%; animation:bdt-shim 1.4s infinite; }
+.bdt-sk { border-radius: 6px; background: linear-gradient(90deg,#f1f5f9 0%,#e2e8f0 50%,#f1f5f9 100%); background-size:200% 100%; animation:bdt-shim 1.4s infinite; }
+@keyframes bdt-shim { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ── Error ── */
+.bdt-errorpage { text-align: center; padding: 6rem 2rem; max-width: 480px; margin: 0 auto; }
+.bdt-error-icon  { font-size: 4rem; opacity: .35; margin-bottom: 1rem; }
+.bdt-error-title { font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-bottom: .5rem; }
+.bdt-error-msg   { color: #64748b; font-size: .9rem; margin-bottom: 1.75rem; }
+.bdt-error-btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .7rem 1.5rem; border-radius: 50px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white; text-decoration: none; font-size: .875rem; font-weight: 700;
+  transition: box-shadow .2s;
+}
+.bdt-error-btn:hover { box-shadow: 0 4px 14px rgba(102,126,234,.4); color: white; }
+
+/* ── Back to top ── */
+.bdt-top {
+  position: fixed; bottom: 2rem; right: 2rem;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white; border: none; font-size: 1.1rem;
+  cursor: pointer; box-shadow: 0 4px 16px rgba(102,126,234,.4);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s; z-index: 100;
+}
+.bdt-top:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(102,126,234,.5); }
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+  .bdt-layout { grid-template-columns: 1fr; }
+  .bdt-sidebar { display: none; }
+  .bdt-related-mobile { display: block; margin-top: 2rem; }
+  .bdt-hero-content { max-width: 100%; }
+}
+@media (max-width: 640px) {
+  .bdt-hero { min-height: 420px; }
+  .bdt-hero-title { font-size: 1.5rem; }
+  .bdt-hero-excerpt { font-size: .95rem; }
+  .bdt-hero-content { padding: 1.25rem 1.25rem 2rem; }
+  .bdt-topbar { padding: 1rem 1.25rem; }
+  .bdt-container { padding: 1.5rem 1rem 3rem; }
+  .bdt-content { font-size: .95rem; }
+  .bdt-engage { padding: 1rem; }
+  .bdt-top { bottom: 1.25rem; right: 1.25rem; }
+}
+`;

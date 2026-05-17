@@ -1,744 +1,533 @@
-import React, { useEffect } from "react";
-import toast from "react-hot-toast";
+import React, { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useGetBlogsQuery } from "../redux/api/blogApi";
-import Loader from "../layout/Loader";
 import MetaData from "../layout/MetaData";
 import AdminLayout from "../layout/AdminLayout";
 
+/* ─── helpers ─────────────────────────────────────── */
+const fmtDate = (d) =>
+  d
+    ? new Date(d).toLocaleDateString("lo-LA", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+      })
+    : "—";
+
+const timeAgo = (d) => {
+  if (!d) return "";
+  const diff = (Date.now() - new Date(d)) / 1000;
+  if (diff < 60)    return "ຫາກໍ່ນີ້";
+  if (diff < 3600)  return `${Math.floor(diff / 60)} ນາທີກ່ອນ`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} ຊົ່ວໂມງກ່ອນ`;
+  return `${Math.floor(diff / 86400)} ວັນກ່ອນ`;
+};
+
+const imgOf = (blog) =>
+  blog?.image ||
+  (Array.isArray(blog?.images) && blog.images[0]?.url) ||
+  null;
+
+/* ─── component ────────────────────────────────────── */
 export default function BlogDashboardOverview() {
-  // ດຶງຂໍ້ມູນບົດຄວາມທັງໝົດມາເພື່ອຄຳນວນສະຖິຕິ
-  const {
-    data: blogData,
-    isLoading,
-    error,
-  } = useGetBlogsQuery({ limit: 1000 });
+  const { data: blogData, isLoading } = useGetBlogsQuery({ limit: 1000 });
 
-  useEffect(() => {
-    if (error) {
-      toast.error(error?.data?.message || "ບໍ່ສາມາດດຶງຂໍ້ມູນບລັອກ");
-    }
-  }, [error]);
+  const blogs     = useMemo(() => blogData?.blogs ?? [], [blogData]);
+  const published = useMemo(() => blogs.filter((b) => b.isPublished), [blogs]);
+  const drafts    = useMemo(() => blogs.filter((b) => !b.isPublished), [blogs]);
+  const totalViews    = useMemo(() => blogs.reduce((s, b) => s + (b.views || 0), 0), [blogs]);
+  const totalComments = useMemo(() => blogs.reduce((s, b) => s + (b.comments?.length || 0), 0), [blogs]);
+  const avgViews  = blogs.length > 0 ? Math.round(totalViews / blogs.length) : 0;
+  const engRate   = totalViews > 0 ? ((totalComments / totalViews) * 100).toFixed(1) : "0.0";
+  const pubPct    = blogs.length > 0 ? Math.round((published.length / blogs.length) * 100) : 0;
 
-  if (isLoading)
-    return (
-      <AdminLayout>
-        <Loader />
-      </AdminLayout>
-    );
+  const recentBlogs = useMemo(
+    () => [...blogs].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 6),
+    [blogs]
+  );
+  const topBlogs = useMemo(
+    () => [...blogs].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 6),
+    [blogs]
+  );
 
-  // --- ຄຳນວນສະຖິຕິບລັອກ ---
-  const totalBlogs = blogData?.blogs?.length || 0;
-  const publishedBlogs =
-    blogData?.blogs?.filter((b) => b.isPublished).length || 0;
-  const draftBlogs = totalBlogs - publishedBlogs;
-  const totalViews =
-    blogData?.blogs?.reduce((acc, curr) => acc + (curr.views || 0), 0) || 0;
-  const totalComments =
-    blogData?.blogs?.reduce(
-      (acc, curr) => acc + (curr.comments?.length || 0),
-      0
-    ) || 0;
-
-  // คำนวณค่าเฉลี่ย
-  const avgViews = totalBlogs > 0 ? Math.round(totalViews / totalBlogs) : 0;
-  const engagementRate =
-    totalViews > 0 ? ((totalComments / totalViews) * 100).toFixed(1) : 0;
-
-  // ดึงบทความล่าสุด
-  const recentBlogs = blogData?.blogs
-    ? [...blogData.blogs]
-        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-        .slice(0, 5)
-    : [];
-
-  // ดึงบทความยอดนิยม
-  const topBlogs = blogData?.blogs
-    ? [...blogData.blogs]
-        .sort((a, b) => (b.views || 0) - (a.views || 0))
-        .slice(0, 5)
-    : [];
-
+  /* ── stats config ── */
   const stats = [
     {
-      title: "ບົດຄວາມທັງໝົດ",
-      subtitle: "Total Blog Posts",
-      value: totalBlogs.toLocaleString(),
-      icon: "fa-file-alt",
-      gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      change: "+4",
-      changeText: "ເດືອນນີ້",
-      trendUp: true,
+      label: "ທັງໝົດ",
+      value: blogs.length,
+      icon: "📝",
+      grad: "linear-gradient(135deg,#667eea,#764ba2)",
+      sub: `${published.length} ເຜີຍແຜ່ · ${drafts.length} ຮ່າງ`,
     },
     {
-      title: "ບົດຄວາມທີ່ເຜີຍແຜ່",
-      subtitle: "Published Posts",
-      value: publishedBlogs.toLocaleString(),
-      icon: "fa-check-circle",
-      gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-      change:
-        totalBlogs > 0
-          ? `${Math.round((publishedBlogs / totalBlogs) * 100)}%`
-          : "0%",
-      changeText: "ຂອງທັງໝົດ",
-      trendUp: true,
+      label: "ເຜີຍແຜ່ແລ້ວ",
+      value: published.length,
+      icon: "✅",
+      grad: "linear-gradient(135deg,#10b981,#059669)",
+      sub: `${pubPct}% ຂອງທັງໝົດ`,
+      bar: pubPct,
     },
     {
-      title: "ຍອດການເຂົ້າຊົມ",
-      subtitle: "Total Page Views",
+      label: "ຍອດເຂົ້າຊົມ",
       value: totalViews.toLocaleString(),
-      icon: "fa-eye",
-      gradient: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-      change: avgViews.toString(),
-      changeText: "ສະເລ່ຍ/ບົດຄວາມ",
-      trendUp: true,
+      icon: "👁️",
+      grad: "linear-gradient(135deg,#3b82f6,#2563eb)",
+      sub: `ສະເລ່ຍ ${avgViews.toLocaleString()} / ບົດ`,
     },
     {
-      title: "ຄວາມຄິດເຫັນ",
-      subtitle: "Total Comments",
+      label: "ຄຳເຫັນ",
       value: totalComments.toLocaleString(),
-      icon: "fa-comments",
-      gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-      change: "+12",
-      changeText: "ວັນນີ້",
-      trendUp: true,
-    },
-    {
-      title: "ຮ່າງ (Draft)",
-      subtitle: "Unpublished Posts",
-      value: draftBlogs.toLocaleString(),
-      icon: "fa-edit",
-      gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
-      change: draftBlogs > 0 ? "ລໍຖ້າເຜີຍແຜ່" : "ບໍ່ມີຮ່າງ",
-      changeText: "",
-      trendUp: false,
-    },
-    {
-      title: "ອັດຕາການມີສ່ວນຮ່ວມ",
-      subtitle: "Engagement Rate",
-      value: `${engagementRate}%`,
-      icon: "fa-chart-line",
-      gradient: "linear-gradient(135deg, #ec4899 0%, #db2777 100%)",
-      change: "+2.5%",
-      changeText: "ເດືອນນີ້",
-      trendUp: true,
+      icon: "💬",
+      grad: "linear-gradient(135deg,#f59e0b,#d97706)",
+      sub: `Engagement ${engRate}%`,
     },
   ];
 
   const quickActions = [
-    {
-      title: "ຂຽນບົດຄວາມໃໝ່",
-      subtitle: "ສ້າງບົດຄວາມໃໝ່",
-      icon: "fa-plus-circle",
-      link: "/admin/blogs/new",
-      color: "#667eea",
-    },
-    {
-      title: "ຈັດການບົດຄວາມ",
-      subtitle: `${totalBlogs} ບົດຄວາມ`,
-      icon: "fa-list",
-      link: "/admin/blog",
-      color: "#10b981",
-    },
-    {
-      title: "ເບິ່ງເວັບໄຊທ໌",
-      subtitle: "ເບິ່ງໜ້າສາທາລະນະ",
-      icon: "fa-globe",
-      link: "/blogs",
-      color: "#3b82f6",
-    },
-    {
-      title: "ຈັດການໝວດໝູ່",
-      subtitle: "Categories & Tags",
-      icon: "fa-folder",
-      link: "/admin/blog/categories",
-      color: "#f59e0b",
-    },
+    { icon: "✏️", label: "ຂຽນໃໝ່",      sub: "ສ້າງບົດຄວາມ",     to: "/admin/blogs/new",  grad: "linear-gradient(135deg,#667eea,#764ba2)" },
+    { icon: "📋", label: "ລາຍການທັງໝົດ", sub: `${blogs.length} ບົດ`, to: "/admin/blog",       grad: "linear-gradient(135deg,#10b981,#059669)" },
+    { icon: "🌐", label: "ໜ້າສາທາລະນະ",  sub: "ເບິ່ງ Blog",       to: "/blog",            grad: "linear-gradient(135deg,#3b82f6,#2563eb)" },
+    { icon: "📊", label: "ສະຖິຕິ",        sub: "Views & Reach",   to: "/admin/dashboard", grad: "linear-gradient(135deg,#f59e0b,#d97706)" },
   ];
 
   return (
     <AdminLayout>
-      <style>{`
-                .blog-dashboard-container {
-                    padding: 0;
-                }
+      <style>{css}</style>
+      <MetaData title="Blog Dashboard" />
 
-                .dashboard-header {
-                    margin-bottom: 2rem;
-                }
-
-                .breadcrumb-nav {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    font-size: 0.875rem;
-                    color: #718096;
-                    margin-bottom: 0.75rem;
-                }
-
-                .breadcrumb-nav a {
-                    color: #667eea;
-                    text-decoration: none;
-                    transition: color 0.2s;
-                }
-
-                .breadcrumb-nav a:hover {
-                    color: #764ba2;
-                }
-
-                .dashboard-title {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
-                    font-weight: 700;
-                    font-size: 1.75rem;
-                    margin-bottom: 0.5rem;
-                    display: flex;
-                    align-items: center;
-                    gap: 0.75rem;
-                }
-
-                .dashboard-subtitle {
-                    color: #718096;
-                    font-size: 0.875rem;
-                    margin: 0;
-                }
-
-                .stats-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-                    gap: 1.25rem;
-                    margin-bottom: 2rem;
-                }
-
-                .stat-card {
-                    background: white;
-                    border-radius: 16px;
-                    padding: 1.5rem;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-                    border: 1px solid rgba(0, 0, 0, 0.05);
-                    transition: all 0.3s ease;
-                    position: relative;
-                    overflow: hidden;
-                }
-
-                .stat-card::before {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    height: 3px;
-                    background: var(--card-gradient);
-                }
-
-                .stat-card:hover {
-                    transform: translateY(-4px);
-                    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
-                }
-
-                .stat-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    margin-bottom: 1rem;
-                }
-
-                .stat-info h3 {
-                    font-size: 0.875rem;
-                    font-weight: 600;
-                    color: #4a5568;
-                    margin: 0 0 0.25rem 0;
-                }
-
-                .stat-info p {
-                    font-size: 0.75rem;
-                    color: #a0aec0;
-                    margin: 0;
-                }
-
-                .stat-icon {
-                    width: 48px;
-                    height: 48px;
-                    border-radius: 12px;
-                    background: var(--card-gradient);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-size: 1.25rem;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                }
-
-                .stat-body {
-                    margin-bottom: 0.75rem;
-                }
-
-                .stat-value {
-                    font-size: 2rem;
-                    font-weight: 700;
-                    color: #1a202c;
-                    line-height: 1;
-                }
-
-                .stat-footer {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    font-size: 0.75rem;
-                }
-
-                .stat-change {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.25rem;
-                    padding: 0.25rem 0.5rem;
-                    border-radius: 6px;
-                    font-weight: 600;
-                }
-
-                .stat-change.up {
-                    background: rgba(16, 185, 129, 0.1);
-                    color: #059669;
-                }
-
-                .stat-change.down {
-                    background: rgba(161, 161, 170, 0.1);
-                    color: #71717a;
-                }
-
-                .stat-change-text {
-                    color: #a0aec0;
-                }
-
-                .content-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 1.5rem;
-                    margin-bottom: 2rem;
-                }
-
-                .content-card {
-                    background: white;
-                    border-radius: 16px;
-                    padding: 1.5rem;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-                }
-
-                .content-card-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 1.5rem;
-                    padding-bottom: 1rem;
-                    border-bottom: 2px solid #f0f0f0;
-                }
-
-                .content-card-title {
-                    font-size: 1.125rem;
-                    font-weight: 700;
-                    color: #1a202c;
-                    margin: 0;
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                }
-
-                .view-all-link {
-                    font-size: 0.875rem;
-                    color: #667eea;
-                    text-decoration: none;
-                    font-weight: 600;
-                    transition: color 0.2s;
-                }
-
-                .view-all-link:hover {
-                    color: #764ba2;
-                }
-
-                .blog-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 1rem;
-                }
-
-                .blog-item {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 1rem;
-                    background: #f8fafc;
-                    border-radius: 10px;
-                    transition: all 0.2s ease;
-                    text-decoration: none;
-                    color: inherit;
-                }
-
-                .blog-item:hover {
-                    background: rgba(102, 126, 234, 0.05);
-                    transform: translateX(4px);
-                }
-
-                .blog-item-info {
-                    flex: 1;
-                    min-width: 0;
-                }
-
-                .blog-item-title {
-                    font-size: 0.875rem;
-                    font-weight: 600;
-                    color: #2d3748;
-                    margin: 0 0 0.25rem 0;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
-
-                .blog-item-meta {
-                    display: flex;
-                    align-items: center;
-                    gap: 1rem;
-                    font-size: 0.75rem;
-                    color: #a0aec0;
-                }
-
-                .blog-item-meta span {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.25rem;
-                }
-
-                .blog-item-status {
-                    padding: 0.25rem 0.75rem;
-                    border-radius: 12px;
-                    font-size: 0.7rem;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    white-space: nowrap;
-                }
-
-                .blog-item-status.published {
-                    background: rgba(16, 185, 129, 0.1);
-                    color: #059669;
-                }
-
-                .blog-item-status.draft {
-                    background: rgba(161, 161, 170, 0.1);
-                    color: #71717a;
-                }
-
-                .quick-actions-section {
-                    background: white;
-                    border-radius: 16px;
-                    padding: 1.5rem;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-                }
-
-                .section-header {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    margin-bottom: 1.5rem;
-                    padding-bottom: 1rem;
-                    border-bottom: 2px solid #f0f0f0;
-                }
-
-                .section-title {
-                    font-size: 1.125rem;
-                    font-weight: 700;
-                    color: #1a202c;
-                    margin: 0;
-                }
-
-                .quick-actions-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-                    gap: 1rem;
-                }
-
-                .action-card {
-                    background: white;
-                    border-radius: 12px;
-                    padding: 1.5rem;
-                    border: 2px solid #f0f0f0;
-                    transition: all 0.3s ease;
-                    text-decoration: none;
-                    display: flex;
-                    align-items: center;
-                    gap: 1rem;
-                }
-
-                .action-card:hover {
-                    border-color: var(--action-color);
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-                }
-
-                .action-icon {
-                    width: 56px;
-                    height: 56px;
-                    border-radius: 12px;
-                    background: var(--action-color);
-                    color: white;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 1.5rem;
-                    flex-shrink: 0;
-                }
-
-                .action-info h4 {
-                    font-size: 1rem;
-                    font-weight: 700;
-                    color: #1a202c;
-                    margin: 0 0 0.25rem 0;
-                }
-
-                .action-info p {
-                    font-size: 0.75rem;
-                    color: #a0aec0;
-                    margin: 0;
-                }
-
-                .empty-state {
-                    text-align: center;
-                    padding: 3rem 1rem;
-                    color: #a0aec0;
-                }
-
-                .empty-state i {
-                    font-size: 3rem;
-                    margin-bottom: 1rem;
-                    opacity: 0.3;
-                }
-
-                .empty-state p {
-                    margin: 0;
-                    font-size: 0.875rem;
-                }
-
-                @media (max-width: 1024px) {
-                    .content-grid {
-                        grid-template-columns: 1fr;
-                    }
-
-                    .stats-grid {
-                        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    }
-                }
-
-                @media (max-width: 768px) {
-                    .stats-grid {
-                        grid-template-columns: 1fr 1fr;
-                    }
-
-                    .quick-actions-grid {
-                        grid-template-columns: 1fr;
-                    }
-
-                    .dashboard-title {
-                        font-size: 1.5rem;
-                    }
-                }
-            `}</style>
-
-      <MetaData title={"Blog Dashboard Overview"} />
-
-      <div className="blog-dashboard-container">
-        {/* Header */}
-        <div className="dashboard-header">
-          <div className="breadcrumb-nav">
-            <a href="/admin/dashboard">
-              <i className="fas fa-home"></i> Dashboard
-            </a>
+      {/* ── Header ── */}
+      <div className="bd-header">
+        <div className="bd-header-left">
+          <nav className="bd-breadcrumb">
+            <Link to="/admin/dashboard">Dashboard</Link>
             <span>/</span>
-            <span>Blog Dashboard</span>
-          </div>
-          <h1 className="dashboard-title">
-            <i className="fas fa-blog"></i>
-            <span>ຈັດການລະບົບບົດຄວາມ</span>
+            <span>Blog</span>
+          </nav>
+          <h1 className="bd-title">
+            <span className="bd-title-icon">📰</span>
+            ຈັດການລະບົບບລັອກ
           </h1>
-          <p className="dashboard-subtitle">
-            ພາບລວມສະຖິຕິ ແລະ ການເຄື່ອນໄຫວຂອງບົດຄວາມທັງໝົດ
-          </p>
+          <p className="bd-sub">ພາບລວມ ແລະ ການເຄື່ອນໄຫວຂອງບົດຄວາມທັງໝົດ</p>
         </div>
+        <Link to="/admin/blogs/new" className="bd-new-btn">
+          <span>+</span> ຂຽນບົດຄວາມໃໝ່
+        </Link>
+      </div>
 
-        {/* Stats Grid */}
-        <div className="stats-grid">
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className="stat-card"
-              style={{ "--card-gradient": stat.gradient }}
-            >
-              <div className="stat-header">
-                <div className="stat-info">
-                  <h3>{stat.title}</h3>
-                  <p>{stat.subtitle}</p>
+      {/* ── Stats ── */}
+      {isLoading ? (
+        <div className="bd-sk-grid">
+          {[...Array(4)].map((_, i) => <div key={i} className="bd-skeleton" />)}
+        </div>
+      ) : (
+        <div className="bd-stats-grid">
+          {stats.map((s) => (
+            <div key={s.label} className="bd-stat" style={{ "--g": s.grad }}>
+              <div className="bd-stat-top">
+                <div>
+                  <div className="bd-stat-label">{s.label}</div>
+                  <div className="bd-stat-val">{s.value}</div>
                 </div>
-                <div className="stat-icon">
-                  <i className={`fas ${stat.icon}`}></i>
+                <div className="bd-stat-icon">{s.icon}</div>
+              </div>
+              <div className="bd-stat-sub">{s.sub}</div>
+              {s.bar !== undefined && (
+                <div className="bd-bar-wrap">
+                  <div className="bd-bar" style={{ width: `${s.bar}%` }} />
                 </div>
-              </div>
-              <div className="stat-body">
-                <div className="stat-value">{stat.value}</div>
-              </div>
-              <div className="stat-footer">
-                <span className={`stat-change ${stat.trendUp ? "up" : "down"}`}>
-                  <i
-                    className={`fas fa-arrow-${stat.trendUp ? "up" : "down"}`}
-                  ></i>
-                  {stat.change}
-                </span>
-                {stat.changeText && (
-                  <span className="stat-change-text">{stat.changeText}</span>
-                )}
-              </div>
+              )}
             </div>
           ))}
         </div>
+      )}
 
-        {/* Content Grid */}
-        <div className="content-grid">
-          {/* Recent Blogs */}
-          <div className="content-card">
-            <div className="content-card-header">
-              <h2 className="content-card-title">
-                <i className="far fa-clock" style={{ color: "#667eea" }}></i>
-                ບົດຄວາມລ່າສຸດ
-              </h2>
-              <a href="/blogs" className="view-all-link">
-                ເບິ່ງທັງໝົດ <i className="fas fa-arrow-right"></i>
-              </a>
+      {/* ── Quick Actions ── */}
+      <div className="bd-actions-row">
+        {quickActions.map((a) => (
+          <Link key={a.to} to={a.to} className="bd-action" style={{ "--g": a.grad }}>
+            <div className="bd-action-icon">{a.icon}</div>
+            <div>
+              <div className="bd-action-label">{a.label}</div>
+              <div className="bd-action-sub">{a.sub}</div>
             </div>
-            <div className="blog-list">
-              {recentBlogs.length === 0 ? (
-                <div className="empty-state">
-                  <i className="fas fa-inbox"></i>
-                  <p>ຍັງບໍ່ມີບົດຄວາມ</p>
-                </div>
-              ) : (
-                recentBlogs.map((blog) => (
-                  <a
-                    key={blog._id}
-                    href={`/admin/blogs/${blog._id}/edit`}
-                    className="blog-item"
-                  >
-                    <div className="blog-item-info">
-                      <h4 className="blog-item-title">{blog.title}</h4>
-                      <div className="blog-item-meta">
-                        <span>
-                          <i className="far fa-eye"></i>
-                          {blog.views || 0}
-                        </span>
-                        <span>
-                          <i className="far fa-calendar"></i>
-                          {new Date(
-                            blog.createdAt || Date.now()
-                          ).toLocaleDateString("lo-LA")}
-                        </span>
-                      </div>
-                    </div>
-                    <span
-                      className={`blog-item-status ${
-                        blog.isPublished ? "published" : "draft"
-                      }`}
-                    >
-                      {blog.isPublished ? "ເຜີຍແຜ່" : "ຮ່າງ"}
-                    </span>
-                  </a>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Top Performing Blogs */}
-          <div className="content-card">
-            <div className="content-card-header">
-              <h2 className="content-card-title">
-                <i className="fas fa-fire" style={{ color: "#f59e0b" }}></i>
-                ບົດຄວາມຍອດນິຍົມ
-              </h2>
-              <a href="/admin/blog" className="view-all-link">
-                ເບິ່ງທັງໝົດ <i className="fas fa-arrow-right"></i>
-              </a>
-            </div>
-            <div className="blog-list">
-              {topBlogs.length === 0 ? (
-                <div className="empty-state">
-                  <i className="fas fa-chart-line"></i>
-                  <p>ຍັງບໍ່ມີຂໍ້ມູນ</p>
-                </div>
-              ) : (
-                topBlogs.map((blog) => (
-                  <a
-                    key={blog._id}
-                    href={`/admin/blogs/${blog._id}/edit`}
-                    className="blog-item"
-                  >
-                    <div className="blog-item-info">
-                      <h4 className="blog-item-title">{blog.title}</h4>
-                      <div className="blog-item-meta">
-                        <span>
-                          <i className="far fa-eye"></i>
-                          {blog.views || 0} ຄົນເບິ່ງ
-                        </span>
-                        <span>
-                          <i className="far fa-comments"></i>
-                          {blog.comments?.length || 0} ຄຳເຫັນ
-                        </span>
-                      </div>
-                    </div>
-                    <span
-                      className={`blog-item-status ${
-                        blog.isPublished ? "published" : "draft"
-                      }`}
-                    >
-                      {blog.isPublished ? "ເຜີຍແຜ່" : "ຮ່າງ"}
-                    </span>
-                  </a>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="quick-actions-section">
-          <div className="section-header">
-            <i
-              className="fas fa-bolt"
-              style={{ color: "#667eea", fontSize: "1.25rem" }}
-            ></i>
-            <h2 className="section-title">ເມນູດ່ວນ (Quick Actions)</h2>
-          </div>
-          <div className="quick-actions-grid">
-            {quickActions.map((action, index) => (
-              <a
-                key={index}
-                href={action.link}
-                className="action-card"
-                style={{ "--action-color": action.color }}
-                target={action.link.startsWith("http") ? "_blank" : undefined}
-                rel={
-                  action.link.startsWith("http")
-                    ? "noopener noreferrer"
-                    : undefined
-                }
-              >
-                <div className="action-icon">
-                  <i className={`fas ${action.icon}`}></i>
-                </div>
-                <div className="action-info">
-                  <h4>{action.title}</h4>
-                  <p>{action.subtitle}</p>
-                </div>
-              </a>
-            ))}
-          </div>
-        </div>
+          </Link>
+        ))}
       </div>
+
+      {/* ── Two Columns ── */}
+      <div className="bd-cols">
+
+        {/* Recent */}
+        <div className="bd-card">
+          <div className="bd-card-head">
+            <span className="bd-card-title">🕐 ບົດຄວາມລ່າສຸດ</span>
+            <Link to="/admin/blog" className="bd-link">ທັງໝົດ →</Link>
+          </div>
+          {isLoading ? (
+            <div className="bd-list-sk">{[...Array(4)].map((_, i) => <div key={i} className="bd-list-sk-item" />)}</div>
+          ) : recentBlogs.length === 0 ? (
+            <EmptyState icon="📭" text="ຍັງບໍ່ມີບົດຄວາມ" />
+          ) : (
+            <div className="bd-blog-list">
+              {recentBlogs.map((b, idx) => (
+                <BlogRow key={b._id} blog={b} rank={null} showViews={false} idx={idx} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Top */}
+        <div className="bd-card">
+          <div className="bd-card-head">
+            <span className="bd-card-title">🔥 ຍອດນິຍົມ</span>
+            <Link to="/admin/blog" className="bd-link">ທັງໝົດ →</Link>
+          </div>
+          {isLoading ? (
+            <div className="bd-list-sk">{[...Array(4)].map((_, i) => <div key={i} className="bd-list-sk-item" />)}</div>
+          ) : topBlogs.length === 0 ? (
+            <EmptyState icon="📊" text="ຍັງບໍ່ມີຂໍ້ມູນ" />
+          ) : (
+            <div className="bd-blog-list">
+              {topBlogs.map((b, idx) => (
+                <BlogRow key={b._id} blog={b} rank={idx + 1} showViews idx={idx} />
+              ))}
+            </div>
+          )}
+        </div>
+
+      </div>
+
+      {/* ── Draft Alert ── */}
+      {!isLoading && drafts.length > 0 && (
+        <div className="bd-draft-alert">
+          <span className="bd-draft-icon">✏️</span>
+          <div>
+            <strong>ທ່ານມີ {drafts.length} ຮ່າງທີ່ຍັງບໍ່ໄດ້ເຜີຍແຜ່</strong>
+            <p>{drafts.slice(0, 3).map((d) => d.title).join(" · ")}{drafts.length > 3 ? ` ···` : ""}</p>
+          </div>
+          <Link to="/admin/blog" className="bd-draft-btn">ຈັດການ →</Link>
+        </div>
+      )}
     </AdminLayout>
   );
 }
+
+/* ─── BlogRow ─────────────────────────────────────── */
+function BlogRow({ blog, rank, showViews, idx }) {
+  const thumb = imgOf(blog);
+  return (
+    <Link
+      to={`/admin/blogs/${blog._id}/edit`}
+      className="bd-row"
+      style={{ animationDelay: `${idx * 60}ms` }}
+    >
+      {rank && <div className="bd-rank">{rank}</div>}
+      {thumb ? (
+        <img src={thumb} alt="" className="bd-thumb" onError={(e) => e.currentTarget.style.display = "none"} />
+      ) : (
+        <div className="bd-thumb-placeholder">{blog.title?.[0] || "B"}</div>
+      )}
+      <div className="bd-row-info">
+        <div className="bd-row-title">{blog.title || "ບໍ່ມີຫົວຂໍ້"}</div>
+        <div className="bd-row-meta">
+          {showViews && <span>👁 {(blog.views || 0).toLocaleString()}</span>}
+          <span>💬 {blog.comments?.length || 0}</span>
+          <span>🕐 {timeAgo(blog.createdAt)}</span>
+        </div>
+      </div>
+      <span className={`bd-status ${blog.isPublished ? "pub" : "draft"}`}>
+        {blog.isPublished ? "ເຜີຍແຜ່" : "ຮ່າງ"}
+      </span>
+    </Link>
+  );
+}
+
+function EmptyState({ icon, text }) {
+  return (
+    <div className="bd-empty">
+      <span>{icon}</span>
+      <p>{text}</p>
+    </div>
+  );
+}
+
+/* ─── CSS ─────────────────────────────────────────── */
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;600;700;800&display=swap');
+
+.bd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.bd-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .8rem;
+  color: #94a3b8;
+  margin-bottom: .5rem;
+}
+.bd-breadcrumb a { color: #667eea; text-decoration: none; }
+.bd-breadcrumb a:hover { text-decoration: underline; }
+.bd-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin: 0 0 .35rem;
+  font-family: "Noto Sans Lao", sans-serif;
+}
+.bd-title-icon { font-size: 1.5rem; }
+.bd-sub { color: #64748b; font-size: .9rem; margin: 0; }
+
+.bd-new-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem 1.5rem;
+  background: linear-gradient(135deg,#667eea,#764ba2);
+  color: white;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: .9rem;
+  transition: all .25s;
+  box-shadow: 0 4px 14px rgba(102,126,234,.35);
+  white-space: nowrap;
+  align-self: center;
+}
+.bd-new-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(102,126,234,.45);
+  color: white;
+}
+
+/* ── Stats ── */
+.bd-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.bd-sk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.bd-skeleton {
+  height: 130px;
+  border-radius: 16px;
+  background: linear-gradient(90deg,#f1f5f9 0%,#e2e8f0 50%,#f1f5f9 100%);
+  background-size: 200% 100%;
+  animation: bd-shim 1.4s infinite;
+}
+@keyframes bd-shim { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+.bd-stat {
+  background: white;
+  border-radius: 16px;
+  padding: 1.4rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  border: 1px solid #f1f5f9;
+  position: relative;
+  overflow: hidden;
+  transition: transform .25s, box-shadow .25s;
+}
+.bd-stat::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--g);
+}
+.bd-stat:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.1); }
+.bd-stat-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .75rem; }
+.bd-stat-label { font-size: .8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-bottom: .4rem; }
+.bd-stat-val { font-size: 2.1rem; font-weight: 800; color: #0f172a; line-height: 1; }
+.bd-stat-icon {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  background: var(--g);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+}
+.bd-stat-sub { font-size: .78rem; color: #94a3b8; margin-bottom: .6rem; }
+.bd-bar-wrap { height: 6px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+.bd-bar { height: 100%; background: var(--g); border-radius: 99px; transition: width 1s ease; }
+
+/* ── Quick Actions ── */
+.bd-actions-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+.bd-action {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  padding: 1rem 1.25rem;
+  background: white;
+  border-radius: 14px;
+  border: 2px solid #e2e8f0;
+  text-decoration: none;
+  transition: all .22s;
+}
+.bd-action:hover {
+  border-color: transparent;
+  background: var(--g);
+  box-shadow: 0 6px 18px rgba(0,0,0,.12);
+  transform: translateY(-2px);
+}
+.bd-action:hover .bd-action-label,
+.bd-action:hover .bd-action-sub { color: white; }
+.bd-action:hover .bd-action-icon { background: rgba(255,255,255,.25); }
+.bd-action-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: #f1f5f9;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; flex-shrink: 0;
+  transition: background .22s;
+}
+.bd-action-label { font-size: .9rem; font-weight: 700; color: #1e293b; transition: color .22s; }
+.bd-action-sub   { font-size: .75rem; color: #64748b; transition: color .22s; margin-top: .1rem; }
+
+/* ── Two columns ── */
+.bd-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 900px) { .bd-cols { grid-template-columns: 1fr; } }
+
+.bd-card {
+  background: white;
+  border-radius: 16px;
+  padding: 1.4rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  border: 1px solid #f1f5f9;
+}
+.bd-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: .9rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+.bd-card-title { font-size: 1rem; font-weight: 700; color: #1e293b; }
+.bd-link { font-size: .82rem; color: #667eea; text-decoration: none; font-weight: 600; }
+.bd-link:hover { color: #764ba2; }
+
+/* Blog row */
+.bd-blog-list { display: flex; flex-direction: column; gap: .5rem; }
+.bd-row {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  padding: .7rem .85rem;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: background .18s, transform .18s;
+  animation: bd-fade-in .3s ease both;
+}
+@keyframes bd-fade-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+.bd-row:hover { background: #f8fafc; transform: translateX(3px); }
+
+.bd-rank {
+  width: 26px; height: 26px;
+  border-radius: 8px;
+  background: linear-gradient(135deg,#667eea,#764ba2);
+  color: white; font-size: .75rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.bd-thumb {
+  width: 44px; height: 44px;
+  border-radius: 8px; object-fit: cover; flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+}
+.bd-thumb-placeholder {
+  width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0;
+  background: linear-gradient(135deg,#667eea,#764ba2);
+  color: white; font-size: 1.1rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.bd-row-info { flex: 1; min-width: 0; }
+.bd-row-title {
+  font-size: .875rem; font-weight: 600; color: #1e293b;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: .2rem;
+}
+.bd-row-meta {
+  display: flex; gap: .75rem; font-size: .72rem; color: #94a3b8;
+  flex-wrap: wrap;
+}
+.bd-status {
+  padding: .25rem .65rem; border-radius: 20px;
+  font-size: .68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .4px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.bd-status.pub   { background: #d1fae5; color: #065f46; }
+.bd-status.draft { background: #f1f5f9; color: #64748b; }
+
+/* List skeleton */
+.bd-list-sk { display: flex; flex-direction: column; gap: .5rem; }
+.bd-list-sk-item {
+  height: 56px; border-radius: 10px;
+  background: linear-gradient(90deg,#f1f5f9 0%,#e2e8f0 50%,#f1f5f9 100%);
+  background-size: 200% 100%;
+  animation: bd-shim 1.4s infinite;
+}
+
+/* Empty */
+.bd-empty { text-align: center; padding: 3rem 1rem; color: #94a3b8; }
+.bd-empty span { font-size: 3rem; display: block; margin-bottom: .75rem; opacity: .4; }
+.bd-empty p { margin: 0; font-size: .9rem; }
+
+/* Draft alert */
+.bd-draft-alert {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg,#fffbeb,#fef3c7);
+  border: 1px solid #fde68a;
+  border-radius: 14px;
+  flex-wrap: wrap;
+}
+.bd-draft-icon { font-size: 1.75rem; flex-shrink: 0; }
+.bd-draft-alert > div { flex: 1; min-width: 0; }
+.bd-draft-alert strong { font-size: .95rem; color: #92400e; display: block; margin-bottom: .2rem; }
+.bd-draft-alert p { font-size: .8rem; color: #b45309; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-draft-btn {
+  padding: .6rem 1.2rem;
+  background: #f59e0b;
+  color: white;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: .85rem;
+  white-space: nowrap;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.bd-draft-btn:hover { background: #d97706; color: white; }
+
+@media (max-width: 600px) {
+  .bd-stats-grid { grid-template-columns: 1fr 1fr; }
+  .bd-actions-row { grid-template-columns: 1fr 1fr; }
+  .bd-header { flex-direction: column; }
+  .bd-new-btn { align-self: flex-start; }
+}
+`;

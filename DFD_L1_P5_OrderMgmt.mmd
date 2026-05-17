@@ -1,0 +1,93 @@
+flowchart TB
+    classDef actor   fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#c7d2fe
+    classDef process fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#a7f3d0,font-weight:bold
+    classDef store   fill:#1c1917,stroke:#78716c,stroke-width:2px,color:#d6d3d1
+    classDef svc     fill:#431407,stroke:#f97316,stroke-width:2px,color:#fed7aa
+
+    %% ══════════════════════════════════════════════════
+    %%  EXTERNAL ENTITIES
+    %% ══════════════════════════════════════════════════
+    ADMIN["🛠️ Admin"]
+    CUST["👤 ລູກຄ້າ"]
+    AUTH["🔐 2.0 Auth Middleware"]
+    SMTP["📧 SMTP Email"]
+    PUSH["🔔 Web Push"]
+
+    %% ══════════════════════════════════════════════════
+    %%  DATA STORES
+    %% ══════════════════════════════════════════════════
+    D1[("D1 · Products\n(stock)")]
+    D4[("D4 · Users")]
+    D6[("D6 · Orders")]
+    D8[("D8 · PushSubscriptions")]
+
+    %% ══════════════════════════════════════════════════
+    %%  SUB-PROCESSES
+    %% ══════════════════════════════════════════════════
+    P51("5.1\nເບິ່ງ & ກັ່ນຕອງ Order\nList & Filter")
+    P52("5.2\nລາຍລະອຽດ Order\n& Timeline")
+    P53("5.3\nອັບເດດ Fulfillment\nStatus")
+    P54("5.4\nຈັດການ Shipment\n& Tracking")
+    P55("5.5\nຄືນສິນຄ້າ & Refund\nReturn & Refund")
+    P56("5.6\nແຈ້ງເຕືອນ ລູກຄ້າ\nNotify Customer")
+
+    %% ══════════════════════════════════════════════════
+    %%  5.1 ເບິ່ງ & ກັ່ນຕອງ Order
+    %% ══════════════════════════════════════════════════
+    ADMIN -->|"paymentStatus, fulfillmentStatus\npaymentMethod, q, page"| P51
+    D6    -->|"Orders (server-side filter)"| P51
+    P51   -->|"paginated list + badge counts"| ADMIN
+
+    %% ══════════════════════════════════════════════════
+    %%  5.2 ລາຍລະອຽດ Order & Timeline
+    %% ══════════════════════════════════════════════════
+    ADMIN -->|"Order ID"| P52
+    CUST  -->|"Order ID (owner only)"| P52
+    AUTH  -->|"req.user (admin override OK)"| P52
+    D6    -->|"Order + items + shippingInfo\n+ paymentProof + events[]"| P52
+    P52   -->|"ລາຍລະອຽດ + Timeline"| ADMIN
+    P52   -->|"ລາຍລະອຽດ + Timeline"| CUST
+
+    %% ══════════════════════════════════════════════════
+    %%  5.3 ອັບເດດ Fulfillment Status
+    %% ══════════════════════════════════════════════════
+    ADMIN -->|"Order ID + fulfillmentStatus ໃໝ່"| P53
+    D6    -->|"Order (status ປັດຈຸບັນ)"| P53
+    P53   -->|"fulfillmentStatus + event appended\n(pre-save hook auto-sync)"| D6
+    P53   -->|"trigger: shipped / delivered / cancelled"| P56
+
+    %% ══════════════════════════════════════════════════
+    %%  5.4 ຈັດການ Shipment & Tracking
+    %% ══════════════════════════════════════════════════
+    ADMIN -->|"Order ID + trackingCode\n+ carrier + shippedAt"| P54
+    D6    -->|"Order (paymentStatus = Paid)"| P54
+    P54   -->|"trackingCode + shippedAt ບັນທຶກ"| D6
+    P54   -->|"trigger: shipped"| P56
+
+    %% ══════════════════════════════════════════════════
+    %%  5.5 ຄືນສິນຄ້າ & Refund
+    %% ══════════════════════════════════════════════════
+    ADMIN -->|"Order ID + refundAmount"| P55
+    D6    -->|"Order (paymentStatus = Paid only)"| P55
+    P55   -->|"paymentStatus = Refunded\n+ refundAmount"| D6
+    P55   -->|"restore stock (if Returned)"| D1
+    P55   -->|"trigger: refunded"| P56
+
+    %% ══════════════════════════════════════════════════
+    %%  5.6 ແຈ້ງເຕືອນ ລູກຄ້າ
+    %% ══════════════════════════════════════════════════
+    D4    -->|"customer email"| P56
+    D8    -->|"push subscription endpoint"| P56
+    P56   -->|"Email (Order / Ship / Delivered / Cancel)"| SMTP
+    P56   -->|"Push payload (Order alert)"| PUSH
+    SMTP  -->|"Delivery Status"| P56
+    PUSH  -->|"Subscription endpoint"| P56
+    P56   -->|"ແຈ້ງເຕືອນ ຜ່ານ Email + Push"| CUST
+
+    %% ══════════════════════════════════════════════════
+    %%  Apply Styles
+    %% ══════════════════════════════════════════════════
+    class ADMIN,CUST,AUTH actor
+    class P51,P52,P53,P54,P55,P56 process
+    class D1,D4,D6,D8 store
+    class SMTP,PUSH svc

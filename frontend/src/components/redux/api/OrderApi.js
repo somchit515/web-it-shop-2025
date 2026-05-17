@@ -4,21 +4,8 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 export const orderApi = createApi({
   reducerPath: "orderApi",
   baseQuery: fetchBaseQuery({
- main
     baseUrl: "http://localhost:8000/api/v1",
-    // ✅ ใช้ cookie auth อย่างเดียว (ลบ localStorage/Redux token ออก)
     credentials: "include",
-
-    baseUrl: "https://ithub-sy2u.onrender.com/api/v1",
-    prepareHeaders: (headers, { getState }) => {
-      // ถ้าคุณเก็บ token ใน state.auth.token ให้ส่งไปโดยอัตโนมัติ
-      const token = getState()?.auth?.token;
-      if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
- master
   }),
   tagTypes: ["Orders", "Dashboard"],
   endpoints: (builder) => ({
@@ -32,11 +19,14 @@ export const orderApi = createApi({
       invalidatesTags: ["Orders"],
     }),
 
-    // My orders (user)
+    // My orders (user) — optional: status filter (server-side), q filter (client-side)
     getMyOrders: builder.query({
-      query: () => ({ url: `me/orders` }),
+      query: ({ status } = {}) => ({
+        url: `me/orders`,
+        params: status && status !== "all" ? { status } : undefined,
+      }),
       providesTags: (result) =>
-        result ? [...result.orders.map((o) => ({ type: "Orders", id: o._id })), "Orders"] : ["Orders"],
+        result ? [...(result.orders || []).map((o) => ({ type: "Orders", id: o._id })), "Orders"] : ["Orders"],
     }),
 
     // Order details
@@ -112,10 +102,10 @@ export const orderApi = createApi({
     }),
 
     updateOrderStatus: builder.mutation({
-      query: ({ id, orderStatus, shipmentStatus, trackingCode }) => ({
+      query: ({ id, fulfillmentStatus, trackingCode }) => ({
         url: `/admin/orders/${id}/status`,
         method: "PATCH",
-        body: { orderStatus, shipmentStatus, trackingCode },
+        body: { fulfillmentStatus, trackingCode },
       }),
       invalidatesTags: (result, error, { id }) => [{ type: "Orders", id }, "Orders"],
     }),
@@ -156,6 +146,26 @@ export const orderApi = createApi({
         body: { action },
       }),
     }),
+
+    // ✅ Admin: add note to order timeline
+    addOrderNote: builder.mutation({
+      query: ({ id, note }) => ({
+        url: `/admin/orders/${id}/note`,
+        method: "POST",
+        body: { note },
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: "Orders", id }],
+    }),
+
+    // ✅ Admin: issue refund for a Paid order
+    issueRefund: builder.mutation({
+      query: ({ id, data }) => ({
+        url: `/admin/orders/${id}/refund`,
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: "Orders", id }, "Orders"],
+    }),
   }),
 });
 
@@ -174,4 +184,6 @@ export const {
   useVerifyPaymentMutation,
   useNotifyOrderCustomerMutation,
   useCancelMyOrderMutation,
+  useIssueRefundMutation,
+  useAddOrderNoteMutation,
 } = orderApi;

@@ -12,6 +12,8 @@ import {
   getSales,
   updateOrderStatus,
   cancelMyOrder,
+  issueRefund,
+  addOrderNote,
 } from "../controllers/orderController.js";
 
 import {
@@ -68,6 +70,22 @@ router.patch(
   isAuthenticatedUser,
   authorizeRoles("admin", "superAdmin"),
   updateOrderStatus
+);
+
+// ✅ Issue refund for a Paid order (admin only)
+router.post(
+  "/admin/orders/:id/refund",
+  isAuthenticatedUser,
+  authorizeRoles("admin", "superAdmin"),
+  issueRefund
+);
+
+// ✅ Add admin note to order timeline
+router.post(
+  "/admin/orders/:id/note",
+  isAuthenticatedUser,
+  authorizeRoles("admin", "superAdmin"),
+  addOrderNote
 );
 
 export default router;

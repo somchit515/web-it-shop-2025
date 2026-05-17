@@ -14,7 +14,6 @@ import {
   deleteProductImage,
   getBestSellingProducts,
   getProductsByCategory,
-  getAllCategories,
   checkStock
 } from "../controllers/productControllers.js";
 import { authorizeRoles, isAuthenticatedUser } from "../middlewares/auth.js";
@@ -30,10 +29,10 @@ router
 router
   .route("/admin/products")
   .get(isAuthenticatedUser, authorizeRoles("admin", "superAdmin"), getAdminProducts);
-router.route("/products/:id").get(getProductsDetails);
-
-// ✅ Batch stock check — ใช้ก่อน checkout
+// ✅ Batch stock check — ต้องอยู่ก่อน /products/:id เพื่อป้องกัน route ambiguity
 router.route("/products/check-stock").post(checkStock);
+
+router.route("/products/:id").get(getProductsDetails);
 
 router
   .route('/admin/products/:id/upload_images') // หรืออาจจะเป็นชื่ออื่น แต่ต้องตรงกับ Frontend
@@ -74,10 +73,6 @@ router
 .route("/category/:category")
 .get(getProductsByCategory);
 
-// เส้นทาง API สำหรับรายการหมวดหมู่ทั้งหมด
-router
-.route("/categories")
-.get(getAllCategories);
 
 
 

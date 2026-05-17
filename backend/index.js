@@ -28,8 +28,8 @@ app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true, 
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Idempotency-Key"],
   })
 );
 
@@ -54,6 +54,8 @@ import reportRoutes from "./routes/reportRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import couponRoutes from "./routes/coupons.js";
 import categoryRoutes from "./routes/categories.js";
+import pushRoutes from "./routes/push.js";
+import flashDealRoutes from "./routes/flashDeal.js";
 
 // --- 6. Mount Routes (ກວດສອບ Path ໃຫ້ດີ) ---
 app.use("/api/v1", productRoutes);
@@ -61,9 +63,11 @@ app.use("/api/v1", authRoutes);
 app.use("/api/v1", orderRoutes);
 app.use("/api/v1", paymentRoutes);
 app.use("/api/v1", reportRoutes);
-app.use("/api/v1", blogRoutes);
+app.use("/api/v1/blogs", blogRoutes);
 app.use("/api/v1", couponRoutes);
 app.use("/api/v1", categoryRoutes);
+app.use("/api/v1", pushRoutes);
+app.use("/api/v1", flashDealRoutes);
 
 // --- 7. Error Middleware ---
 app.use(errorsMiddleware);
@@ -72,34 +76,35 @@ const server = app.listen(process.env.PORT, () => {
   console.log(`Server started on PORT: ${process.env.PORT} in ${process.env.NODE_ENV} mode.`);
 });
 
-// ✅ Periodic cleanup: คืน stock จาก orders ที่ user ทิ้งไว้
-//    รัน 1 ครั้ง/นาที — production ควรใช้ cron job แท้แทน
+// ✅ Scheduled cleanup: คืน stock จาก orders ที่ user ทิ้งไว้
+import cron from "node-cron";
 import { releaseExpiredBankOrders, BANK_TRANSFER_EXPIRY_MINUTES } from "./utils/orderCleanup.js";
-const CLEANUP_INTERVAL_MS = 60_000; // 1 min
-const cleanupTimer = setInterval(async () => {
+
+// รัน 1 ครั้ง/นาที  →  "* * * * *"
+const cleanupJob = cron.schedule("* * * * *", async () => {
   try {
     const result = await releaseExpiredBankOrders();
     if (result.cancelled > 0) {
       console.log(
-        `[scheduled cleanup] cancelled ${result.cancelled} expired BankTransfer order(s)`
+        `[cron cleanup] cancelled ${result.cancelled} expired BankTransfer order(s)`
       );
     }
   } catch (err) {
-    console.error("[scheduled cleanup] error:", err.message);
+    console.error("[cron cleanup] error:", err.message);
   }
-}, CLEANUP_INTERVAL_MS);
+});
 console.log(
-  `[cleanup] scheduled — orders expire after ${BANK_TRANSFER_EXPIRY_MINUTES} mins, check every ${CLEANUP_INTERVAL_MS / 1000}s`
+  `[cron] cleanup scheduled — orders expire after ${BANK_TRANSFER_EXPIRY_MINUTES} mins, runs every minute`
 );
 
 process.on("unhandledRejection", (err) => {
   console.error(`ERROR: ${err.message}`);
-  clearInterval(cleanupTimer);
+  cleanupJob.stop();
   server.close(() => process.exit(1));
 });
 
 process.on("SIGTERM", () => {
   console.log("SIGTERM received — graceful shutdown");
-  clearInterval(cleanupTimer);
+  cleanupJob.stop();
   server.close(() => process.exit(0));
 });

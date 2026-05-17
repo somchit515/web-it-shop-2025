@@ -1,0 +1,138 @@
+flowchart TD
+    classDef terminal  fill:#1e1b4b,stroke:#6366f1,stroke-width:3px,color:#c7d2fe,font-weight:bold
+    classDef process   fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#a7f3d0
+    classDef decision  fill:#1c1917,stroke:#f59e0b,stroke-width:2px,color:#fcd34d
+    classDef io        fill:#431407,stroke:#f97316,stroke-width:2px,color:#fed7aa
+    classDef error     fill:#450a0a,stroke:#ef4444,stroke-width:2px,color:#fca5a5
+    classDef db        fill:#0c1a2e,stroke:#3b82f6,stroke-width:2px,color:#93c5fd
+    classDef success   fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#86efac
+
+    START(["🛠️ Admin ເຂົ້າ ສູ່ລະບົບ"])
+
+    %% ══════════════════════════════════════════════════
+    %%  PHASE 1 — Dashboard & ເລືອກ Order
+    %% ══════════════════════════════════════════════════
+    DASH[/"📊 Dashboard:\n- ລາຍໄດ້ ວັນນີ້ / ເດືອນນີ້\n- Badge: AwaitingProof, Unfulfilled\n- Low stock alerts"/]
+
+    FILTER["ກັ່ນຕອງ Order:\npaymentStatus / fulfillmentStatus\n/ paymentMethod / keyword"]
+
+    ORDER_LIST[/"📋 ລາຍການ Order\n(paginated, server-side filter)"/]
+
+    SELECT_ORD["👆 ເລືອກ Order"]
+    DETAIL_VIEW[/"🔍 ລາຍລະອຽດ Order:\nitems, ທີ່ຢູ່, paymentMethod\npaymentStatus, fulfillmentStatus\nTimeline events[]"/]
+
+    %% ══════════════════════════════════════════════════
+    %%  PHASE 2 — ກວດ ປະເພດ Order
+    %% ══════════════════════════════════════════════════
+    CHK_PAY_METHOD{"paymentMethod?"}
+
+    %% ══════════════════════════════════════════════════
+    %%  PATH A — BankTransfer: Verify Proof
+    %% ══════════════════════════════════════════════════
+    VIEW_PROOF[/"🖼️ ເບິ່ງ ສະຫຼິບ ໂອນ\n(paymentProof[])"/]
+    PROOF_OK{"ສະຫຼິບ\nຖືກຕ້ອງ?"}
+
+    APPROVE["✅ Approve Payment\npaymentStatus → Paid\nEvent: payment_confirmed ✦"]
+    EMAIL_PAID["📧 Email → ລູກຄ້າ: confirmed"]
+
+    REJECT["❌ Reject Payment\npaymentStatus → Rejected\nEvent: payment_rejected ✦"]
+    EMAIL_REJ["📧 Email → ລູກຄ້າ: rejected"]
+    REJECTED(["🔴 ລໍຖ້າ ລູກຄ້າ ອັບ ສະຫຼິບ ໃໝ່\n(ຫຼື ໝົດ 15 ນາທີ → auto-cancel)"])
+
+    %% ══════════════════════════════════════════════════
+    %%  PATH B — COD / PayAtStore: ກວດ paymentStatus
+    %% ══════════════════════════════════════════════════
+    CHK_PAY_STATUS{"paymentStatus?"}
+
+    %% ══════════════════════════════════════════════════
+    %%  PHASE 3 — Fulfillment: Processing
+    %% ══════════════════════════════════════════════════
+    CAN_FULFILL{"fulfillmentStatus\n= Unfulfilled?"}
+    ALREADY["⚠️ ກຳລັງ ດຳເນີນ ຢູ່\n(Processing / Shipped)"]
+
+    SET_PROC["fulfillmentStatus → Processing\nEvent: processing ✦"]
+    PACK["📦 ຈັດ ເຄື່ອງ + ບັນຈຸ + ກວດ items"]
+
+    %% ══════════════════════════════════════════════════
+    %%  PHASE 4 — Shipment & Tracking
+    %% ══════════════════════════════════════════════════
+    ENTER_TRACK["ໃສ່ trackingCode\n+ carrier + shippedAt"]
+    SET_SHIP["fulfillmentStatus → Shipped\nEvent: shipped ✦"]
+    SAVE_SHIP[("💾 ບັນທຶກ\ntrackingCode + shippedAt")]
+    EMAIL_SHIP["📧 Email → ລູກຄ້າ: shipped\n(tracking code + carrier)"]
+
+    %% ══════════════════════════════════════════════════
+    %%  PHASE 5 — Delivered
+    %% ══════════════════════════════════════════════════
+    CONFIRM_DEL{"ລູກຄ້າ ຮັບ ເຄື່ອງ\nສຳເລັດ?"}
+
+    FAIL_DEL[/"❌ ຈັດສົ່ງ ບໍ່ສຳເລັດ\n(ບໍ່ຢູ່ / ປະຕິເສດ)"/]
+    SET_RET["fulfillmentStatus → Returned\nEvent: returned ✦"]
+
+    IS_COD{"paymentMethod\n= COD?"}
+    SET_DEL_COD["fulfillmentStatus → Delivered\npaymentStatus → Paid\nEvent: delivered ✦"]
+    SET_DEL["fulfillmentStatus → Delivered\nEvent: delivered ✦"]
+
+    EMAIL_DEL["📧 Email → ລູກຄ້າ: delivered\n(ຂໍ Review ⭐)"]
+
+    %% ══════════════════════════════════════════════════
+    %%  PHASE 6 — Exceptions: Cancel & Refund
+    %% ══════════════════════════════════════════════════
+    NEED_ACTION{"Admin ຕ້ອງ\nດຳເນີນ ຫຍັງ?"}
+
+    ADMIN_CANCEL["Admin ຍົກເລີກ Order\n+ ເຫດຜົນ"]
+    RESTORE["restore stock\nEvent: cancelled ✦"]
+    EMAIL_CAN["📧 Email → ລູກຄ້າ: cancelled"]
+
+    REFUND_CHK{"paymentStatus\n= Paid?"}
+    CANNOT_REF[/"⚠️ ບໍ່ສາມາດ refund ໄດ້\n(ຍັງ ບໍ່ Paid)"/]
+    DO_REFUND["paymentStatus → Refunded\nrefundAmount ບັນທຶກ\nEvent: refunded ✦"]
+    RESTORE_REF["restore stock\n(ຖ້າ Returned)"]
+
+    DONE(["🏁 ດຳເນີນ ສຳເລັດ\nກັບ ໄປ Order List"])
+
+    %% ══════════════════════════════════════════════════
+    %%  CONNECTIONS
+    %% ══════════════════════════════════════════════════
+    START --> DASH --> FILTER --> ORDER_LIST --> SELECT_ORD --> DETAIL_VIEW
+
+    DETAIL_VIEW --> NEED_ACTION
+    NEED_ACTION -->|"Verify ສະຫຼິບ"| CHK_PAY_METHOD
+    NEED_ACTION -->|"ດຳເນີນ Order"| CHK_PAY_STATUS
+    NEED_ACTION -->|"ຍົກເລີກ"| ADMIN_CANCEL --> RESTORE --> EMAIL_CAN --> DONE
+    NEED_ACTION -->|"Refund"| REFUND_CHK
+
+    REFUND_CHK -->|"ແມ່ນ"| DO_REFUND --> RESTORE_REF --> DONE
+    REFUND_CHK -->|"ຍັງ ບໍ່"| CANNOT_REF --> DONE
+
+    %% Path A — BankTransfer verify
+    CHK_PAY_METHOD -->|"BankTransfer"| VIEW_PROOF --> PROOF_OK
+    PROOF_OK -->|"ຖືກຕ້ອງ"| APPROVE --> EMAIL_PAID --> CHK_PAY_STATUS
+    PROOF_OK -->|"ບໍ່ຖືກ"| REJECT --> EMAIL_REJ --> REJECTED
+
+    %% Path B — COD / PayAtStore
+    CHK_PAY_METHOD -->|"COD / PayAtStore"| CHK_PAY_STATUS
+    CHK_PAY_STATUS -->|"Paid / Pending"| CAN_FULFILL
+    CHK_PAY_STATUS -->|"Rejected / Refunded"| DONE
+
+    CAN_FULFILL -->|"ແມ່ນ"| SET_PROC --> PACK
+    CAN_FULFILL -->|"ບໍ່"| ALREADY --> PACK
+
+    PACK --> ENTER_TRACK --> SET_SHIP --> SAVE_SHIP --> EMAIL_SHIP
+
+    EMAIL_SHIP --> CONFIRM_DEL
+    CONFIRM_DEL -->|"ສຳເລັດ"| IS_COD
+    CONFIRM_DEL -->|"ບໍ່ສຳເລັດ"| FAIL_DEL --> SET_RET --> DONE
+
+    IS_COD -->|"ແມ່ນ (COD)"| SET_DEL_COD --> EMAIL_DEL --> DONE
+    IS_COD -->|"ບໍ່"| SET_DEL --> EMAIL_DEL
+
+    %% ══════════════════════════════════════════════════
+    %%  Apply Styles
+    %% ══════════════════════════════════════════════════
+    class START,DONE terminal
+    class REJECTED error
+    class DASH,ORDER_LIST,DETAIL_VIEW,VIEW_PROOF,FAIL_DEL,CANNOT_REF io
+    class NEED_ACTION,CHK_PAY_METHOD,PROOF_OK,CHK_PAY_STATUS,CAN_FULFILL,CONFIRM_DEL,IS_COD,REFUND_CHK decision
+    class FILTER,SELECT_ORD,APPROVE,REJECT,SET_PROC,PACK,ENTER_TRACK,SET_SHIP,EMAIL_SHIP,EMAIL_PAID,EMAIL_REJ,EMAIL_CAN,EMAIL_DEL,SET_DEL,SET_DEL_COD,SET_RET,ADMIN_CANCEL,RESTORE,RESTORE_REF,DO_REFUND,ALREADY process
+    class SAVE_SHIP db

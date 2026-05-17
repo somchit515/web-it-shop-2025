@@ -1,0 +1,87 @@
+flowchart TB
+    classDef actor   fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#c7d2fe
+    classDef process fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#a7f3d0,font-weight:bold
+    classDef store   fill:#1c1917,stroke:#78716c,stroke-width:2px,color:#d6d3d1
+    classDef svc     fill:#431407,stroke:#f97316,stroke-width:2px,color:#fed7aa
+
+    %% ══════════════════════════════════════════════════
+    %%  EXTERNAL ENTITIES
+    %% ══════════════════════════════════════════════════
+    ADMIN["🛠️ Admin"]
+    SADMIN["👑 SuperAdmin"]
+    AUTH["🔐 2.0 Auth Middleware"]
+
+    %% ══════════════════════════════════════════════════
+    %%  DATA STORES
+    %% ══════════════════════════════════════════════════
+    D1[("D1 · Products")]
+    D4[("D4 · Users")]
+    D6[("D6 · Orders")]
+    D9[("D9 · FinancialTransactions")]
+
+    %% ══════════════════════════════════════════════════
+    %%  SUB-PROCESSES
+    %% ══════════════════════════════════════════════════
+    P61("6.1\nDashboard ສະຫຼຸບ\nAdmin Dashboard")
+    P62("6.2\nລາຍງານ Sales\nSales Report")
+    P63("6.3\nວິເຄາະ ລູກຄ້າ\nCustomer Analytics")
+    P64("6.4\nລາຍງານ ສິນຄ້າ\nProduct Report")
+    P65("6.5\nລາຍງານ Finance\nFinance Report")
+    P66("6.6\nບັນທຶກ Transaction\nRecord Transaction")
+
+    %% ══════════════════════════════════════════════════
+    %%  6.1 Dashboard ສະຫຼຸບ (Admin)
+    %% ══════════════════════════════════════════════════
+    ADMIN -->|"request dashboard"| P61
+    D6    -->|"orders today/month\n(totals, pending, AwaitingProof)"| P61
+    D4    -->|"new users count"| P61
+    D1    -->|"low stock alerts"| P61
+    P61   -->|"revenue + order counts\n+ user stats + alerts"| ADMIN
+
+    %% ══════════════════════════════════════════════════
+    %%  6.2 ລາຍງານ Sales
+    %% ══════════════════════════════════════════════════
+    ADMIN  -->|"date range + paymentMethod\n+ fulfillmentStatus"| P62
+    SADMIN -->|"date range + filters"| P62
+    D6     -->|"orders ໃນ period\n(totalAmount, items, coupon)"| P62
+    P62    -->|"sales summary + top products\n+ chart data"| ADMIN
+    P62    -->|"sales summary + chart data"| SADMIN
+
+    %% ══════════════════════════════════════════════════
+    %%  6.3 ວິເຄາະ ລູກຄ້າ (SuperAdmin)
+    %% ══════════════════════════════════════════════════
+    SADMIN -->|"request analytics"| P63
+    D4     -->|"users (createdAt, role, authSource)"| P63
+    D6     -->|"orders per user (totalAmount)"| P63
+    P63    -->|"new users / month\n+ top spenders + retention"| SADMIN
+
+    %% ══════════════════════════════════════════════════
+    %%  6.4 ລາຍງານ ສິນຄ້າ (Admin)
+    %% ══════════════════════════════════════════════════
+    ADMIN -->|"request product report"| P64
+    D1    -->|"products (stock, ratings, numOfReviews)"| P64
+    D6    -->|"order items (productId, qty sold)"| P64
+    P64   -->|"bestsellers + low stock\n+ avg rating summary"| ADMIN
+
+    %% ══════════════════════════════════════════════════
+    %%  6.5 ລາຍງານ Finance (SuperAdmin)
+    %% ══════════════════════════════════════════════════
+    SADMIN -->|"date range"| P65
+    D9     -->|"transactions (Income/Expense/Adjustment)"| P65
+    D6     -->|"order revenue (Paid orders)"| P65
+    P65    -->|"income / expense / net\n+ chart + export CSV"| SADMIN
+
+    %% ══════════════════════════════════════════════════
+    %%  6.6 ບັນທຶກ Financial Transaction (SuperAdmin)
+    %% ══════════════════════════════════════════════════
+    SADMIN -->|"type + amount + description\n+ category + transactionDate"| P66
+    AUTH   -->|"req.user (superAdmin only)"| P66
+    P66    -->|"ບັນທຶກ Transaction ໃໝ່"| D9
+    P66    -->|"ຢືນຢັນ ບັນທຶກ"| SADMIN
+
+    %% ══════════════════════════════════════════════════
+    %%  Apply Styles
+    %% ══════════════════════════════════════════════════
+    class ADMIN,SADMIN,AUTH actor
+    class P61,P62,P63,P64,P65,P66 process
+    class D1,D4,D6,D9 store

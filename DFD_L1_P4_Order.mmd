@@ -1,0 +1,118 @@
+flowchart TB
+    classDef actor   fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#c7d2fe
+    classDef process fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#a7f3d0,font-weight:bold
+    classDef store   fill:#1c1917,stroke:#78716c,stroke-width:2px,color:#d6d3d1
+    classDef svc     fill:#431407,stroke:#f97316,stroke-width:2px,color:#fed7aa
+    classDef timer   fill:#1a1207,stroke:#eab308,stroke-width:2px,color:#fef08a
+
+    %% ══════════════════════════════════════════════════
+    %%  EXTERNAL ENTITIES
+    %% ══════════════════════════════════════════════════
+    CUST["👤 ລູກຄ້າ"]
+    ADMIN["🛠️ Admin"]
+    AUTH["🔐 2.0 Auth Middleware"]
+    CLOUD["☁️ Cloudinary"]
+    SMTP["📧 SMTP Email"]
+    TIMER["⏱️ setInterval\n(ທຸກ 1 ນາທີ)"]
+
+    %% ══════════════════════════════════════════════════
+    %%  DATA STORES
+    %% ══════════════════════════════════════════════════
+    D1[("D1 · Products\n(stock)")]
+    D4[("D4 · Users")]
+    D6[("D6 · Orders")]
+    D7[("D7 · Coupons")]
+
+    %% ══════════════════════════════════════════════════
+    %%  SUB-PROCESSES
+    %% ══════════════════════════════════════════════════
+    P41("4.1\nເລືອກ Carrier & ທີ່ຢູ່\nShipping Setup")
+    P42("4.2\nກວດ Stock\nStock Validation")
+    P43("4.3\nນຳໃຊ້ Coupon\nApply Coupon")
+    P44("4.4\nສ້າງ Order\nCheckout")
+    P45("4.5\nອັບໂຫຼດ ສະຫຼິບ\nUpload Proof")
+    P46("4.6\nVerify ການຊຳລະ\nAdmin Verify")
+    P47("4.7\nຍົກເລີກ Order\nCancel Order")
+    P48("4.8\nAuto-Cancel Expired\nCleanup Job")
+
+    %% ══════════════════════════════════════════════════
+    %%  4.1 ເລືອກ Carrier & ທີ່ຢູ່
+    %% ══════════════════════════════════════════════════
+    CUST -->|"ທີ່ຢູ່ + carrier ທີ່ເລືອກ"| P41
+    P41  -->|"ຄ່າສົ່ງ (server-side recalculate)"| CUST
+
+    %% ══════════════════════════════════════════════════
+    %%  4.2 ກວດ Stock
+    %% ══════════════════════════════════════════════════
+    CUST -->|"Cart Items (productId, qty)"| P42
+    D1   -->|"stock ປັດຈຸບັນ"| P42
+    P42  -->|"OK / insufficient / out_of_stock"| CUST
+
+    %% ══════════════════════════════════════════════════
+    %%  4.3 ນຳໃຊ້ Coupon
+    %% ══════════════════════════════════════════════════
+    CUST -->|"coupon code + orderAmount"| P43
+    D7   -->|"Coupon (type, value, minAmount, limits)"| P43
+    D4   -->|"usageCount ຕໍ່ user"| P43
+    P43  -->|"discountAmount + ສະຫຼຸບ"| CUST
+
+    %% ══════════════════════════════════════════════════
+    %%  4.4 ສ້າງ Order (Checkout)
+    %% ══════════════════════════════════════════════════
+    CUST  -->|"shippingInfo + paymentMethod\n+ couponCode + Idempotency-Key"| P44
+    AUTH  -->|"req.user"| P44
+    D1    -->|"stock (ກ່ອນ decrement)"| P44
+    D7    -->|"validate coupon (server-side)"| P44
+    P44   -->|"atomic decrement stock"| D1
+    P44   -->|"ບັນທຶກ Order (items, amounts, events[])"| D6
+    P44   -->|"mark coupon usedBy + usageCount++"| D7
+    P44   -->|"Order Summary + paymentMethod"| CUST
+    P44   -->|"Email: order created"| SMTP
+
+    %% ══════════════════════════════════════════════════
+    %%  4.5 ອັບໂຫຼດ ສະຫຼິບ (Bank Transfer only)
+    %% ══════════════════════════════════════════════════
+    CUST  -->|"ໄຟລ໌ ສະຫຼິບ (owner only)"| P45
+    AUTH  -->|"req.user (owner check)"| P45
+    D6    -->|"Order (AwaitingProof?)"| P45
+    P45   -->|"Upload image"| CLOUD
+    CLOUD -->|"URL + public_id"| P45
+    P45   -->|"ບັນທຶກ paymentProof[] + event"| D6
+    P45   -->|"Countdown timer 15 min"| CUST
+
+    %% ══════════════════════════════════════════════════
+    %%  4.6 Verify ການຊຳລະ (Admin)
+    %% ══════════════════════════════════════════════════
+    ADMIN -->|"Approve / Reject"| P46
+    D6    -->|"Order + paymentProof[]"| P46
+    P46   -->|"paymentStatus = Paid / Rejected"| D6
+    P46   -->|"Email: confirmed / rejected"| SMTP
+    P46   -->|"ຜົນ verify"| ADMIN
+
+    %% ══════════════════════════════════════════════════
+    %%  4.7 ຍົກເລີກ Order (User)
+    %% ══════════════════════════════════════════════════
+    CUST  -->|"Order ID + ເຫດຜົນ"| P47
+    AUTH  -->|"req.user (owner check)"| P47
+    D6    -->|"Order (Unfulfilled / Processing only)"| P47
+    P47   -->|"fulfillmentStatus = Cancelled + cancelReason"| D6
+    P47   -->|"restore stock"| D1
+    P47   -->|"Email: cancelled"| SMTP
+    P47   -->|"ຍົກເລີກ ສຳເລັດ"| CUST
+
+    %% ══════════════════════════════════════════════════
+    %%  4.8 Auto-Cancel Expired (BankTransfer > 15 min)
+    %% ══════════════════════════════════════════════════
+    TIMER -->|"trigger ທຸກ 1 ນາທີ"| P48
+    D6    -->|"BankTransfer + AwaitingProof\n+ ບໍ່ມີ proof + > 15 min"| P48
+    P48   -->|"fulfillmentStatus = Cancelled (auto)"| D6
+    P48   -->|"restore stock (batch)"| D1
+
+    %% ══════════════════════════════════════════════════
+    %%  Apply Styles
+    %% ══════════════════════════════════════════════════
+    class CUST,ADMIN,AUTH actor
+    class P41,P42,P43,P44,P45,P46,P47,P48 process
+    class D1,D4,D6,D7 store
+    class CLOUD,SMTP svc
+    class TIMER timer

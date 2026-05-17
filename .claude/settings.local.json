@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(node -e \"import\\('web-push'\\).then\\(m => { const keys = m.default.generateVAPIDKeys\\(\\); console.log\\('VAPID_PUBLIC_KEY=' + keys.publicKey\\); console.log\\('VAPID_PRIVATE_KEY=' + keys.privateKey\\); }\\)\")",
+      "Bash(node --input-type=module)",
+      "Bash(npx react-scripts *)",
+      "Bash(dir \"d:\\\\program\\\\web-it-shop-2025\\\\frontend\\\\node_modules\\\\chart.js\" /b)",
+      "Bash(node -e \"console.log\\(require\\('./frontend/node_modules/chart.js/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\(require\\('./frontend/node_modules/react-chartjs-2/package.json'\\).version\\)\")",
+      "Bash(find frontend/src -name \"setupProxy*\")",
+      "Bash(ls frontend/src/*.js)",
+      "Bash(git stash *)",
+      "Bash(ls backend/config/)",
+      "Bash(del \"d:\\\\program\\\\web-it-shop-2025\\\\frontend\\\\src\\\\components\\\\blog\\\\Blog.css\")",
+      "Bash(xargs grep -l \"AdminNotification\\\\|admin.*notification\")",
+      "Bash(xargs grep -l \"socket\\\\.io\\\\|Socket\\\\.io\\\\|emit.*order\\\\|on.*order\")"
+    ]
+  }
+}

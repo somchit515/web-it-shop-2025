@@ -13,6 +13,7 @@ const categorySchema = new mongoose.Schema(
     },
     key: { type: String, trim: true, lowercase: true, default: function () { return this.slug; } },
     img: { type: String, trim: true, default: "/images/categories/electronics.avif" },
+    imgPublicId: { type: String, default: null },
   },
   { timestamps: true }
 );

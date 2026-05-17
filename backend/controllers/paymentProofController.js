@@ -2,6 +2,7 @@ import Order from "../models/orders.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import catchAsyncErrors from "../middlewares/catchAsyncErrors.js";
 import { uploadToCloudinary } from "../middlewares/uploadCloudinary.js";
+import { tryPushNotify, buildOrderPushPayload } from "../utils/pushNotifier.js";
 
 export const attachPaymentProof = catchAsyncErrors(async (req, res, next) => {
   if (!req.file) return next(new ErrorHandler("No file uploaded.", 400));
@@ -55,10 +56,8 @@ export const adminVerifyPayment = catchAsyncErrors(async (req, res, next) => {
   const order = await Order.findById(orderId);
   if (!order) return next(new ErrorHandler("Order not found.", 404));
 
-  // --- แก้ไขจุดนี้ ---
-  // ถ้าเป็นการ confirm (ยืนยัน) ต้องมีรูปภาพหลักฐาน
-  // แต่ถ้าเป็นการ reject (ปฏิเสธ) ไม่จำเป็นต้องมีรูปภาพก็ได้
-  if (action === "confirm" && (!order.paymentProof || order.paymentProof.length === 0)) {
+  // COD ບໍ່ຕ້ອງການ proof — ພຽງແຕ່ BankTransfer ທີ່ຕ້ອງການ
+  if (action === "confirm" && order.paymentMethod !== "COD" && (!order.paymentProof || order.paymentProof.length === 0)) {
     return next(new ErrorHandler("Cannot confirm payment without proof files.", 400));
   }
 
@@ -77,6 +76,10 @@ export const adminVerifyPayment = catchAsyncErrors(async (req, res, next) => {
   }
   
   await order.save();
+
+  // Fire-and-forget push notification to order owner
+  const pushAction = action === "confirm" ? "payment_confirmed" : "payment_rejected";
+  tryPushNotify(order.user, buildOrderPushPayload(pushAction, order._id));
 
   res.status(200).json({
     success: true,

@@ -36,6 +36,8 @@ import Invoice from "../invoice/Invoice";
 import About from "../about/About";
 import Contact from "../contact/Contact";
 import Blog from "../blog/Blog";
+import BlogDetail from "../blog/BlogDetail";
+import Recommended from "../product/Recommended";
 
 function UserRoutes() {
   return (
@@ -156,6 +158,8 @@ function UserRoutes() {
       <Route path="/contact" element={<Contact />} />
       <Route path="/about" element={<About />} />
       <Route path="/blog" element={<Blog />} />
+      <Route path="/blog/:id" element={<BlogDetail />} />
+      <Route path="/recommended" element={<Recommended />} />
 
     </>
   );

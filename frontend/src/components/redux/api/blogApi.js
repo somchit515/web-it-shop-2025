@@ -2,30 +2,18 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 export const blogApi = createApi({
   reducerPath: 'blogApi',
- main
+ 
+  // 🚀 ປັບໃຫ້ເລືອກ URL ອັດຕະໂນມັດ ແລະ ເນັ້ນການໃຊ້ Cookie (credentials: "include")
   baseQuery: fetchBaseQuery({
-    baseUrl: '/api/v1',
-    // ✅ ใช้ cookie auth อย่างเดียว (ลบ localStorage token ออก)
+    baseUrl: "http://localhost:8000/api/v1",
     credentials: 'include',
-
-  baseQuery: fetchBaseQuery({ 
-    baseUrl: "https://ithub-sy2u.onrender.com/api/v1",
-    prepareHeaders: (headers, { getState }) => {
-      // ດຶງ token ຈາກ auth state (ປັບຊື່ໃຫ້ກົງກັບ Store ຂອງທ່ານ)
-      const token = getState().auth?.token || localStorage.getItem('token');
-      if (token) {
-        headers.set('authorization', `Bearer ${token}`);
-      }
-      return headers;
-    }
-master
   }),
+
   tagTypes: ['Blog', 'Comment'],
+  
   endpoints: (builder) => ({
 
-    // ─────────────────────────────────────────
     // 1. ດຶງບົດຄວາມທັງໝົດ
-    // ─────────────────────────────────────────
     getBlogs: builder.query({
       query: (params) => ({ url: '/blogs', params }),
       transformResponse: (response) => ({
@@ -41,39 +29,28 @@ master
           : [{ type: 'Blog', id: 'LIST' }],
     }),
 
-    // ─────────────────────────────────────────
     // 2. ດຶງລາຍລະອຽດບົດຄວາມດຽວ
-    // ─────────────────────────────────────────
     getBlogDetails: builder.query({
       query: (id) => `/blogs/${id}`,
       transformResponse: (response) => response.data,
       providesTags: (result, error, id) => [{ type: 'Blog', id }],
     }),
 
-    // ─────────────────────────────────────────
     // 3. ດຶງບົດຄວາມທີ່ກ່ຽວຂ້ອງ
-    // ─────────────────────────────────────────
     getRelatedBlogs: builder.query({
       query: (id) => `/blogs/${id}/related`,
       transformResponse: (response) => response.data ?? [],
       providesTags: ['Blog'],
     }),
 
-    // ─────────────────────────────────────────
     // 4. ດຶງ Trending blogs
-    // ─────────────────────────────────────────
     getTrendingBlogs: builder.query({
       query: () => '/blogs/trending',
       transformResponse: (response) => response.data ?? [],
       providesTags: ['Blog'],
     }),
 
-    // ─────────────────────────────────────────
     // 5. ສ້າງບົດຄວາມໃໝ່
-    // ✅ FIX: ຖ້າສົ່ງ images base64 ໃຫ້ strip ອອກກ່ອນ
-    //         ຫຼື backend ຕ້ອງ handle multipart
-    //         ຕອນນີ້ສົ່ງ JSON ທຳມະດາ — backend ຮັບ base64 string ໄດ້
-    // ─────────────────────────────────────────
     createBlog: builder.mutation({
       query: (blogData) => ({
         url: '/blogs',
@@ -83,9 +60,7 @@ master
       invalidatesTags: [{ type: 'Blog', id: 'LIST' }],
     }),
 
-    // ─────────────────────────────────────────
     // 6. ແກ້ໄຂບົດຄວາມ
-    // ─────────────────────────────────────────
     updateBlog: builder.mutation({
       query: ({ id, ...blogData }) => ({
         url: `/blogs/${id}`,
@@ -98,9 +73,7 @@ master
       ],
     }),
 
-    // ─────────────────────────────────────────
     // 7. ລຶບບົດຄວາມ
-    // ─────────────────────────────────────────
     deleteBlog: builder.mutation({
       query: (id) => ({
         url: `/blogs/${id}`,
@@ -109,10 +82,7 @@ master
       invalidatesTags: [{ type: 'Blog', id: 'LIST' }],
     }),
 
-    // ─────────────────────────────────────────
     // 8. Like / Unlike
-    // ✅ FIX: route ໃຊ້ POST (/blogs/:id/like)
-    // ─────────────────────────────────────────
     likeBlog: builder.mutation({
       query: (id) => ({
         url: `/blogs/${id}/like`,
@@ -121,55 +91,33 @@ master
       invalidatesTags: (result, error, id) => [{ type: 'Blog', id }],
     }),
 
-    // ─────────────────────────────────────────
     // 9. ເພີ່ມ Comment
-    // ✅ FIX: ປ່ຽນ field text → comment (ຕາມ backend)
-    // ─────────────────────────────────────────
     addComment: builder.mutation({
       query: ({ id, comment }) => ({
         url: `/blogs/${id}/comments`,
         method: 'POST',
-        body: { text: comment }, // ✅ backend: const { comment } = req.body
+        body: { text: comment }, 
       }),
       invalidatesTags: (result, error, { id }) => [{ type: 'Blog', id }],
     }),
 
-    // ─────────────────────────────────────────
     // 10. ເພີ່ມ View
-    // ✅ FIX: route ໃຊ້ POST (/blogs/:id/view)
-    // ─────────────────────────────────────────
     incrementView: builder.mutation({
       query: (id) => ({
         url: `/blogs/${id}/view`,
         method: 'POST',
       }),
-      // ບໍ່ invalidate — ບໍ່ຢາກ refetch ທັງໝົດພຽງເພາະ view +1
     }),
 
   }),
 });
 
-/* ═══════════════════════════════════════════════
-   HELPER — sanitize payload ກ່ອນສົ່ງ backend
-   - ລຶບ field ທີ່ backend ບໍ່ຕ້ອງການ
-   - ກຳຈັດ images[] ທີ່ເປັນ base64 ຂະໜາດໃຫຍ່ (optional)
-     ຖ້າ backend ທ່ານ support base64 ກໍ່ comment line ນັ້ນໄດ້
-═══════════════════════════════════════════════ */
+// HELPER — sanitize payload ກ່ອນສົ່ງ backend
 function sanitizeBlogPayload(data) {
   const {
-    title,
-    excerpt,
-    content,
-    category,
-    tags,
-    isPublished,
-    seoTitle,
-    seoDescription,
-    author,
-    slug,
-    readTime,
-    image,   // cover image (base64 or URL)
-    images,  // gallery images array
+    title, excerpt, content, category, tags,
+    isPublished, seoTitle, seoDescription,
+    author, slug, readTime, image, images,
   } = data;
 
   return {
@@ -199,10 +147,5 @@ export const {
   useDeleteBlogMutation,
   useLikeBlogMutation,
   useAddCommentMutation,
- main
   useIncrementViewMutation,
 } = blogApi;
-
-  useIncrementViewMutation
-} = blogApi;
-master

@@ -32,7 +32,7 @@ function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [activeImg, setActiveImg] = useState("/images/default_product.png");
 
-  const { data, isLoading, error, isError } = useGetProductDetailsQuery(
+  const { data, isLoading, error, isError, refetch } = useGetProductDetailsQuery(
     params?.id
   );
   const product = useMemo(() => data?.product || null, [data]);
@@ -316,7 +316,7 @@ function ProductDetails() {
         <div className="pd-card">
           <h3 className="section-title">ຄຳຕິຊົມ</h3>
 
-          <NewReviews productId={product?._id} />
+          <NewReviews productId={product?._id} onSuccess={refetch} />
 
           {product?.reviews?.length > 0 && (
             <div className="mt-4">

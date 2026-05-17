@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
-function SideMenu({ menuItems, isLoading }) {
+function SideMenu({ menuItems, isLoading = false }) {
   const styles = `
     :root {
       --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

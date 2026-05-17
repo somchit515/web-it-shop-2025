@@ -1,275 +1,44 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useSelector } from "react-redux";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import { toast } from "react-hot-toast";
 import {
   useCreateBlogMutation,
   useUpdateBlogMutation,
   useDeleteBlogMutation,
   useGetBlogDetailsQuery,
 } from "../redux/api/blogApi";
-import { useSelector } from "react-redux";
-import { useNavigate, useParams } from "react-router-dom";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
 import AdminLayout from "../layout/AdminLayout";
-import { toast } from "react-hot-toast";
+import MetaData from "../layout/MetaData";
 import Loader from "../layout/Loader";
 
-/* ═══════════════════════════════════════════
-   STYLES
-═══════════════════════════════════════════ */
-const STYLE = `
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;600;700;800&display=swap');
-
-.ba-wrap {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 5rem;
-  font-family: 'Noto Sans Lao', 'Phetsarath OT', sans-serif;
-}
-.ba-page-title {
-  font-size: 1.55rem; font-weight: 800;
-  background: linear-gradient(135deg, #0f2342, #1d4ed8);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text; margin: 0;
-}
-.ba-card {
-  background: #fff; border-radius: 18px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 2px 12px rgba(0,0,0,.05);
-  padding: 1.75rem; margin-bottom: 1.5rem;
-}
-.ba-card-title {
-  font-size: .95rem; font-weight: 700; color: #0f2342;
-  margin: 0 0 1.25rem; padding-bottom: .75rem;
-  border-bottom: 2px solid #f1f5f9;
-  display: flex; align-items: center; gap: .5rem;
-}
-.ba-label { font-size: .8rem; font-weight: 700; color: #374151; margin-bottom: .35rem; display: block; }
-.ba-label.req::after { content: " *"; color: #ef4444; }
-.ba-input, .ba-textarea {
-  width: 100%; padding: .7rem 1rem;
-  border: 2px solid #e5e7eb; border-radius: 10px;
-  font-family: inherit; font-size: .875rem; color: #111827;
-  background: #f9fafb; transition: border-color .2s, box-shadow .2s, background .2s;
-  outline: none; resize: vertical;
-}
-.ba-input:focus, .ba-textarea:focus {
-  border-color: #1d4ed8; box-shadow: 0 0 0 3px rgba(29,78,216,.1); background: #fff;
-}
-.ba-input.err, .ba-textarea.err { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,.08); }
-.ba-hint { font-size: .73rem; color: #9ca3af; margin-top: .3rem; }
-.ba-err  { font-size: .73rem; color: #ef4444; margin-top: .25rem; font-weight: 600; }
-.cnt-warn { color: #f59e0b !important; } .cnt-err { color: #ef4444 !important; }
-
-/* Category pills */
-.ba-cats { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: .4rem; }
-.ba-cat {
-  display: inline-flex; align-items: center; gap: .4rem;
-  padding: .5rem 1.1rem; border-radius: 50px;
-  border: 2px solid #e5e7eb; background: #f9fafb;
-  color: #374151; font-family: inherit; font-size: .82rem;
-  font-weight: 600; cursor: pointer; transition: all .2s; user-select: none;
-}
-.ba-cat:hover { border-color: #1d4ed8; color: #1d4ed8; background: #eff6ff; }
-.ba-cat.sel   { border-color: #1d4ed8; background: #eff6ff; color: #1d4ed8; }
-.ba-cat-dot   { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-
-/* Quill */
-.ba-quill { border: 2px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #fff; transition: border-color .2s; }
-.ba-quill:focus-within { border-color: #1d4ed8; }
-.ba-quill.err { border-color: #ef4444; }
-.ba-quill .ql-toolbar  { border: none; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
-.ba-quill .ql-container { border: none; font-size: .9rem; }
-.ba-quill .ql-editor    { min-height: 300px; font-family: 'Noto Sans Lao', sans-serif; }
-
-/* Cover zone */
-.ba-cover-zone {
-  border: 2.5px dashed #cbd5e1; border-radius: 12px;
-  padding: 2rem 1rem; text-align: center; cursor: pointer;
-  transition: all .25s; background: #f8fafc; position: relative;
-}
-.ba-cover-zone:hover { border-color: #1d4ed8; background: #eff6ff; }
-.ba-cover-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.ba-cover-preview {
-  position: relative; margin-top: 1rem;
-  border-radius: 12px; overflow: hidden; max-height: 240px;
-  border: 2px solid #e5e7eb;
-}
-.ba-cover-preview img { width: 100%; max-height: 240px; object-fit: cover; display: block; }
-.ba-cover-remove {
-  position: absolute; top: 10px; right: 10px;
-  background: rgba(239,68,68,.92); color: #fff;
-  border: none; border-radius: 50%; width: 30px; height: 30px;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  font-size: .8rem; box-shadow: 0 2px 8px rgba(0,0,0,.2);
-  transition: background .2s, transform .2s;
-}
-.ba-cover-remove:hover { background: #dc2626; transform: scale(1.1); }
-
-/* Gallery drop */
-.ba-gallery-drop {
-  border: 2.5px dashed #cbd5e1; border-radius: 12px;
-  padding: 1.4rem 1rem; text-align: center; cursor: pointer;
-  transition: all .25s; background: #f8fafc; position: relative;
-}
-.ba-gallery-drop:hover { border-color: #1d4ed8; background: #eff6ff; }
-.ba-gallery-drop input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-
-/* Grid thumbnails */
-.ba-gallery-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: .75rem; margin-top: 1rem;
-}
-.ba-thumb {
-  position: relative; border-radius: 10px; overflow: hidden;
-  aspect-ratio: 1; border: 2px solid #e5e7eb;
-  box-shadow: 0 2px 6px rgba(0,0,0,.06); background: #f1f5f9; cursor: pointer;
-  transition: border-color .2s, box-shadow .2s;
-}
-.ba-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s; }
-.ba-thumb:hover img { transform: scale(1.07); }
-.ba-thumb-overlay {
-  position: absolute; inset: 0; background: rgba(0,0,0,0);
-  transition: background .2s; display: flex;
-  align-items: flex-start; justify-content: flex-end; padding: 4px;
-}
-.ba-thumb:hover .ba-thumb-overlay { background: rgba(0,0,0,.35); }
-.ba-thumb-rm {
-  background: rgba(239,68,68,.9); color: #fff;
-  border: none; border-radius: 50%; width: 22px; height: 22px;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  font-size: .6rem; opacity: 0; transition: opacity .2s; flex-shrink: 0;
-}
-.ba-thumb:hover .ba-thumb-rm { opacity: 1; }
-.ba-thumb-star {
-  position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
-  background: rgba(245,158,11,.92); color: #fff;
-  border: none; border-radius: 6px; padding: 2px 7px;
-  cursor: pointer; font-size: .6rem; font-family: inherit; font-weight: 700;
-  display: flex; align-items: center; gap: 2px;
-  opacity: 0; transition: opacity .2s; white-space: nowrap;
-}
-.ba-thumb:hover .ba-thumb-star { opacity: 1; }
-.ba-thumb.is-cover { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.2); }
-.ba-thumb.is-cover::after {
-  content: 'ໜ້າປົກ'; position: absolute; bottom: 0; left: 0; right: 0;
-  background: rgba(245,158,11,.88); color: #fff;
-  font-size: .6rem; text-align: center; padding: 3px 0;
-  font-weight: 700; font-family: 'Noto Sans Lao', sans-serif;
-}
-.ba-img-badge {
-  display: inline-flex; align-items: center; gap: .35rem;
-  background: #eff6ff; color: #1d4ed8;
-  border-radius: 50px; padding: .2rem .7rem;
-  font-size: .75rem; font-weight: 700;
-}
-
-/* Tags */
-.ba-tag-row { display: flex; gap: .5rem; margin-bottom: .75rem; }
-.ba-tags { display: flex; flex-wrap: wrap; gap: .4rem; min-height: 32px; }
-.ba-tag {
-  display: inline-flex; align-items: center; gap: .3rem;
-  padding: .28rem .8rem; border-radius: 50px;
-  background: #eff6ff; color: #1d4ed8;
-  font-size: .78rem; font-weight: 600; border: 1px solid #bfdbfe;
-}
-.ba-tag button {
-  border: none; background: none; color: #93c5fd;
-  cursor: pointer; font-size: 1rem; padding: 0; line-height: 1; transition: color .15s;
-}
-.ba-tag button:hover { color: #1d4ed8; }
-
-/* Publish toggle */
-.ba-pub-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 1rem 1.25rem; background: #f8fafc;
-  border-radius: 10px; border: 2px solid #e5e7eb; transition: border-color .2s;
-}
-.ba-pub-row.on { border-color: #bfdbfe; background: #eff6ff; }
-.ba-toggle { position: relative; display: inline-block; width: 46px; height: 24px; flex-shrink: 0; }
-.ba-toggle input { opacity: 0; width: 0; height: 0; }
-.ba-slider {
-  position: absolute; cursor: pointer; inset: 0;
-  background: #cbd5e1; border-radius: 24px; transition: .3s;
-}
-.ba-slider::before {
-  content: ''; position: absolute; width: 18px; height: 18px;
-  border-radius: 50%; left: 3px; bottom: 3px; background: #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,.25); transition: .3s;
-}
-.ba-toggle input:checked + .ba-slider { background: #1d4ed8; }
-.ba-toggle input:checked + .ba-slider::before { transform: translateX(22px); }
-
-/* Slug / Read time */
-.ba-slug-preview { font-size: .73rem; color: #6b7280; margin-top: .3rem; word-break: break-all; }
-.ba-slug-preview span { color: #1d4ed8; font-weight: 600; }
-.ba-rt {
-  display: inline-flex; align-items: center; gap: .35rem;
-  background: #ecfdf5; color: #059669; border-radius: 50px;
-  padding: .35rem 1rem; font-size: .78rem; font-weight: 700; border: 1px solid #a7f3d0;
-}
-
-/* Buttons */
-.ba-btn {
-  display: inline-flex; align-items: center; gap: .5rem;
-  padding: .72rem 1.5rem; border-radius: 10px;
-  border: none; font-family: inherit; font-weight: 700;
-  font-size: .875rem; cursor: pointer; transition: all .2s; white-space: nowrap;
-}
-.ba-btn-primary {
-  background: linear-gradient(135deg, #1d4ed8, #0f2342);
-  color: #fff; flex: 1; justify-content: center;
-}
-.ba-btn-primary:hover:not(:disabled) { box-shadow: 0 8px 24px rgba(29,78,216,.4); transform: translateY(-1px); }
-.ba-btn-primary:disabled { opacity: .55; cursor: not-allowed; }
-.ba-btn-secondary { background: #f1f5f9; color: #374151; border: 2px solid #e5e7eb; }
-.ba-btn-secondary:hover { background: #e2e8f0; }
-.ba-btn-danger { background: #ef4444; color: #fff; }
-.ba-btn-danger:hover:not(:disabled) { background: #dc2626; box-shadow: 0 6px 20px rgba(239,68,68,.35); }
-.ba-btn-danger:disabled { opacity: .55; cursor: not-allowed; }
-.ba-actions { display: flex; gap: 1rem; margin-top: .5rem; }
-.ba-danger {
-  background: linear-gradient(135deg, #fff5f5, #fee2e2);
-  border: 2px solid #fca5a5; border-radius: 14px;
-  padding: 1.5rem; margin-top: 2rem;
-}
-@media (max-width: 767px) {
-  .ba-actions { flex-direction: column; }
-  .ba-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
-}
-`;
-
-if (!document.getElementById("ba-style")) {
-  const s = document.createElement("style");
-  s.id = "ba-style";
-  s.textContent = STYLE;
-  document.head.appendChild(s);
-}
-
-/* ═══════════════════════════════════════════
-   CONSTANTS & HELPERS
-═══════════════════════════════════════════ */
+/* ─── Constants ─────────────────────────────────────── */
 const CATS = [
-  { id: "tech",   name: "ເທັກໂນໂລຢີ", icon: "fa-microchip", color: "#2563eb" },
-  { id: "review", name: "ລີວິວ",       icon: "fa-star",      color: "#d97706" },
-  { id: "guide",  name: "ຄູ່ມື",       icon: "fa-book-open", color: "#059669" },
-  { id: "news",   name: "ຂ່າວສານ",    icon: "fa-newspaper", color: "#7c3aed" },
+  { id: "tech",   name: "ເທັກໂນໂລຢີ", icon: "💻", color: "#2563eb", bg: "#eff6ff" },
+  { id: "review", name: "ລີວິວ",        icon: "⭐", color: "#d97706", bg: "#fffbeb" },
+  { id: "guide",  name: "ຄູ່ມື",        icon: "📖", color: "#059669", bg: "#f0fdf4" },
+  { id: "news",   name: "ຂ່າວສານ",     icon: "📰", color: "#7c3aed", bg: "#faf5ff" },
 ];
 
 const QUILL_MODULES = {
   toolbar: [
-    [{ header: [1, 2, 3, 4, 5, 6, false] }],
-    ["bold", "italic", "underline", "strike", "blockquote"],
-    [{ list: "ordered" }, { list: "bullet" }, { indent: "-1" }, { indent: "+1" }],
-    ["link", "image", "video"],
+    [{ header: [1, 2, 3, 4, false] }],
+    ["bold", "italic", "underline", "strike"],
+    ["blockquote", "code-block"],
+    [{ list: "ordered" }, { list: "bullet" }],
+    [{ indent: "-1" }, { indent: "+1" }],
+    ["link", "image"],
     [{ color: [] }, { background: [] }],
     [{ align: [] }],
-    ["code-block"],
     ["clean"],
   ],
 };
 
+/* ─── Helpers ───────────────────────────────────────── */
 const genSlug = (t) =>
-  t.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").trim();
+  t.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").trim().substring(0, 60);
 
 const calcReadTime = (html) => {
   const words = html.replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length;
@@ -279,55 +48,71 @@ const calcReadTime = (html) => {
 const toBase64 = (file) =>
   new Promise((res, rej) => {
     const r = new FileReader();
-    r.onload = (e) => res(e.target.result);
+    r.onload  = (e) => res(e.target.result);
     r.onerror = rej;
     r.readAsDataURL(file);
   });
 
-const cntClass = (len, warn, max) => {
-  if (len >= max) return "cnt-err";
-  if (len >= warn) return "cnt-warn";
-  return "";
+const autoHeight = (el) => {
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
 };
 
-/* ═══════════════════════════════════════════
-   COMPONENT
-═══════════════════════════════════════════ */
-const BlogAdmin = () => {
-  const navigate  = useNavigate();
-  const { id }    = useParams();
-  const isEditing = !!id;
+/* ─── SideCard ──────────────────────────────────────── */
+function SideCard({ title, icon, children, defaultOpen = true, danger = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={`sc-card${danger ? " sc-danger" : ""}`}>
+      <button type="button" className="sc-head" onClick={() => setOpen((o) => !o)}>
+        <span className="sc-title">
+          <span className="sc-icon">{icon}</span>
+          {title}
+        </span>
+        <span className={`sc-chevron${open ? " open" : ""}`}>›</span>
+      </button>
+      {open && <div className="sc-body">{children}</div>}
+    </div>
+  );
+}
 
-  // ✅ ດຶງ user ຈາກ Redux — ບໍ່ loop
+/* ─── Main Component ─────────────────────────────────── */
+export default function BlogAdmin() {
+  const navigate = useNavigate();
+  const { id }   = useParams();
+  const isEdit   = !!id;
   const { user } = useSelector((s) => s.auth);
 
-  /* ── State ── */
+  /* ── Form state ── */
   const [form, setForm] = useState({
     title: "", excerpt: "", content: "", category: "tech",
     tags: [], isPublished: false,
     seoTitle: "", seoDescription: "",
     author: user?.name || "", slug: "", readTime: "1 ນາທີ",
   });
-  const [images,   setImages]   = useState([]); // [{src, name}] idx-0=cover
-  const [tagInput, setTagInput] = useState("");
-  const [errors,   setErrors]   = useState({});
+  const [images,     setImages]     = useState([]); // [{src,name}] idx-0 = cover
+  const [tagInput,   setTagInput]   = useState("");
+  const [errors,     setErrors]     = useState({});
+  const [deleteStep, setDeleteStep] = useState(0);  // 0=idle, 1=confirm
 
-  // refs ສຳລັບ block useEffect loops
   const prevTitleRef   = useRef("");
   const prevContentRef = useRef("");
+  const titleRef       = useRef();
+  const coverInputRef  = useRef();
+  const galleryInputRef = useRef();
 
   /* ── RTK Query ── */
-  const { data: blog, isLoading, isError, error } =
-    useGetBlogDetailsQuery(id, { skip: !isEditing });
+  const { data: blog, isLoading: blogLoading, isError, error } =
+    useGetBlogDetailsQuery(id, { skip: !isEdit });
 
   const [createBlog, { isLoading: isCreating }] = useCreateBlogMutation();
   const [updateBlog, { isLoading: isUpdating }] = useUpdateBlogMutation();
   const [deleteBlog, { isLoading: isDeleting }] = useDeleteBlogMutation();
 
-  /* ── Load blog data when editing ── */
-  // ✅ FIX: ລຶບ user/currentUser ອອກຈາກ deps — ບໍ່ loop ອີກ
+  const isSaving = isCreating || isUpdating;
+
+  /* ── Load existing blog ── */
   useEffect(() => {
-    if (!isEditing || !blog) return;
+    if (!isEdit || !blog) return;
     setForm({
       title:          blog.title          || "",
       excerpt:        blog.excerpt        || "",
@@ -342,23 +127,23 @@ const BlogAdmin = () => {
       readTime:       blog.readTime       || "1 ນາທີ",
     });
     const imgs = (blog.images || []).map((i) => ({ src: i?.url || i, name: "existing" }));
-    if (!imgs.length && blog.image) {
-      imgs.push({ src: blog.image?.url || blog.image, name: "cover" });
-    }
+    if (!imgs.length && blog.image) imgs.push({ src: blog.image?.url || blog.image, name: "cover" });
     setImages(imgs);
-  }, [blog, isEditing]); // ✅ ບໍ່ມີ user ໃນ deps
+  }, [blog, isEdit]); // eslint-disable-line
+
+  /* ── Auto-resize title on load ── */
+  useEffect(() => {
+    if (titleRef.current) autoHeight(titleRef.current);
+  }, [form.title]);
 
   /* ── Auto slug (create only) ── */
-  // ✅ FIX: ໃຊ້ ref block loop
   useEffect(() => {
-    if (isEditing) return;
-    if (form.title === prevTitleRef.current) return;
+    if (isEdit || form.title === prevTitleRef.current) return;
     prevTitleRef.current = form.title;
     setForm((p) => ({ ...p, slug: genSlug(form.title) }));
-  }, [form.title, isEditing]);
+  }, [form.title, isEdit]);
 
   /* ── Auto read time ── */
-  // ✅ FIX: ໃຊ້ ref block loop
   useEffect(() => {
     if (!form.content || form.content === prevContentRef.current) return;
     prevContentRef.current = form.content;
@@ -367,89 +152,85 @@ const BlogAdmin = () => {
   }, [form.content]);
 
   /* ── Image handlers ── */
-  const handleCoverUpload = useCallback(async (e) => {
-    const file = e.target.files[0];
+  const handleCoverFile = useCallback(async (file) => {
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error("ຮູບໃຫຍ່ເກີນ 5MB"); return; }
+    if (!file.type.startsWith("image/")) { toast.error("ຮັບສະເພາະຮູບ"); return; }
+    if (file.size > 5 * 1024 * 1024)    { toast.error("ຮູບໃຫຍ່ເກີນ 5MB"); return; }
     const src = await toBase64(file);
     setImages((p) => { const n = [...p]; n[0] = { src, name: file.name }; return n; });
-    e.target.value = "";
   }, []);
 
-  const handleGalleryUpload = useCallback(async (e) => {
-    const files = Array.from(e.target.files);
-    const big = files.filter((f) => f.size > 5 * 1024 * 1024);
-    if (big.length) { toast.error(`${big.length} ຮູບໃຫຍ່ເກີນ 5MB`); return; }
-    const converted = await Promise.all(
-      files.map(async (f) => ({ src: await toBase64(f), name: f.name }))
-    );
+  const handleGalleryFiles = useCallback(async (files) => {
+    const arr = Array.from(files);
+    const ok  = arr.filter((f) => {
+      if (f.size > 5 * 1024 * 1024) { toast.error(`"${f.name}" ໃຫຍ່ເກີນ 5MB`); return false; }
+      return true;
+    });
+    if (!ok.length) return;
+    const converted = await Promise.all(ok.map(async (f) => ({ src: await toBase64(f), name: f.name })));
     setImages((p) => {
       const cover   = p[0] ? [p[0]] : [];
       const gallery = p.slice(1);
       return [...cover, ...gallery, ...converted];
     });
-    e.target.value = "";
   }, []);
 
   const removeImage = useCallback((idx) => setImages((p) => p.filter((_, i) => i !== idx)), []);
-
-  const setAsCover = useCallback((idx) => {
-    setImages((p) => {
-      const n = [...p];
-      const [picked] = n.splice(idx, 1);
-      return [picked, ...n];
-    });
+  const setAsCover  = useCallback((idx) => {
+    setImages((p) => { const n = [...p]; const [pic] = n.splice(idx, 1); return [pic, ...n]; });
   }, []);
 
   /* ── Tags ── */
   const addTag = useCallback(() => {
-    const t = tagInput.trim();
+    const t = tagInput.trim().toLowerCase();
     if (t && !form.tags.includes(t)) setForm((p) => ({ ...p, tags: [...p.tags, t] }));
     setTagInput("");
   }, [tagInput, form.tags]);
 
-  const removeTag = useCallback((t) =>
-    setForm((p) => ({ ...p, tags: p.tags.filter((x) => x !== t) })), []);
-
-  /* ── Field setter ── */
-  const set = (field) => (e) =>
-    setForm((p) => ({ ...p, [field]: e?.target ? e.target.value : e }));
-
-  /* ── Validate ── */
-  const validate = () => {
-    const e = {};
-    if (!form.title.trim())              e.title   = "ກະລຸນາປ້ອນຫົວຂໍ້";
-    else if (form.title.length > 200)    e.title   = "ຕ້ອງບໍ່ເກີນ 200 ຕົວອັກສອນ";
-    if (!form.excerpt.trim())            e.excerpt = "ກະລຸນາປ້ອນຄຳອະທິບາຍ";
-    else if (form.excerpt.length > 500)  e.excerpt = "ຕ້ອງບໍ່ເກີນ 500 ຕົວອັກສອນ";
-    const plain = form.content.replace(/<[^>]*>/g, "").trim();
-    if (!plain || plain.length < 50)     e.content = "ເນື້ອຫາຕ້ອງ ≥ 50 ຕົວອັກສອນ";
-    if (!form.author.trim())             e.author  = "ກະລຸນາປ້ອນຊື່ຜູ້ຂຽນ";
-    if (form.seoTitle.length > 60)       e.seoTitle = "ເກີນ 60 ຕົວອັກສອນ";
-    if (form.seoDescription.length > 160) e.seoDesc = "ເກີນ 160 ຕົວອັກສອນ";
-    setErrors(e);
-    return !Object.keys(e).length;
-  };
+  const removeTag = useCallback(
+    (t) => setForm((p) => ({ ...p, tags: p.tags.filter((x) => x !== t) })),
+    []
+  );
 
   /* ── Submit ── */
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) { toast.error("ກະລຸນາກວດສອບຂໍ້ມູນ"); return; }
+  const handleSubmit = async (publishOverride = null) => {
+    const finalPublish = publishOverride !== null ? publishOverride : form.isPublished;
+    const finalForm    = { ...form, isPublished: finalPublish };
+
+    const e = {};
+    if (!finalForm.title.trim())          e.title   = "ກະລຸນາປ້ອນຫົວຂໍ້";
+    if (finalForm.title.length > 200)     e.title   = "ຕ້ອງບໍ່ເກີນ 200 ຕົວ";
+    if (!finalForm.excerpt.trim())        e.excerpt = "ກະລຸນາປ້ອນຄຳອະທິບາຍ";
+    if (finalForm.excerpt.length > 500)   e.excerpt = "ຕ້ອງບໍ່ເກີນ 500 ຕົວ";
+    const plain = finalForm.content.replace(/<[^>]*>/g, "").trim();
+    if (!plain || plain.length < 50)      e.content = "ເນື້ອຫາຕ້ອງ ≥ 50 ຕົວ";
+    if (!finalForm.author.trim())         e.author  = "ກະລຸນາປ້ອນຊື່ຜູ້ຂຽນ";
+    if (finalForm.seoTitle.length > 60)   e.seoTitle = "ເກີນ 60 ຕົວ";
+    if (finalForm.seoDescription.length > 160) e.seoDesc = "ເກີນ 160 ຕົວ";
+
+    setErrors(e);
+    if (Object.keys(e).length) {
+      toast.error("ກະລຸນາກວດສອບຂໍ້ມູນ");
+      return;
+    }
+
     const payload = {
-      ...form,
-      slug:   form.slug || genSlug(form.title),
+      ...finalForm,
+      slug:   finalForm.slug || genSlug(finalForm.title),
       image:  images[0]?.src || "",
       images: images.map((i) => i.src),
     };
+
     try {
-      if (isEditing) {
+      if (isEdit) {
         await updateBlog({ id, ...payload }).unwrap();
         toast.success("✅ ອັບເດດສຳເລັດ");
+        navigate("/admin/blog/dashboard");
       } else {
         await createBlog(payload).unwrap();
-        toast.success("✅ ສ້າງບົດຄວາມສຳເລັດ");
+        toast.success("✅ ສ້າງບົດຄວາມສຳເລັດ!");
+        navigate("/admin/blog/dashboard");
       }
-      navigate("/admin/blog");
     } catch (err) {
       toast.error(`❌ ${err?.data?.message || "ບັນທຶກບໍ່ສຳເລັດ"}`);
     }
@@ -457,368 +238,845 @@ const BlogAdmin = () => {
 
   /* ── Delete ── */
   const handleDelete = async () => {
-    if (!window.confirm("⚠️ ແນ່ໃຈບໍ? ຈະລຶບຖາວອນ ກູ້ຄືນບໍ່ໄດ້.")) return;
     try {
       await deleteBlog(id).unwrap();
       toast.success("🗑️ ລຶບສຳເລັດ");
-      navigate("/admin/blog");
-    } catch { toast.error("❌ ລຶບບໍ່ສຳເລັດ"); }
+      navigate("/admin/blog/dashboard");
+    } catch {
+      toast.error("❌ ລຶບບໍ່ສຳເລັດ");
+    }
   };
 
   /* ── Loading / Error ── */
-  if (isEditing && isLoading) return (
+  if (isEdit && blogLoading) return (
     <AdminLayout>
-      <div className="text-center py-5" style={{ fontFamily: "'Noto Sans Lao', sans-serif" }}>
-        <Loader />
-        <p className="mt-3 text-muted">ກຳລັງໂຫຼດ...</p>
+      <div className="text-center py-5"><Loader /></div>
+    </AdminLayout>
+  );
+
+  if (isEdit && isError) return (
+    <AdminLayout>
+      <div className="text-center py-5">
+        <p className="text-danger fw-bold">{error?.data?.message || "ໂຫຼດຂໍ້ມູນບໍ່ໄດ້"}</p>
+        <button className="be-btn be-btn-ghost" onClick={() => navigate(-1)}>← ກັບຄືນ</button>
       </div>
     </AdminLayout>
   );
 
-  if (isEditing && isError) return (
-    <AdminLayout>
-      <div className="text-center py-5" style={{ fontFamily: "'Noto Sans Lao', sans-serif" }}>
-        <i className="fas fa-circle-exclamation text-danger" style={{ fontSize: "3rem" }}></i>
-        <h5 className="mt-3 fw-bold">{error?.data?.message || "ໂຫຼດຂໍ້ມູນບໍ່ໄດ້"}</h5>
-        <button className="ba-btn ba-btn-secondary mt-3" onClick={() => navigate(-1)}>
-          <i className="fas fa-arrow-left"></i> ກັບຄືນ
-        </button>
-      </div>
-    </AdminLayout>
-  );
+  /* ── Derived values ── */
+  const plainLen  = form.content.replace(/<[^>]*>/g, "").length;
+  const wordCount = form.content.replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length;
+  const coverImg  = images[0];
+  const hasGallery = images.length > 1;
 
-  /* ── Derived ── */
-  const coverImg    = images[0];
-  const plainLen    = form.content.replace(/<[^>]*>/g, "").length;
-
-  /* ════════════════════════════════════════
+  /* ═══════════════════════════════════════════════════
      RENDER
-  ════════════════════════════════════════ */
+  ═══════════════════════════════════════════════════ */
   return (
     <AdminLayout>
-      <div className="ba-wrap">
+      <MetaData title={isEdit ? "ແກ້ໄຂບົດຄວາມ" : "ສ້າງບົດຄວາມໃໝ່"} />
+      <style>{css}</style>
 
-        {/* Breadcrumb */}
-        <nav className="mb-2" style={{ fontSize: ".8rem", color: "#9ca3af" }}>
-          <a href="/admin/dashboard" style={{ color: "#1d4ed8", textDecoration: "none" }}>Dashboard</a>
-          {" / "}
-          <a href="/admin/blog" style={{ color: "#1d4ed8", textDecoration: "none" }}>ຈັດການບົດຄວາມ</a>
-          {" / "}
-          <span style={{ color: "#374151", fontWeight: 600 }}>{isEditing ? "ແກ້ໄຂ" : "ສ້າງໃໝ່"}</span>
+      {/* ── Topbar ── */}
+      <div className="be-topbar">
+        <nav className="be-breadcrumb">
+          <Link to="/admin/dashboard">Dashboard</Link>
+          <span className="be-sep">/</span>
+          <Link to="/admin/blog">ບົດຄວາມ</Link>
+          <span className="be-sep">/</span>
+          <span>{isEdit ? "ແກ້ໄຂ" : "ສ້າງໃໝ່"}</span>
         </nav>
-
-        {/* Header */}
-        <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-          <h1 className="ba-page-title">
-            <i className={`fas ${isEditing ? "fa-pen-to-square" : "fa-circle-plus"} me-2`}></i>
-            {isEditing ? "ແກ້ໄຂບົດຄວາມ" : "ສ້າງບົດຄວາມໃໝ່"}
-          </h1>
-          <button className="ba-btn ba-btn-secondary" onClick={() => navigate(-1)}>
-            <i className="fas fa-arrow-left"></i> ກັບຄືນ
+        <div className="be-topbar-right">
+          <span className={`be-status-badge ${form.isPublished ? "pub" : "draft"}`}>
+            {form.isPublished ? "● ເຜີຍແຜ່" : "○ ຮ່າງ"}
+          </span>
+          {isEdit && form.slug && (
+            <a
+              href={`/blog/${form.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className="be-btn be-btn-ghost be-btn-sm"
+            >
+              ↗ Preview
+            </a>
+          )}
+          <button className="be-btn be-btn-ghost be-btn-sm" onClick={() => navigate(-1)}>
+            ← ກັບຄືນ
           </button>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} noValidate>
+      {/* ── Two-column layout ── */}
+      <div className="be-layout">
 
-          {/* ══ 1. ຂໍ້ມູນພື້ນຖານ ══ */}
-          <div className="ba-card">
-            <h2 className="ba-card-title">
-              <i className="fas fa-file-lines" style={{ color: "#1d4ed8" }}></i>
-              ຂໍ້ມູນພື້ນຖານ
-            </h2>
+        {/* ════════════════════════
+            LEFT: Main content
+        ════════════════════════ */}
+        <div className="be-main">
 
-            <div className="mb-3">
-              <label className="ba-label req">ຫົວຂໍ້ບົດຄວາມ</label>
-              <input
-                className={`ba-input${errors.title ? " err" : ""}`}
-                placeholder="ໃສ່ຫົວຂໍ້ບົດຄວາມ..."
-                value={form.title} onChange={set("title")}
-              />
-              {errors.title && <div className="ba-err">{errors.title}</div>}
-              <div className={`ba-hint ${cntClass(form.title.length, 160, 200)}`}>
-                {form.title.length}/200 ຕົວອັກສອນ
-              </div>
-            </div>
-
-            <div className="mb-3">
-              <label className="ba-label req">ຄຳອະທິບາຍສັ້ນ</label>
-              <textarea
-                className={`ba-textarea${errors.excerpt ? " err" : ""}`}
-                placeholder="ສະຫຼຸບຫຍໍ້ຂອງບົດຄວາມ..."
-                rows={3} value={form.excerpt} onChange={set("excerpt")}
-              />
-              {errors.excerpt && <div className="ba-err">{errors.excerpt}</div>}
-              <div className={`ba-hint ${cntClass(form.excerpt.length, 400, 500)}`}>
-                {form.excerpt.length}/500 ຕົວອັກສອນ
-              </div>
-            </div>
-
-            <div className="mb-3">
-              <label className="ba-label req">ຜູ້ຂຽນ</label>
-              <input
-                className={`ba-input${errors.author ? " err" : ""}`}
-                placeholder="ຊື່ຜູ້ຂຽນ..." value={form.author} onChange={set("author")}
-              />
-              {errors.author && <div className="ba-err">{errors.author}</div>}
-            </div>
-
-            <div className="mb-3">
-              <label className="ba-label">ໝວດໝູ່</label>
-              <div className="ba-cats">
-                {CATS.map((c) => (
-                  <button key={c.id} type="button"
-                    className={`ba-cat${form.category === c.id ? " sel" : ""}`}
-                    onClick={() => setForm((p) => ({ ...p, category: c.id }))}
-                  >
-                    <span className="ba-cat-dot" style={{ background: c.color }}></span>
-                    <i className={`fas ${c.icon}`} style={{ color: c.color, fontSize: ".78rem" }}></i>
-                    {c.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="row g-3">
-              <div className="col-md-8">
-                <label className="ba-label">Slug (URL)</label>
-                <input className="ba-input" placeholder="blog-post-slug"
-                  value={form.slug} onChange={set("slug")} />
-                <div className="ba-slug-preview">
-                  /blogs/<span>{form.slug || genSlug(form.title) || "slug"}</span>
-                </div>
-              </div>
-              <div className="col-md-4">
-                <label className="ba-label">ເວລາການອ່ານ</label>
-                <div className="mt-1">
-                  <span className="ba-rt"><i className="fas fa-clock"></i> {form.readTime}</span>
-                </div>
-                <div className="ba-hint">ຄຳນວນອັດຕະໂນມັດ</div>
-              </div>
+          {/* Title */}
+          <div className="be-title-card">
+            <textarea
+              ref={titleRef}
+              className={`be-title-input${errors.title ? " err" : ""}`}
+              placeholder="ຫົວຂໍ້ບົດຄວາມ..."
+              value={form.title}
+              rows={1}
+              onChange={(e) => {
+                autoHeight(e.target);
+                setForm((p) => ({ ...p, title: e.target.value }));
+              }}
+            />
+            {errors.title && <div className="be-err">{errors.title}</div>}
+            <div className="be-title-meta">
+              <span className={form.title.length > 160 ? "cnt-warn" : "be-muted"}>
+                {form.title.length}/200
+              </span>
+              {form.slug && (
+                <span className="be-slug-pill">
+                  /blog/<strong>{form.slug}</strong>
+                </span>
+              )}
             </div>
           </div>
 
-          {/* ══ 2. ເນື້ອຫາ ══ */}
-          <div className="ba-card">
-            <h2 className="ba-card-title">
-              <i className="fas fa-pen-nib" style={{ color: "#059669" }}></i>
-              ເນື້ອຫາບົດຄວາມ
-            </h2>
-            <div className={`ba-quill${errors.content ? " err" : ""}`}>
+          {/* Excerpt */}
+          <div className="be-section-card">
+            <div className="be-section-label">
+              <span>📝</span> ຄຳອະທິບາຍສັ້ນ
+              <span className="be-req">*</span>
+              <span className="be-label-hint">— ສະແດງໃນລາຍຊື່ ແລະ ການຄົ້ນຫາ</span>
+            </div>
+            <textarea
+              className={`be-input${errors.excerpt ? " err" : ""}`}
+              placeholder="ສະຫຼຸບຫຍໍ້ຂອງບົດຄວາມ..."
+              rows={3}
+              value={form.excerpt}
+              onChange={(e) => setForm((p) => ({ ...p, excerpt: e.target.value }))}
+            />
+            {errors.excerpt && <div className="be-err">{errors.excerpt}</div>}
+            <div className={`be-hint ${form.excerpt.length > 400 ? "cnt-warn" : ""}`}>
+              {form.excerpt.length}/500
+            </div>
+          </div>
+
+          {/* Content editor */}
+          <div className="be-section-card">
+            <div className="be-section-label">
+              <span>✍️</span> ເນື້ອຫາ <span className="be-req">*</span>
+            </div>
+            <div className={`be-quill${errors.content ? " err" : ""}`}>
               <ReactQuill
-                theme="snow" value={form.content}
+                theme="snow"
+                value={form.content}
                 onChange={(v) => setForm((p) => ({ ...p, content: v }))}
                 modules={QUILL_MODULES}
                 placeholder="ເລີ່ມຂຽນເນື້ອຫາ..."
               />
             </div>
-            {errors.content && <div className="ba-err mt-1">{errors.content}</div>}
-            <div className={`ba-hint mt-1 ${plainLen < 50 && plainLen > 0 ? "cnt-err" : ""}`}>
-              {plainLen} ຕົວອັກສອນ (ຕ້ອງ ≥ 50)
+            {errors.content && <div className="be-err mt-1">{errors.content}</div>}
+            <div className="be-content-stats">
+              <span className={plainLen < 50 && plainLen > 0 ? "cnt-err" : "be-muted"}>
+                {plainLen.toLocaleString()} ຕົວ
+              </span>
+              <span className="be-muted">·</span>
+              <span className="be-muted">{wordCount.toLocaleString()} ຄຳ</span>
+              <span className="be-muted">·</span>
+              <span className="be-muted">⏱ {form.readTime}</span>
             </div>
           </div>
 
-          {/* ══ 3. ຮູບພາບ ══ */}
-          <div className="ba-card">
-            <h2 className="ba-card-title">
-              <i className="fas fa-images" style={{ color: "#d97706" }}></i>
-              ຮູບພາບ
-              {images.length > 0 && (
-                <span className="ba-img-badge ms-1">
-                  <i className="fas fa-layer-group" style={{ fontSize: ".65rem" }}></i>
-                  {images.length} ຮູບ
-                </span>
-              )}
-            </h2>
+          {/* Author */}
+          <div className="be-section-card">
+            <div className="be-section-label">
+              <span>👤</span> ຜູ້ຂຽນ <span className="be-req">*</span>
+            </div>
+            <input
+              className={`be-input${errors.author ? " err" : ""}`}
+              placeholder="ຊື່ຜູ້ຂຽນ..."
+              value={form.author}
+              onChange={(e) => setForm((p) => ({ ...p, author: e.target.value }))}
+            />
+            {errors.author && <div className="be-err">{errors.author}</div>}
+          </div>
 
-            {/* Cover */}
-            <label className="ba-label mb-2">ຮູບໜ້າປົກ</label>
-            {!coverImg ? (
-              <div className="ba-cover-zone mb-3">
-                <input type="file" accept="image/*" onChange={handleCoverUpload} />
-                <i className="fas fa-image mb-2" style={{ fontSize: "2.2rem", color: "#94a3b8", display: "block" }}></i>
-                <p className="mb-1 fw-bold" style={{ color: "#64748b", fontSize: ".875rem" }}>
-                  ຄິກຫຼືລາກຮູບໜ້າປົກທີ່ນີ້
-                </p>
-                <small style={{ color: "#9ca3af" }}>PNG, JPG — ສູງສຸດ 5MB</small>
+        </div>
+
+        {/* ════════════════════════
+            RIGHT: Sidebar
+        ════════════════════════ */}
+        <div className="be-sidebar">
+
+          {/* Publish */}
+          <SideCard title="ການຕີພິມ" icon="🚀" defaultOpen>
+            <div className={`be-pub-toggle${form.isPublished ? " on" : ""}`}>
+              <div>
+                <div className="be-pub-label">
+                  {form.isPublished ? "🟢 ເຜີຍແຜ່" : "⚪ ຮ່າງ"}
+                </div>
+                <div className="be-pub-sub">
+                  {form.isPublished ? "ສະແດງໃນໜ້າເວັບ" : "ຍັງບໍ່ສາທາລະນະ"}
+                </div>
+              </div>
+              <label className="be-toggle">
+                <input
+                  type="checkbox"
+                  checked={form.isPublished}
+                  onChange={(e) => setForm((p) => ({ ...p, isPublished: e.target.checked }))}
+                />
+                <span className="be-slider" />
+              </label>
+            </div>
+            <div className="be-pub-actions">
+              <button
+                type="button"
+                className="be-btn be-btn-ghost be-btn-sm"
+                onClick={() => handleSubmit(false)}
+                disabled={isSaving}
+              >
+                {isSaving ? "..." : "💾 ຮ່າງ"}
+              </button>
+              <button
+                type="button"
+                className={`be-btn be-btn-sm ${form.isPublished ? "be-btn-primary" : "be-btn-publish"}`}
+                onClick={() => handleSubmit(form.isPublished ? null : true)}
+                disabled={isSaving}
+              >
+                {isSaving
+                  ? <span className="be-spin">⟳</span>
+                  : form.isPublished
+                    ? "✅ ບັນທຶກ"
+                    : "🚀 ເຜີຍແຜ່"
+                }
+              </button>
+            </div>
+          </SideCard>
+
+          {/* Cover image */}
+          <SideCard title="ຮູບໜ້າປົກ" icon="🖼️" defaultOpen>
+            {coverImg ? (
+              <div className="be-cover-preview">
+                <img src={coverImg.src} alt="cover" />
+                <div className="be-cover-overlay">
+                  <button
+                    type="button"
+                    className="be-cover-btn be-cover-rm"
+                    onClick={() => removeImage(0)}
+                  >
+                    ✕ ລຶບ
+                  </button>
+                  <button
+                    type="button"
+                    className="be-cover-btn be-cover-change"
+                    onClick={() => coverInputRef.current?.click()}
+                  >
+                    ↑ ປ່ຽນ
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="ba-cover-preview mb-3">
-                <img src={coverImg.src} alt="cover" />
-                <button type="button" className="ba-cover-remove" onClick={() => removeImage(0)}>
-                  <i className="fas fa-xmark"></i>
-                </button>
+              <div
+                className="be-upload-zone"
+                onClick={() => coverInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  handleCoverFile(e.dataTransfer.files[0]);
+                }}
+              >
+                <span className="be-upload-icon">🖼️</span>
+                <p>ຄິກ ຫຼື ລາກຮູບ</p>
+                <small>PNG, JPG · ສູງສຸດ 5MB</small>
               </div>
             )}
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="be-hidden"
+              onChange={(e) => { handleCoverFile(e.target.files[0]); e.target.value = ""; }}
+            />
+          </SideCard>
 
-            {/* Gallery upload */}
-            <label className="ba-label mb-2">
-              ຮູບ Gallery
-              <span style={{ color: "#9ca3af", fontWeight: 400, fontSize: ".75rem" }}>
-                {" "}— ເລືອກໄດ້ຫຼາຍຮູບ
-              </span>
-            </label>
-            <div className="ba-gallery-drop mb-1">
-              <input type="file" accept="image/*" multiple onChange={handleGalleryUpload} />
-              <i className="fas fa-cloud-arrow-up mb-1"
-                style={{ fontSize: "1.6rem", color: "#94a3b8", display: "block" }}></i>
-              <p className="mb-0 fw-bold" style={{ color: "#64748b", fontSize: ".85rem" }}>
-                ຄິກຫຼືລາກຮູບ (ເລືອກທີລະຫຼາຍຮູບ)
-              </p>
-              <small style={{ color: "#9ca3af" }}>PNG, JPG — ສູງສຸດ 5MB ຕໍ່ຮູບ</small>
-            </div>
-
-            {/* Thumbnail grid — all images */}
+          {/* Gallery */}
+          <SideCard
+            title={`ຮູບ Gallery${images.length > 1 ? ` (${images.length - 1})` : ""}`}
+            icon="📸"
+            defaultOpen={hasGallery}
+          >
             {images.length > 0 && (
-              <div className="ba-gallery-grid">
+              <div className="be-gallery-grid">
                 {images.map((img, i) => (
-                  <div key={i} className={`ba-thumb${i === 0 ? " is-cover" : ""}`}>
+                  <div key={i} className={`be-gthumb${i === 0 ? " is-cover" : ""}`}>
                     <img src={img.src} alt={img.name} />
-                    <div className="ba-thumb-overlay">
-                      <button type="button" className="ba-thumb-rm" onClick={() => removeImage(i)}>
-                        <i className="fas fa-xmark"></i>
+                    <div className="be-gthumb-overlay">
+                      <button type="button" className="be-gthumb-rm" onClick={() => removeImage(i)}>
+                        ✕
                       </button>
+                      {i !== 0 && (
+                        <button type="button" className="be-gthumb-star" onClick={() => setAsCover(i)}>
+                          ⭐
+                        </button>
+                      )}
                     </div>
-                    {i !== 0 && (
-                      <button type="button" className="ba-thumb-star" onClick={() => setAsCover(i)}>
-                        <i className="fas fa-star" style={{ fontSize: ".55rem" }}></i> ໜ້າປົກ
-                      </button>
-                    )}
+                    {i === 0 && <span className="be-gthumb-cover">ໜ້າປົກ</span>}
                   </div>
                 ))}
               </div>
             )}
-
-            {images.length === 0 && (
-              <div className="ba-hint text-center py-2">
-                ຍັງບໍ່ມີຮູບ — ຮູບໜ້າປົກຈະສະແດງໃນລາຍຊື່ບົດຄວາມ
-              </div>
+            <button
+              type="button"
+              className="be-add-photos"
+              onClick={() => galleryInputRef.current?.click()}
+            >
+              + ເພີ່ມຮູບ
+            </button>
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="be-hidden"
+              onChange={(e) => { handleGalleryFiles(e.target.files); e.target.value = ""; }}
+            />
+            {images.length > 1 && (
+              <p className="be-gallery-hint">ກົດ ⭐ ເພື່ອຕັ້ງເປັນໜ້າປົກ</p>
             )}
-          </div>
+          </SideCard>
 
-          {/* ══ 4. ແທັກ ══ */}
-          <div className="ba-card">
-            <h2 className="ba-card-title">
-              <i className="fas fa-tags" style={{ color: "#7c3aed" }}></i>
-              ແທັກ
-            </h2>
-            <div className="ba-tag-row">
+          {/* Category */}
+          <SideCard title="ໝວດໝູ່" icon="🏷️" defaultOpen>
+            <div className="be-cats">
+              {CATS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`be-cat${form.category === c.id ? " sel" : ""}`}
+                  style={{ "--cat-color": c.color, "--cat-bg": c.bg }}
+                  onClick={() => setForm((p) => ({ ...p, category: c.id }))}
+                >
+                  <span>{c.icon}</span>
+                  <span>{c.name}</span>
+                  {form.category === c.id && <span className="be-cat-check">✓</span>}
+                </button>
+              ))}
+            </div>
+          </SideCard>
+
+          {/* Tags */}
+          <SideCard title={`ແທັກ${form.tags.length ? ` (${form.tags.length})` : ""}`} icon="🔖" defaultOpen={false}>
+            <div className="be-tag-row">
               <input
-                className="ba-input"
-                placeholder="ໃສ່ແທັກ ແລ້ວກົດ Enter..."
+                className="be-input be-input-sm"
+                placeholder="ໃສ່ແທັກ..."
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); addTag(); }
+                }}
               />
-              <button type="button" className="ba-btn ba-btn-secondary" onClick={addTag}>
-                <i className="fas fa-plus"></i>
+              <button type="button" className="be-btn be-btn-ghost be-btn-sm" onClick={addTag}>
+                +
               </button>
             </div>
-            <div className="ba-tags">
+            <div className="be-tags">
               {form.tags.length > 0
                 ? form.tags.map((t, i) => (
-                    <span key={i} className="ba-tag">
+                    <span key={i} className="be-tag">
                       #{t}
                       <button type="button" onClick={() => removeTag(t)}>×</button>
                     </span>
                   ))
-                : <span className="ba-hint">ຍັງບໍ່ມີແທັກ</span>
+                : <span className="be-muted" style={{ fontSize: ".78rem" }}>ຍັງບໍ່ມີແທັກ</span>
               }
             </div>
-          </div>
+          </SideCard>
 
-          {/* ══ 5. SEO ══ */}
-          <div className="ba-card">
-            <h2 className="ba-card-title">
-              <i className="fas fa-magnifying-glass" style={{ color: "#7c3aed" }}></i>
-              SEO Optimization
-            </h2>
-            <div className="row g-3">
-              <div className="col-md-6">
-                <label className="ba-label">SEO Title</label>
-                <input
-                  className={`ba-input${errors.seoTitle ? " err" : ""}`}
-                  placeholder="ຫົວຂໍ້ສຳລັບ SEO..." value={form.seoTitle} onChange={set("seoTitle")}
-                />
-                {errors.seoTitle && <div className="ba-err">{errors.seoTitle}</div>}
-                <div className={`ba-hint ${cntClass(form.seoTitle.length, 50, 60)}`}>
-                  {form.seoTitle.length}/60
-                </div>
+          {/* URL / Slug */}
+          <SideCard title="URL" icon="🔗" defaultOpen={false}>
+            <label className="be-label">Slug</label>
+            <input
+              className="be-input be-input-sm"
+              placeholder="blog-post-slug"
+              value={form.slug}
+              onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))}
+            />
+            <div className="be-hint">
+              /blog/<strong>{form.slug || genSlug(form.title) || "slug"}</strong>
+            </div>
+          </SideCard>
+
+          {/* SEO */}
+          <SideCard title="SEO" icon="🔍" defaultOpen={false}>
+            <div className="be-seo-preview">
+              <div className="be-seo-url">
+                ithubb.com › blog › {form.slug || "slug"}
               </div>
-              <div className="col-md-6">
-                <label className="ba-label">SEO Description</label>
-                <textarea
-                  className={`ba-textarea${errors.seoDesc ? " err" : ""}`}
-                  placeholder="ຄຳອະທິບາຍ SEO..." rows={3}
-                  value={form.seoDescription} onChange={set("seoDescription")}
-                />
-                {errors.seoDesc && <div className="ba-err">{errors.seoDesc}</div>}
-                <div className={`ba-hint ${cntClass(form.seoDescription.length, 130, 160)}`}>
-                  {form.seoDescription.length}/160
-                </div>
+              <div className="be-seo-title">
+                {form.seoTitle || form.title || "SEO Title"}
+              </div>
+              <div className="be-seo-desc">
+                {form.seoDescription || form.excerpt || "SEO Description..."}
               </div>
             </div>
-          </div>
+            <div className="be-field">
+              <label className="be-label">SEO Title</label>
+              <input
+                className={`be-input be-input-sm${errors.seoTitle ? " err" : ""}`}
+                placeholder="ຫົວຂໍ້ SEO..."
+                value={form.seoTitle}
+                onChange={(e) => setForm((p) => ({ ...p, seoTitle: e.target.value }))}
+              />
+              {errors.seoTitle && <div className="be-err">{errors.seoTitle}</div>}
+              <div className={`be-hint ${form.seoTitle.length > 50 ? "cnt-warn" : ""}`}>
+                {form.seoTitle.length}/60
+              </div>
+            </div>
+            <div className="be-field">
+              <label className="be-label">SEO Description</label>
+              <textarea
+                className={`be-input be-input-sm${errors.seoDesc ? " err" : ""}`}
+                placeholder="ຄຳອະທິບາຍ SEO..."
+                rows={3}
+                value={form.seoDescription}
+                onChange={(e) => setForm((p) => ({ ...p, seoDescription: e.target.value }))}
+              />
+              {errors.seoDesc && <div className="be-err">{errors.seoDesc}</div>}
+              <div className={`be-hint ${form.seoDescription.length > 130 ? "cnt-warn" : ""}`}>
+                {form.seoDescription.length}/160
+              </div>
+            </div>
+          </SideCard>
 
-          {/* ══ 6. ການຕັ້ງຄ່າ ══ */}
-          <div className="ba-card">
-            <h2 className="ba-card-title">
-              <i className="fas fa-gear" style={{ color: "#6b7280" }}></i>
-              ການຕັ້ງຄ່າ
-            </h2>
-            <div className={`ba-pub-row${form.isPublished ? " on" : ""}`}>
-              <div>
-                <div style={{ fontWeight: 700, color: "#111827", fontSize: ".9rem" }}>ເຜີຍແຜ່ບົດຄວາມ</div>
-                <div style={{ fontSize: ".78rem", color: "#6b7280", marginTop: ".2rem" }}>
-                  {form.isPublished ? "🟢 ສະແດງໃນໜ້າເວັບ" : "⚪ Draft — ຍັງບໍ່ສະແດງ"}
+          {/* Danger zone (edit only) */}
+          {isEdit && (
+            <SideCard title="ເຂດອັນຕະລາຍ" icon="⚠️" defaultOpen={false} danger>
+              {deleteStep === 0 ? (
+                <>
+                  <p className="be-danger-desc">ການລຶບຈະເປັນຖາວອນ ບໍ່ສາມາດກູ້ຄືນໄດ້</p>
+                  <button
+                    type="button"
+                    className="be-btn be-btn-danger be-btn-sm be-btn-full"
+                    onClick={() => setDeleteStep(1)}
+                  >
+                    🗑️ ລຶບບົດຄວາມ
+                  </button>
+                </>
+              ) : (
+                <div className="be-delete-confirm">
+                  <p className="be-danger-desc">⚠️ ແນ່ໃຈບໍ? ຈະລຶບຖາວອນ</p>
+                  <div className="be-pub-actions">
+                    <button
+                      type="button"
+                      className="be-btn be-btn-ghost be-btn-sm"
+                      onClick={() => setDeleteStep(0)}
+                    >
+                      ຍົກເລີກ
+                    </button>
+                    <button
+                      type="button"
+                      className="be-btn be-btn-danger be-btn-sm"
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? "ກຳລັງລຶບ..." : "ຢືນຢັນລຶບ"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <label className="ba-toggle">
-                <input
-                  type="checkbox" checked={form.isPublished}
-                  onChange={(e) => setForm((p) => ({ ...p, isPublished: e.target.checked }))}
-                />
-                <span className="ba-slider"></span>
-              </label>
-            </div>
-          </div>
-
-          {/* ══ Submit ══ */}
-          <div className="ba-actions">
-            <button type="submit" className="ba-btn ba-btn-primary"
-              disabled={isCreating || isUpdating}>
-              {(isCreating || isUpdating)
-                ? <><i className="fas fa-spinner fa-spin"></i> ກຳລັງບັນທຶກ...</>
-                : isEditing
-                  ? <><i className="fas fa-floppy-disk"></i> ບັນທຶກການແກ້ໄຂ</>
-                  : <><i className="fas fa-circle-plus"></i> ສ້າງບົດຄວາມ</>
-              }
-            </button>
-          </div>
-
-          {/* ══ Danger Zone ══ */}
-          {isEditing && (
-            <div className="ba-danger">
-              <div className="d-flex align-items-center gap-2 mb-2">
-                <i className="fas fa-triangle-exclamation text-danger"></i>
-                <span style={{ fontWeight: 800, color: "#dc2626", fontSize: ".95rem" }}>ເຂດອັນຕະລາຍ</span>
-              </div>
-              <p style={{ fontSize: ".83rem", color: "#7f1d1d", marginBottom: ".85rem" }}>
-                ການລຶບຈະເປັນການຖາວອນ ບໍ່ສາມາດກູ້ຄືນໄດ້. ກະລຸນາຄິດໃຫ້ດີ.
-              </p>
-              <button type="button" className="ba-btn ba-btn-danger"
-                onClick={handleDelete} disabled={isDeleting}>
-                {isDeleting
-                  ? <><i className="fas fa-spinner fa-spin"></i> ກຳລັງລຶບ...</>
-                  : <><i className="fas fa-trash"></i> ລຶບບົດຄວາມນີ້</>
-                }
-              </button>
-            </div>
+              )}
+            </SideCard>
           )}
 
-        </form>
+        </div>
       </div>
     </AdminLayout>
   );
-};
+}
 
-export default BlogAdmin;
+/* ─── CSS ─────────────────────────────────────────── */
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;600;700;800&display=swap');
+
+/* ── Global ── */
+.be-layout, .be-main *, .be-sidebar *, .be-topbar * {
+  font-family: 'Noto Sans Lao', 'Phetsarath OT', sans-serif;
+  box-sizing: border-box;
+}
+
+/* ── Topbar ── */
+.be-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: .75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+.be-topbar-right { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+
+.be-breadcrumb {
+  display: flex; align-items: center; gap: .35rem;
+  font-size: .8rem; color: #9ca3af;
+}
+.be-breadcrumb a { color: #1d4ed8; text-decoration: none; font-weight: 600; }
+.be-breadcrumb a:hover { text-decoration: underline; }
+.be-sep { color: #d1d5db; }
+
+.be-status-badge {
+  font-size: .72rem; font-weight: 700;
+  padding: .28rem .75rem; border-radius: 50px;
+}
+.be-status-badge.pub   { background: #d1fae5; color: #065f46; }
+.be-status-badge.draft { background: #f1f5f9; color: #64748b; }
+
+/* ── Layout ── */
+.be-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 1.25rem;
+  align-items: start;
+}
+.be-sidebar {
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 90px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+.be-sidebar::-webkit-scrollbar       { width: 3px; }
+.be-sidebar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
+
+/* ── Buttons ── */
+.be-btn {
+  display: inline-flex; align-items: center; gap: .35rem;
+  border: none; font-family: inherit; font-weight: 600;
+  cursor: pointer; transition: all .18s; white-space: nowrap;
+  border-radius: 9px; line-height: 1.2;
+}
+.be-btn-sm { padding: .5rem 1rem; font-size: .82rem; }
+.be-btn-full { width: 100%; justify-content: center; }
+
+.be-btn-ghost {
+  background: white; color: #374151;
+  border: 1.5px solid #e5e7eb;
+  padding: .48rem .9rem; font-size: .82rem;
+}
+.be-btn-ghost:hover:not(:disabled) { background: #f9fafb; border-color: #cbd5e1; }
+
+.be-btn-primary {
+  background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+  color: white;
+}
+.be-btn-primary:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(29,78,216,.4); transform: translateY(-1px); }
+
+.be-btn-publish {
+  background: linear-gradient(135deg, #059669, #047857);
+  color: white;
+}
+.be-btn-publish:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(5,150,105,.4); transform: translateY(-1px); }
+
+.be-btn-danger { background: #ef4444; color: white; }
+.be-btn-danger:hover:not(:disabled) { background: #dc2626; }
+.be-btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+
+/* ── Title card ── */
+.be-title-card {
+  background: white; border-radius: 16px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,.05);
+  border: 1px solid #e5e7eb; margin-bottom: 1rem;
+}
+.be-title-input {
+  width: 100%;
+  font-size: 1.7rem; font-weight: 800; color: #0f172a;
+  border: none; background: none; resize: none; outline: none;
+  line-height: 1.3; font-family: 'Noto Sans Lao', inherit;
+  overflow: hidden; display: block;
+}
+.be-title-input::placeholder { color: #cbd5e1; }
+.be-title-input.err          { color: #ef4444; }
+.be-title-meta {
+  display: flex; align-items: center; gap: .75rem;
+  margin-top: .85rem; padding-top: .75rem;
+  border-top: 1px dashed #e2e8f0;
+  font-size: .75rem;
+}
+.be-slug-pill {
+  background: #f1f5f9; color: #64748b;
+  border-radius: 50px; padding: .2rem .8rem;
+  font-size: .72rem; max-width: 200px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.be-slug-pill strong { color: #1d4ed8; }
+
+/* ── Section cards ── */
+.be-section-card {
+  background: white; border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,.05);
+  border: 1px solid #e5e7eb; margin-bottom: 1rem;
+}
+.be-section-label {
+  font-size: .85rem; font-weight: 700; color: #374151;
+  margin-bottom: .65rem; display: flex; align-items: center; gap: .4rem;
+  flex-wrap: wrap;
+}
+.be-req { color: #ef4444; }
+.be-label-hint { color: #9ca3af; font-weight: 400; font-size: .77rem; }
+
+/* ── Inputs ── */
+.be-input {
+  width: 100%; padding: .65rem .9rem;
+  border: 2px solid #e5e7eb; border-radius: 10px;
+  font-family: inherit; font-size: .875rem; color: #111827;
+  background: #f9fafb;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+  outline: none; resize: vertical;
+}
+.be-input:focus { border-color: #1d4ed8; box-shadow: 0 0 0 3px rgba(29,78,216,.08); background: white; }
+.be-input.err   { border-color: #ef4444; background: #fff5f5; }
+.be-input-sm    { font-size: .82rem; padding: .55rem .8rem; }
+
+/* ── Quill editor ── */
+.be-quill {
+  border: 2px solid #e5e7eb; border-radius: 12px;
+  overflow: hidden; transition: border-color .2s;
+}
+.be-quill:focus-within { border-color: #1d4ed8; box-shadow: 0 0 0 3px rgba(29,78,216,.06); }
+.be-quill.err           { border-color: #ef4444; }
+.be-quill .ql-toolbar   { border: none; border-bottom: 1px solid #e5e7eb; background: #f9fafb; border-radius: 12px 12px 0 0; }
+.be-quill .ql-container { border: none; font-size: .9rem; }
+.be-quill .ql-editor    { min-height: 380px; font-family: 'Noto Sans Lao', sans-serif; line-height: 1.75; }
+.be-quill .ql-editor.ql-blank::before { color: #9ca3af; font-style: normal; }
+
+.be-content-stats {
+  display: flex; align-items: center; gap: .65rem;
+  margin-top: .6rem; font-size: .75rem;
+}
+
+/* ── Sidebar cards ── */
+.sc-card {
+  background: white; border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  margin-bottom: .65rem; overflow: hidden;
+}
+.sc-card.sc-danger {
+  background: #fff5f5; border-color: #fca5a5;
+}
+.sc-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .8rem 1rem; background: none; border: none;
+  width: 100%; cursor: pointer; font-family: inherit;
+  transition: background .15s;
+}
+.sc-head:hover { background: rgba(0,0,0,.02); }
+.sc-title {
+  display: flex; align-items: center; gap: .45rem;
+  font-size: .83rem; font-weight: 700; color: #374151;
+}
+.sc-icon     { font-size: .9rem; }
+.sc-chevron  { color: #9ca3af; font-size: 1.2rem; transition: transform .2s; line-height: 1; }
+.sc-chevron.open { transform: rotate(90deg); }
+.sc-body     { padding: 0 1rem 1rem; }
+
+/* ── Publish section ── */
+.be-pub-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .7rem .85rem; border-radius: 10px;
+  background: #f9fafb; border: 1.5px solid #e5e7eb;
+  margin-bottom: .75rem; transition: all .2s;
+}
+.be-pub-toggle.on { background: #eff6ff; border-color: #bfdbfe; }
+.be-pub-label { font-size: .83rem; font-weight: 700; color: #1e293b; }
+.be-pub-sub   { font-size: .72rem; color: #64748b; margin-top: .1rem; }
+.be-toggle {
+  position: relative; display: inline-block;
+  width: 42px; height: 22px; flex-shrink: 0;
+}
+.be-toggle input { opacity: 0; width: 0; height: 0; }
+.be-slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: #cbd5e1; border-radius: 22px; transition: .3s;
+}
+.be-slider::before {
+  content: ''; position: absolute;
+  width: 16px; height: 16px; border-radius: 50%;
+  left: 3px; bottom: 3px; background: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,.2); transition: .3s;
+}
+.be-toggle input:checked + .be-slider { background: #1d4ed8; }
+.be-toggle input:checked + .be-slider::before { transform: translateX(20px); }
+.be-pub-actions { display: flex; gap: .4rem; }
+.be-pub-actions .be-btn { flex: 1; justify-content: center; }
+
+/* ── Cover image ── */
+.be-cover-preview {
+  position: relative; border-radius: 10px; overflow: hidden;
+  aspect-ratio: 16/9; background: #f1f5f9; cursor: pointer;
+  margin-bottom: .5rem;
+}
+.be-cover-preview img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s; }
+.be-cover-preview:hover img { transform: scale(1.03); }
+.be-cover-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0); transition: background .2s;
+  display: flex; align-items: center; justify-content: center; gap: .5rem;
+  opacity: 0; transition: opacity .2s;
+}
+.be-cover-preview:hover .be-cover-overlay { background: rgba(0,0,0,.45); opacity: 1; }
+.be-cover-btn {
+  border: none; border-radius: 8px;
+  padding: .4rem .85rem; font-size: .75rem; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.be-cover-rm     { background: #ef4444; color: white; }
+.be-cover-change { background: white; color: #374151; }
+
+/* ── Upload zone ── */
+.be-upload-zone {
+  border: 2px dashed #cbd5e1; border-radius: 10px;
+  padding: 1.5rem 1rem; text-align: center; cursor: pointer;
+  transition: all .2s; background: #fafafa;
+  margin-bottom: .5rem;
+}
+.be-upload-zone:hover { border-color: #1d4ed8; background: #eff6ff; }
+.be-upload-icon { font-size: 2rem; display: block; margin-bottom: .4rem; }
+.be-upload-zone p    { font-size: .83rem; font-weight: 600; color: #64748b; margin: 0 0 .2rem; }
+.be-upload-zone small { color: #9ca3af; font-size: .72rem; }
+
+/* ── Gallery grid ── */
+.be-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .45rem; margin-bottom: .65rem;
+}
+.be-gthumb {
+  position: relative; aspect-ratio: 1;
+  border-radius: 8px; overflow: hidden;
+  border: 2px solid #e5e7eb; background: #f1f5f9;
+  cursor: pointer;
+}
+.be-gthumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s; }
+.be-gthumb:hover img { transform: scale(1.06); }
+.be-gthumb.is-cover { border-color: #f59e0b; }
+.be-gthumb-overlay {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; gap: 3px; padding: 4px;
+  opacity: 0; transition: opacity .15s;
+}
+.be-gthumb:hover .be-gthumb-overlay { opacity: 1; }
+.be-gthumb-rm, .be-gthumb-star {
+  border: none; border-radius: 50%;
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: .55rem;
+}
+.be-gthumb-rm   { background: rgba(239,68,68,.9);   color: white; }
+.be-gthumb-star { background: rgba(245,158,11,.9);  color: white; }
+.be-gthumb-cover {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(245,158,11,.88); color: white;
+  font-size: .58rem; text-align: center; padding: 3px;
+  font-weight: 700; font-family: 'Noto Sans Lao', sans-serif;
+}
+.be-add-photos {
+  display: block; width: 100%;
+  padding: .5rem; border: 1.5px dashed #cbd5e1;
+  border-radius: 8px; background: none;
+  color: #64748b; font-size: .8rem; font-weight: 600;
+  cursor: pointer; text-align: center;
+  transition: all .18s; font-family: inherit;
+}
+.be-add-photos:hover { border-color: #1d4ed8; color: #1d4ed8; background: #eff6ff; }
+.be-gallery-hint { font-size: .72rem; color: #9ca3af; margin: .4rem 0 0; text-align: center; }
+
+/* ── Category pills ── */
+.be-cats { display: flex; flex-direction: column; gap: .35rem; }
+.be-cat {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .55rem .8rem; border-radius: 9px;
+  border: 1.5px solid #e5e7eb; background: #f9fafb;
+  font-family: inherit; font-size: .83rem; font-weight: 600;
+  color: #374151; cursor: pointer; transition: all .15s; text-align: left;
+}
+.be-cat:hover { border-color: var(--cat-color); color: var(--cat-color); background: var(--cat-bg); }
+.be-cat.sel   { border-color: var(--cat-color); color: var(--cat-color); background: var(--cat-bg); }
+.be-cat-check { margin-left: auto; }
+
+/* ── Tags ── */
+.be-tag-row { display: flex; gap: .4rem; margin-bottom: .6rem; }
+.be-tags { display: flex; flex-wrap: wrap; gap: .35rem; min-height: 28px; }
+.be-tag {
+  display: inline-flex; align-items: center; gap: .25rem;
+  padding: .22rem .65rem; border-radius: 50px;
+  background: #eff6ff; color: #1d4ed8;
+  font-size: .75rem; font-weight: 600;
+  border: 1px solid #bfdbfe;
+}
+.be-tag button {
+  border: none; background: none; color: #93c5fd;
+  cursor: pointer; font-size: .9rem; padding: 0; line-height: 1;
+  transition: color .15s;
+}
+.be-tag button:hover { color: #1d4ed8; }
+
+/* ── SEO preview ── */
+.be-seo-preview {
+  background: white; border: 1px solid #e5e7eb;
+  border-radius: 8px; padding: .75rem 1rem;
+  margin-bottom: .85rem; font-size: .75rem;
+}
+.be-seo-url   { color: #16a34a; font-size: .68rem; margin-bottom: .2rem; }
+.be-seo-title { color: #1a0dab; font-size: .85rem; font-weight: 700; margin-bottom: .2rem;
+  max-height: 2.4em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.be-seo-desc  { color: #4d5156; font-size: .72rem; line-height: 1.4;
+  max-height: 3em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* ── Labels / hints / errors ── */
+.be-label  { display: block; font-size: .78rem; font-weight: 600; color: #374151; margin-bottom: .3rem; }
+.be-hint   { font-size: .72rem; color: #9ca3af; margin-top: .25rem; }
+.be-err    { font-size: .73rem; color: #ef4444; margin-top: .25rem; font-weight: 600; }
+.be-muted  { color: #9ca3af; }
+.be-field  { margin-bottom: .65rem; }
+.be-field:last-child { margin-bottom: 0; }
+.cnt-warn  { color: #f59e0b !important; }
+.cnt-err   { color: #ef4444 !important; }
+.mt-1 { margin-top: .25rem; }
+
+/* ── Danger section ── */
+.be-danger-desc {
+  font-size: .78rem; color: #7f1d1d;
+  margin-bottom: .6rem; line-height: 1.4;
+}
+.be-delete-confirm .be-pub-actions { margin-top: .5rem; }
+
+/* ── Misc ── */
+.be-hidden { display: none !important; }
+.be-spin   { display: inline-block; animation: be-spin 1s linear infinite; }
+@keyframes be-spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+  .be-layout {
+    grid-template-columns: 1fr;
+  }
+  .be-sidebar {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: .65rem;
+  }
+  .be-sidebar > .sc-card:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 600px) {
+  .be-sidebar { grid-template-columns: 1fr; }
+  .be-title-input { font-size: 1.3rem; }
+  .be-topbar { flex-direction: column; align-items: flex-start; }
+}
+`;

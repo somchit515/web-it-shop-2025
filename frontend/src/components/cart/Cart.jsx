@@ -1,5 +1,5 @@
 // src/components/Cart.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import MetaData from '../layout/MetaData';
 import { useSelector, useDispatch } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
@@ -20,11 +20,12 @@ function Cart() {
 
   // ✅ Stock validation state
   const [checkStock, { isLoading: isCheckingStock }] = useCheckStockMutation();
-  // เก็บผลตรวจ stock ล่าสุด: { [productId]: { available, ok, reason } }
   const [stockIssues, setStockIssues] = useState({});
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
-  // ตรวจ stock ทันทีเมื่อ cart เปิด หรือเปลี่ยน
-  useEffect(() => {
+  // ຟັງຊັ່ນ check stock — ໃຊ້ຮ່ວມກັນ: mount, cart change, polling, window focus
+  const runStockCheck = useCallback(async () => {
     if (cartItems.length === 0) {
       setStockIssues({});
       return;
@@ -33,26 +34,34 @@ function Cart() {
       product: i.product,
       quantity: Number(i.quantity || 0),
     }));
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await checkStock(items).unwrap();
-        if (cancelled) return;
-        const issues = {};
-        (res.items || []).forEach((r) => {
-          if (!r.ok) issues[r.product] = r;
-        });
-        setStockIssues(issues);
-      } catch (err) {
-        // silent fail — UI ยังใช้งานได้ปกติ
-        console.warn("checkStock failed", err);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    try {
+      const res = await checkStock(items).unwrap();
+      if (!mountedRef.current) return;
+      const issues = {};
+      (res.items || []).forEach((r) => {
+        if (!r.ok) issues[r.product] = r;
+      });
+      setStockIssues(issues);
+    } catch (err) {
+      console.warn('checkStock failed', err);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(cartItems.map((i) => `${i.product}:${i.quantity}`))]);
+
+  // ກວດຕອນ mount ແລະ ທຸກຄັ້ງ cart ປ່ຽນ
+  useEffect(() => {
+    runStockCheck();
+  }, [runStockCheck]);
+
+  // Polling 60s + window focus refresh
+  useEffect(() => {
+    const interval = setInterval(runStockCheck, 60_000);
+    window.addEventListener('focus', runStockCheck);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', runStockCheck);
+    };
+  }, [runStockCheck]);
 
   const hasStockIssues = Object.keys(stockIssues).length > 0;
 

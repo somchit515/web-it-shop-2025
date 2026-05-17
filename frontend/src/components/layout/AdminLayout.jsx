@@ -2,7 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import SideMenu from "./SideMenu";
 import { useGetAdminOrdersQuery } from "../redux/api/OrderApi";
+// ✅ ສະເພາະ superAdmin ເທົ່ານັ້ນ (ຊື່ຕ້ອງ include "(SA)" ເພື່ອ SideMenu ຈັດໝວດໄດ້)
 const superAdminMenuItems = [
+  {
+    name: "ຜູ້ໃຊ້ (SA)",
+    url: "/admin/users",
+    icon: "fas fa-users",
+    description: "ຈັດການຜູ້ໃຊ້ທັງໝົດ",
+  },
   {
     name: "ເພີ່ມຜູ້ໃຊ້ (SA)",
     url: "/admin/users/new",
@@ -14,12 +21,6 @@ const superAdminMenuItems = [
     url: "/admin/reports",
     icon: "fas fa-chart-line",
     description: "ລາຍງານການເງິນ/ສິນຄ້າ",
-  },
-  {
-    name: "ຜູ້ໃຊ້",
-    url: "/admin/users",
-    icon: "fas fa-users",
-    description: "ຈັດການຜູ້ໃຊ້",
   },
 ];
 
@@ -40,21 +41,27 @@ function AdminLayout({ children }) {
 
   // ✅ ดึงเฉพาะ orders ที่รอตรวจสอบ (server-side filter) — เร็วกว่าเดิมมาก
   //    + perPage:1 เพราะแค่อยากรู้ count ไม่ต้องการ list
-  const { data: ordersData, isLoading } = useGetAdminOrdersQuery(
+  const { data: ordersData } = useGetAdminOrdersQuery(
     { paymentStatus: "AwaitingProof", page: 1, perPage: 1 },
-    {
-      pollingInterval: 30000,
-      refetchOnFocus: true,
-    }
+    { pollingInterval: 30000, refetchOnFocus: true }
   );
 
-  // ✅ ใช้ total จาก backend response (ใส่ pagination แล้ว)
+  const { data: cancelledData } = useGetAdminOrdersQuery(
+    { fulfillmentStatus: "Cancelled", page: 1, perPage: 1 },
+    { pollingInterval: 30000, refetchOnFocus: true }
+  );
+
   const pendingCount = useMemo(() => {
     if (typeof ordersData?.total === "number") return ordersData.total;
-    // fallback สำหรับ response เก่า
     const orders = ordersData?.orders || [];
     return Array.isArray(orders) ? orders.length : 0;
   }, [ordersData]);
+
+  const cancelledCount = useMemo(() => {
+    if (typeof cancelledData?.total === "number") return cancelledData.total;
+    const orders = cancelledData?.orders || [];
+    return Array.isArray(orders) ? orders.length : 0;
+  }, [cancelledData]);
 
   // ✅ ล็อก scroll ของ body เฉพาะตอน AdminLayout แสดงอยู่
   // และ restore กลับเมื่อ unmount (เพื่อไม่ให้กระทบหน้า public)
@@ -69,7 +76,8 @@ function AdminLayout({ children }) {
     };
   }, []);
 
-  const menuItems = [
+  // ✅ useMemo ເພື່ອ stabilize reference — recompute ສະເພາະເມື່ອ pendingCount ປ່ຽນ
+  const menuItems = useMemo(() => [
     {
       name: "Dashboard",
       url: "/admin/dashboard",
@@ -93,32 +101,19 @@ function AdminLayout({ children }) {
       url: "/admin/orders",
       icon: "fas fa-shopping-cart",
       description: "ຈັດການອໍເດີ",
+      badge: cancelledCount,
+      badgeType: cancelledCount > 0 ? "warning" : "secondary",
     },
     {
       name: "ຈັດການ Blog",
-      url: "/admin/blog/dashboard", // ✅ ຕົງກັບ Route ທີ່ພວກເຮົາຕັ້ງໄວ້
+      url: "/admin/blog/dashboard",
       icon: "fas fa-blog",
       description: "ຈັດການບົດຄວາມ ແລະ ຂ່າວສານ",
-       children: [
-      {
-        name: "ລາຍການບົດຄວາມ",
-        url: "/admin/blog",
-        icon: "fas fa-list",
-      },
-      {
-        name: "ເພີ່ມບົດຄວາມ",
-        url: "/admin/blog/new",
-        icon: "fas fa-plus",
-      },
-      {
-        name: "ໝວດໝູ່ Blog",
-        url: "/admin/blog/categories",
-        icon: "fas fa-folder",
-      },
-    ],
-
-
-   
+      children: [
+        { name: "ລາຍການບົດຄວາມ", url: "/admin/blog",            icon: "fas fa-list" },
+        { name: "ເພີ່ມບົດຄວາມ",    url: "/admin/blog/new",        icon: "fas fa-plus" },
+        { name: "ໝວດໝູ່ Blog",       url: "/admin/blog/categories", icon: "fas fa-folder" },
+      ],
     },
     {
       name: "ຢືນຢັນການຊຳລະເງິນ",
@@ -140,7 +135,6 @@ function AdminLayout({ children }) {
       icon: "fas fa-check-circle",
       description: "ລາຍການທີ່ຈັດສົ່ງເຖິງມືລູກຄ້າແລ້ວ",
     },
-
     {
       name: "ຄວາມຄິດເຫັນ",
       url: "/admin/reviews",
@@ -159,16 +153,20 @@ function AdminLayout({ children }) {
       icon: "fas fa-ticket",
       description: "ສ້າງ ແລະ ຈັດການລະຫັດສ່ວນຫຼຸດ",
     },
-  ];
+    {
+      name: "⚡ Flash Deal",
+      url: "/admin/flash-deal",
+      icon: "fas fa-bolt",
+      description: "ຈັດການສິນຄ້າ Flash Deal sidebar",
+    },
+  ], [pendingCount, cancelledCount]);
 
-  const filteredMenuItems = React.useMemo(() => {
+  // ✅ deps ໃຊ້ [userRole, menuItems] ເທົ່ານັ້ນ — menuItems stable ດ້ວຍ useMemo
+  const filteredMenuItems = useMemo(() => {
     if (!userRole) return [];
-    let finalMenu = [...menuItems];
-    if (userRole === "superAdmin") {
-      finalMenu = [...finalMenu, ...superAdminMenuItems];
-    }
-    return finalMenu;
-  }, [userRole, pendingCount, menuItems]);
+    if (userRole === "superAdmin") return [...menuItems, ...superAdminMenuItems];
+    return menuItems;
+  }, [userRole, menuItems]);
 
   return (
     <>
@@ -620,7 +618,6 @@ function AdminLayout({ children }) {
               <div className="card-body">
                 <SideMenu
                   menuItems={filteredMenuItems}
-                  isLoading={isLoading}
                   className="modern-sidebar"
                 />
               </div>

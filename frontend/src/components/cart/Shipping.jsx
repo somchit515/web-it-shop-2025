@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import MetaData from "../layout/MetaData";
 import CheckoutStep from "./CheckoutStep";
 import { useDispatch, useSelector } from "react-redux";
@@ -66,6 +66,15 @@ export default function Shipping() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { shippingInfo = {} } = useSelector((state) => state.shipping || {});
+  const { cartItems = [] } = useSelector((state) => state.cart || {});
+
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      navigate('/cart', { replace: true });
+    }
+    // deps [] = ກວດສະເພາະຕອນ mount, ບໍ່ trigger ຫຼັງ clearCart
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* form fields */
   const [address, setAddress] = useState(shippingInfo.address || "");

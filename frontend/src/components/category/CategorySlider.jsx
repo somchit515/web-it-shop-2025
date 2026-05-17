@@ -5,33 +5,34 @@ import useCategories from "../../utils/useCategories";
 import "./CategorySlider.css";
 
 export default function CategorySlider({ interval = 4500 }) {
- codex/add-a-greeting-feature-hj6ijz
-  const { categories } = useCategories();
+  // ✅ ແກ້ໄຂ: ປະກາດພຽງຄັ້ງດຽວ ແລະ ໃຊ້ Destructuring ໃຫ້ຖືກກັບ Hook ໃໝ່
+  const { categories, isLoading } = useCategories();
 
-codex/add-a-greeting-feature-azctjh
-  const { categories } = useCategories();
-
-  const categories = useCategories();
-master
-master
   const [idx, setIdx] = useState(0);
   const timerRef = useRef(null);
   const pausedRef = useRef(false);
-  const hasCats = categories.length > 0;
+  
+  // ກວດສອບວ່າມີຂໍ້ມູນ Categories ຫຼື ບໍ່
+  const hasCats = categories && categories.length > 0;
 
   /* ---------- autoplay ---------- */
   const start = () => {
-    if (pausedRef.current) return;
+    if (pausedRef.current || !hasCats) return;
     stop();
-    timerRef.current = setInterval(() => setIdx((i) => (i + 1) % categories.length), interval);
+    timerRef.current = setInterval(() => {
+      setIdx((i) => (i + 1) % categories.length);
+    }, interval);
   };
+
   const stop = () => clearInterval(timerRef.current);
 
   useEffect(() => {
-    if (hasCats) start();
+    if (hasCats) {
+      start();
+    }
     return stop;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idx]);
+  }, [idx, hasCats]);
 
   /* ---------- control ---------- */
   const prev = () => setIdx((i) => (i - 1 + categories.length) % categories.length);
@@ -68,6 +69,9 @@ master
     }
   };
 
+  // ສະແດງ Loader ຖ້າກຳລັງໂຫຼດຂໍ້ມູນ
+  if (isLoading) return <div className="text-center p-5">ກຳລັງໂຫຼດ...</div>;
+
   if (!hasCats)
     return <div className="alert alert-warning text-center">ບໍ່ມີໝວດໝູ່ສິນຄ້າທີ່ຈະສະແດງ.</div>;
 
@@ -96,7 +100,7 @@ master
         </Link>
       </div>
 
-      {/* arrows (SVG inline) */}
+      {/* arrows */}
       <button className="cat-arrow cat-prev" onClick={() => { prev(); pause(); }} aria-label="Previous">
         <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
           <path d="M11.354 1.646a.5.5 0 010 .708L5.707 8l5.647 5.646a.5.5 0 01-.708.708l-6-6a.5.5 0 010-.708l6-6a.5.5 0 01.708 0z" />

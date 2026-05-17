@@ -1,95 +1,48 @@
 import React from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import AdminLayout from "../../layout/AdminLayout";
+import ReportSidebar from "./ReportSidebar";
 
 const ReportLayout = () => {
   return (
     <AdminLayout>
-    <div className="d-flex" style={{ minHeight: "100vh" }}>
+      <style>{`
+        .report-layout {
+          display: flex;
+          min-height: calc(100vh - 80px);
+          font-family: "Noto Sans Lao", "Phetsarath OT", sans-serif;
+        }
 
-      {/* ===== Sidebar ===== */}
-      <aside 
-        className="p-3 border-end bg-white shadow-sm" 
-        style={{ width: 260, fontFamily: "Noto Sans Lao, sans-serif" }}
-      >
-        <h5 className="mb-4 fw-bold text-primary">
-          <span className="me-2">📊</span>Reports
-        </h5>
+        .report-content {
+          flex: 1;
+          padding: 2rem;
+          background: #f8fafc;
+          overflow-x: hidden;
+        }
 
-        <ul className="nav flex-column gap-2">
-          <li className="nav-item">
-            <NavLink 
-              to="/admin/reports" 
-              end 
-              className={({ isActive }) => 
-                `nav-link d-flex align-items-center gap-2 px-3 py-2 rounded transition-colors ${ 
-                  isActive 
-                    ? 'bg-primary text-white shadow-sm' 
-                    : 'text-dark hover:bg-gray-100'
-                }`
-              }
-            >
-              <span>🏠</span>
-              <span>ພາບລວມລາຍງານ</span>
-            </NavLink>
-          </li>
+        @media (max-width: 992px) {
+          .report-layout {
+            flex-direction: column;
+          }
 
-          <li className="nav-item">
-            <NavLink 
-              to="/admin/reports/customers" 
-              className={({ isActive }) => 
-                `nav-link d-flex align-items-center gap-2 px-3 py-2 rounded transition-colors ${ 
-                  isActive 
-                    ? 'bg-primary text-white shadow-sm' 
-                    : 'text-dark hover:bg-gray-100'
-                }`
-              }
-            >
-              <span>👥</span>
-              <span>ລາຍງານລູກຄ້າ</span>
-            </NavLink>
-          </li>
+          .report-content {
+            padding: 1.25rem;
+          }
+        }
 
-          <li className="nav-item">
-            <NavLink 
-              to="/admin/reports/customers" 
-              className={({ isActive }) => 
-                `nav-link d-flex align-items-center gap-2 px-3 py-2 rounded transition-colors ${ 
-                  isActive 
-                    ? 'bg-primary text-white shadow-sm' 
-                    : 'text-dark hover:bg-gray-100'
-                }`
-              }
-            >
-              <span>👥</span>
-              <span>ລາຍງານການເງິນ</span>
-            </NavLink>
-          </li>
+        @media (max-width: 576px) {
+          .report-content {
+            padding: 1rem;
+          }
+        }
+      `}</style>
 
-          <li className="nav-item">
-            <NavLink 
-              to="/admin/reports/sales" 
-              className={({ isActive }) => 
-                `nav-link d-flex align-items-center gap-2 px-3 py-2 rounded transition-colors ${ 
-                  isActive 
-                    ? 'bg-primary text-white shadow-sm' 
-                    : 'text-dark hover:bg-gray-100'
-                }`
-              }
-            >
-              <span>💰</span>
-              <span>ລາຍງານການຂາຍ</span>
-            </NavLink>
-          </li>
-        </ul>
-      </aside>
-
-      {/* ===== Content ===== */}
-      <main className="flex-grow-1 p-4 bg-light">
-        <Outlet />
-      </main>
-
-    </div>
+      <div className="report-layout">
+        <ReportSidebar />
+        <main className="report-content">
+          <Outlet />
+        </main>
+      </div>
     </AdminLayout>
   );
 };

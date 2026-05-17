@@ -788,7 +788,12 @@ export default function OrderDetail() {
                     </tr>
                     <tr>
                       <th>ວິທີການຊຳລະ</th>
-                      <td>{paymentMethod}</td>
+                      <td>
+                        {paymentMethod === "COD" ? "💵 ເງິນສົດ (COD)" :
+                         paymentMethod === "BankTransfer" ? "🏦 ໂອນເງິນ" :
+                         paymentMethod === "PayAtStore" ? "🏪 ຈ່າຍທີ່ໜ້າຮ້ານ" :
+                         paymentMethod}
+                      </td>
                     </tr>
                   </tbody>
                 </table>

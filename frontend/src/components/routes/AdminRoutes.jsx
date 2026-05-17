@@ -28,6 +28,7 @@ import ShipmentsPage from "../admin/ShipmentsPage";
 import UpdateOrderPage from "../admin/OrderStatusUpdate";
 import CompletedOrdersPage from "../admin/CompletedOrdersPage";
 import CouponsPage from "../admin/CouponsPage";
+import FlashDealManager from "../admin/FlashDealManager";
 import BlogDashboardOverview from "../blog/DashboardBlog"
 import CategoriesManager from "../admin/CategoriesManager"
 /**
@@ -74,18 +75,6 @@ export default function AdminRoutes() {
       element={
         <ProtectedRoute admin>
           <Dashboard />
-        </ProtectedRoute>
-      }
-    />,
-
-    <Route
-      key="admin-finance-report"
-      path="/admin/reports/finance"
-      element={
-        <ProtectedRoute superAdmin>
-          {" "}
-          {/* 🔑 ใช้ superAdmin เพื่อความปลอดภัยระดับการเงิน */}
-          <FinanceReport />
         </ProtectedRoute>
       }
     />,
@@ -226,6 +215,7 @@ export default function AdminRoutes() {
       <Route index element={<DashboardReport />} />
       <Route path="customers" element={<CustomerReport />} />
       <Route path="sales" element={<SalesReport />} />
+      <Route path="finance" element={<FinanceReport />} />
     </Route>,
 
     // ===== 🚚 SHIPMENTS & COMPLETED ORDERS (admin guard) =====
@@ -275,6 +265,17 @@ export default function AdminRoutes() {
       element={
         <ProtectedRoute admin>
           <CouponsPage />
+        </ProtectedRoute>
+      }
+    />,
+
+    // ===== ⚡ FLASH DEAL (admin) =====
+    <Route
+      key="admin-flash-deal"
+      path="/admin/flash-deal"
+      element={
+        <ProtectedRoute admin>
+          <FlashDealManager />
         </ProtectedRoute>
       }
     />,

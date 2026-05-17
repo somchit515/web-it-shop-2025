@@ -31,7 +31,7 @@ export const StripecheckoutSession = catchAsyncErrors(async (req, res, next) => 
   const paymentMethod = body.paymentMethod || "COD"; // default COD
 
   // Validate paymentMethod ก่อนเริ่มงานหนัก
-  if (!["COD", "BankTransfer"].includes(paymentMethod)) {
+  if (!["COD", "BankTransfer", "PayAtStore"].includes(paymentMethod)) {
     return next(new ErrorHandler("Invalid payment method.", 400));
   }
 
@@ -71,19 +71,16 @@ export const StripecheckoutSession = catchAsyncErrors(async (req, res, next) => 
   const orderItems = body.orderItems.map(i => ({
     name: i.name,
     quantity: Number(i.quantity) || 1,
-    image: i.image || "",
+    image: i.image || "/images/default_product.png",
     price: Number(i.price) || 0,
     product: i.product,
   }));
 
-  // ✅ STEP 0.5: Lazy cleanup expired orders — คืน stock ก่อน validate
-  //    (best-effort, fire-and-forget แต่ await สั้นๆ เพื่อให้ stock ถูกคืนทันก่อน validate)
-  try {
-    await releaseExpiredBankOrders();
-  } catch (err) {
-    // อย่าให้ cleanup ทำให้ checkout fail
-    console.error("[checkout] lazy cleanup failed:", err.message);
-  }
+  // ✅ STEP 0.5: Lazy cleanup — ໃຫ້ 2 ວິ restore stock ກ່ອນ validate, ຫຼັງຈາກນັ້ນ non-blocking
+  await Promise.race([
+    releaseExpiredBankOrders(),
+    new Promise((r) => setTimeout(r, 2000)),
+  ]).catch((err) => console.error("[checkout] lazy cleanup failed:", err.message));
 
   // ✅ STEP 1: ตรวจสอบว่า stock ของทุกสินค้ามีพอหรือไม่ (pre-flight check)
   const validation = await validateStock(orderItems);
@@ -183,6 +180,12 @@ export const StripecheckoutSession = catchAsyncErrors(async (req, res, next) => 
         paymentMethod: "BankTransfer",
         paymentStatus: "AwaitingProof",
       });
+    } else if (paymentMethod === "PayAtStore") {
+      order = await Order.create({
+        ...baseData,
+        paymentMethod: "PayAtStore",
+        paymentStatus: "Pending",
+      });
     }
 
     // ✅ Mark coupon as used (after order create success)
@@ -218,10 +221,12 @@ export const StripecheckoutSession = catchAsyncErrors(async (req, res, next) => 
     }
 
     // Response
-    if (paymentMethod === "COD") {
+    if (paymentMethod === "COD" || paymentMethod === "PayAtStore") {
       return res.status(201).json({
         success: true,
-        message: "COD Order created successfully.",
+        message: paymentMethod === "PayAtStore"
+          ? "PayAtStore order created. Please pay at the store."
+          : "COD Order created successfully.",
         orderId: order._id,
         order,
       });

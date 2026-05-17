@@ -1,0 +1,77 @@
+flowchart LR
+    classDef actor   fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#c7d2fe
+    classDef system  fill:#064e3b,stroke:#10b981,stroke-width:4px,color:#a7f3d0,font-weight:bold
+    classDef svc     fill:#431407,stroke:#f97316,stroke-width:2px,color:#fed7aa
+    classDef partner fill:#1c1917,stroke:#f59e0b,stroke-width:2px,color:#fcd34d
+
+    %% ── External Actors ────────────────────────────────
+    CUST["👤 ລູກຄ້າ\nCustomer"]
+    ADMIN["🛠️ Admin\nຜູ້ດູແລລະບົບ"]
+    SADMIN["👑 SuperAdmin\nຜູ້ດູແລສູງສຸດ"]
+
+    %% ── Central Process ─────────────────────────────────
+    SYS(("🛒 ລະບົບ IT HUBB\ne-Commerce System"))
+
+    %% ── External Services ───────────────────────────────
+    GOOGLE["🔐 Google OAuth"]
+    CLOUD["☁️ Cloudinary"]
+    SMTP["📧 SMTP Email"]
+    PUSH["🔔 Web Push"]
+    BANK["🏦 ທະນາຄານ\nBCEL / LDB / JDB"]
+    CARRIER["🚚 ຂົນສົ່ງ\nAnusit / MaiSay / United"]
+
+    %% ── ລູກຄ້າ ──────────────────────────────────────────
+    CUST -->|"ລົງທະບຽນ / Login"| SYS
+    CUST -->|"ຄຳສັ່ງຊື້ + ທີ່ຢູ່ + Carrier"| SYS
+    CUST -->|"ສະຫຼິບໂອນເງິນ"| SYS
+    CUST -->|"ລະຫັດ Coupon"| SYS
+    CUST -->|"ຄະແນນ + ຄຳຄິດເຫັນ"| SYS
+
+    SYS -->|"ລາຍການສິນຄ້າ + ລາຄາ"| CUST
+    SYS -->|"ສະຖານະ Order + Tracking"| CUST
+    SYS -->|"Invoice ໃບຮັບເງິນ"| CUST
+    SYS -->|"ແຈ້ງເຕືອນ Email + Push"| CUST
+
+    %% ── Admin ────────────────────────────────────────────
+    ADMIN -->|"CRUD ສິນຄ້າ + Category"| SYS
+    ADMIN -->|"ຢືນຢັນ / ປະຕິເສດ ການຊຳລະ"| SYS
+    ADMIN -->|"ອັບເດດ Fulfillment Status"| SYS
+    ADMIN -->|"ຈັດການ Flash Deal"| SYS
+    ADMIN -->|"ຂຽນ / ເຜີຍແຜ່ Blog"| SYS
+
+    SYS -->|"Dashboard + ສະຖິຕິ"| ADMIN
+    SYS -->|"ລາຍການ Order ລໍຖ້າ"| ADMIN
+    SYS -->|"ສະຫຼິບທີ່ຕ້ອງ Verify"| ADMIN
+
+    %% ── SuperAdmin ───────────────────────────────────────
+    SADMIN -->|"ສ້າງ / ຈັດການ User"| SYS
+    SADMIN -->|"ສ້າງ / ແກ້ Coupon"| SYS
+    SADMIN -->|"ບັນທຶກ Financial Transaction"| SYS
+
+    SYS -->|"ລາຍງານ Sales + Finance"| SADMIN
+    SYS -->|"Customer Analytics"| SADMIN
+    SYS -->|"ຂໍ້ມູນ User ທັງໝົດ"| SADMIN
+
+    %% ── External Services ────────────────────────────────
+    SYS    -->|"Auth Request"| GOOGLE
+    GOOGLE -->|"Profile: name, email, avatar"| SYS
+
+    SYS   -->|"Upload ຮູບ Product / Avatar / Proof"| CLOUD
+    CLOUD -->|"Image URL + public_id"| SYS
+
+    SYS  -->|"Email: Order / Ship / Cancel"| SMTP
+    SMTP -->|"Delivery Status"| SYS
+
+    SYS  -->|"Push Payload"| PUSH
+    PUSH -->|"Subscription Endpoint"| SYS
+
+    BANK -->|"Bank Account Info"| SYS
+
+    SYS     -->|"Tracking Code + Ship Info"| CARRIER
+    CARRIER -->|"Tracking Update"| SYS
+
+    %% ── Apply Styles ─────────────────────────────────────
+    class CUST,ADMIN,SADMIN actor
+    class SYS system
+    class GOOGLE,CLOUD,SMTP,PUSH svc
+    class BANK,CARRIER partner

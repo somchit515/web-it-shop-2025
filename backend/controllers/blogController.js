@@ -162,6 +162,7 @@ export const createBlog = [
       seoDescription: req.body.seoDescription  || "",
       author:         req.body.author          || req.user.name,
       image:          req.body.image           || "",
+      images:         Array.isArray(req.body.images) ? req.body.images : [],
       slug,
       authorId:    req.user._id,
       readTime,

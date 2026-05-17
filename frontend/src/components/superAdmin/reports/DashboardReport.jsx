@@ -1,28 +1,21 @@
 import React, { useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useGetCustomerReportQuery, useGetSalesReportQuery } from '../../redux/api/productsApi';
-
 import Loader from '../../layout/Loader';
 import MetaData from '../../layout/MetaData';
-import AdminLayout from '../../layout/AdminLayout';
 
 export default function DashboardReport() {
     const { data: customersData, isLoading: isLoadingCustomers, error: errorCustomers } = useGetCustomerReportQuery();
     const { data: salesData, isLoading: isLoadingSales, error: errorSales } = useGetSalesReportQuery();
 
     useEffect(() => {
-        if (errorCustomers) {
-            toast.error(errorCustomers?.data?.message || 'ບໍ່ສາມາດດຶງຂໍ້ມູນລູກຄ້າ');
-        }
-        if (errorSales) {
-            toast.error(errorSales?.data?.message || 'ບໍ່ສາມາດດຶງຂໍ້ມູນການຂາຍ');
-        }
+        if (errorCustomers) toast.error(errorCustomers?.data?.message || 'ບໍ່ສາມາດດຶງຂໍ້ມູນລູກຄ້າ');
+        if (errorSales) toast.error(errorSales?.data?.message || 'ບໍ່ສາມາດດຶງຂໍ້ມູນການຂາຍ');
     }, [errorCustomers, errorSales]);
 
     const formatLAK = (v) => {
         try {
-            const n = Number(v || 0);
-            return new Intl.NumberFormat('lo-LA', { style: 'currency', currency: 'LAK', maximumFractionDigits: 0 }).format(n);
+            return new Intl.NumberFormat('lo-LA', { style: 'currency', currency: 'LAK', maximumFractionDigits: 0 }).format(Number(v || 0));
         } catch {
             return `₭ ${v}`;
         }
@@ -40,42 +33,30 @@ export default function DashboardReport() {
             title: 'ຍອດຂາຍທັງໝົດ',
             subtitle: 'Total Sales',
             value: formatLAK(totalSales),
-            icon: '💰',
-            color: 'success',
+            icon: 'fas fa-money-bill-wave',
             gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            trend: '+12.5%',
-            trendUp: true
         },
         {
             title: 'ຈຳນວນລູກຄ້າ',
             subtitle: 'Total Customers',
             value: totalCustomers.toLocaleString(),
-            icon: '👥',
-            color: 'info',
+            icon: 'fas fa-users',
             gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-            trend: '+8.2%',
-            trendUp: true
         },
         {
             title: 'ຈຳນວນອໍເດີ',
             subtitle: 'Total Orders',
             value: totalOrders.toLocaleString(),
-            icon: '📦',
-            color: 'warning',
+            icon: 'fas fa-box',
             gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-            trend: '+5.7%',
-            trendUp: true
         },
         {
-            title: 'ມູນຄ່າສະເລ່ຍຕໍ່ອໍເດີ',
+            title: 'ມູນຄ່າສະເລ່ຍ/ອໍເດີ',
             subtitle: 'Avg Order Value',
             value: formatLAK(avgOrderValue),
-            icon: '📈',
-            color: 'primary',
+            icon: 'fas fa-chart-line',
             gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            trend: '+3.1%',
-            trendUp: true
-        }
+        },
     ];
 
     return (
@@ -83,51 +64,49 @@ export default function DashboardReport() {
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;600;700&display=swap');
 
-                .dashboard-report-container {
+                .dr-container {
                     font-family: "Noto Sans Lao", "Phetsarath OT", sans-serif;
                 }
 
-                .dashboard-header {
-                    margin-bottom: 2rem;
+                .dr-header {
+                    margin-bottom: 1.75rem;
                 }
 
-                .dashboard-title {
-                    font-size: 1.75rem;
+                .dr-title {
+                    font-size: 1.6rem;
                     font-weight: 700;
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
                     background-clip: text;
-                    margin-bottom: 0.5rem;
-                    display: flex;
-                    align-items: center;
-                    gap: 0.75rem;
+                    margin-bottom: 0.35rem;
                 }
 
-                .dashboard-subtitle {
+                .dr-subtitle {
                     color: #718096;
-                    font-size: 0.95rem;
+                    font-size: 0.9rem;
+                    margin: 0;
                 }
 
-                .stats-grid {
+                .dr-stats-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-                    gap: 1.5rem;
+                    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                    gap: 1.25rem;
                     margin-bottom: 2rem;
                 }
 
-                .stat-card {
+                .dr-stat-card {
                     background: white;
                     border-radius: 16px;
-                    padding: 1.75rem;
-                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-                    border: 1px solid rgba(0, 0, 0, 0.05);
-                    transition: all 0.3s ease;
+                    padding: 1.5rem;
+                    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
+                    border: 1px solid rgba(0, 0, 0, 0.04);
+                    transition: transform 0.25s ease, box-shadow 0.25s ease;
                     position: relative;
                     overflow: hidden;
                 }
 
-                .stat-card::before {
+                .dr-stat-card::before {
                     content: '';
                     position: absolute;
                     top: 0;
@@ -137,289 +116,180 @@ export default function DashboardReport() {
                     background: var(--card-gradient);
                 }
 
-                .stat-card:hover {
-                    transform: translateY(-4px);
-                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+                .dr-stat-card:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
                 }
 
-                .stat-header {
+                .dr-stat-row {
                     display: flex;
                     justify-content: space-between;
                     align-items: flex-start;
                     margin-bottom: 1rem;
                 }
 
-                .stat-info {
-                    flex: 1;
-                }
-
-                .stat-title {
-                    font-size: 0.875rem;
+                .dr-stat-label {
+                    font-size: 0.82rem;
                     font-weight: 600;
                     color: #64748b;
-                    margin-bottom: 0.25rem;
                 }
 
-                .stat-subtitle {
-                    font-size: 0.75rem;
+                .dr-stat-sublabel {
+                    font-size: 0.72rem;
                     color: #94a3b8;
                     text-transform: uppercase;
-                    letter-spacing: 0.5px;
+                    letter-spacing: 0.4px;
                 }
 
-                .stat-icon {
-                    width: 56px;
-                    height: 56px;
+                .dr-stat-icon {
+                    width: 48px;
+                    height: 48px;
                     border-radius: 12px;
                     background: var(--card-gradient);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 1.75rem;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                    color: white;
+                    font-size: 1.2rem;
+                    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
                 }
 
-                .stat-value {
-                    font-size: 2rem;
+                .dr-stat-value {
+                    font-size: 1.75rem;
                     font-weight: 700;
                     color: #1e293b;
-                    margin-bottom: 0.5rem;
                     line-height: 1;
                 }
 
-                .stat-footer {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                }
-
-                .stat-trend {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 0.25rem;
-                    font-size: 0.8rem;
-                    font-weight: 600;
-                    padding: 0.25rem 0.6rem;
-                    border-radius: 20px;
-                }
-
-                .stat-trend.up {
-                    background: rgba(16, 185, 129, 0.1);
-                    color: #059669;
-                }
-
-                .stat-trend.down {
-                    background: rgba(239, 68, 68, 0.1);
-                    color: #dc2626;
-                }
-
-                .trend-icon {
-                    font-size: 0.7rem;
-                }
-
-                .stat-period {
-                    font-size: 0.75rem;
-                    color: #94a3b8;
-                }
-
-                .info-banner {
-                    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-                    border-left: 4px solid #667eea;
-                    border-radius: 12px;
-                    padding: 1.25rem 1.5rem;
-                    margin-top: 2rem;
-                }
-
-                .info-banner-content {
-                    display: flex;
-                    align-items: center;
-                    gap: 1rem;
-                }
-
-                .info-icon {
-                    font-size: 1.5rem;
-                    color: #667eea;
-                }
-
-                .info-text {
-                    flex: 1;
-                }
-
-                .info-title {
-                    font-size: 0.95rem;
-                    font-weight: 600;
-                    color: #2d3748;
-                    margin-bottom: 0.25rem;
-                }
-
-                .info-description {
-                    font-size: 0.85rem;
-                    color: #64748b;
-                    margin: 0;
-                }
-
-                .quick-actions {
+                .dr-actions-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
                     gap: 1rem;
-                    margin-top: 2rem;
+                    margin-top: 1.5rem;
                 }
 
-                .action-btn {
+                .dr-action-link {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    gap: 0.75rem;
-                    padding: 1rem;
+                    gap: 0.65rem;
+                    padding: 0.9rem 1rem;
                     background: white;
                     border: 2px solid #e2e8f0;
                     border-radius: 12px;
                     color: #475569;
                     text-decoration: none;
                     font-weight: 600;
-                    font-size: 0.9rem;
-                    transition: all 0.3s ease;
+                    font-size: 0.88rem;
+                    transition: all 0.25s ease;
                 }
 
-                .action-btn:hover {
+                .dr-action-link:hover {
                     border-color: #667eea;
                     color: #667eea;
-                    background: rgba(102, 126, 234, 0.05);
+                    background: rgba(102, 126, 234, 0.04);
                     transform: translateY(-2px);
                     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
                 }
 
-                .action-icon {
-                    font-size: 1.25rem;
+                .dr-info-box {
+                    background: linear-gradient(135deg, rgba(102,126,234,.06) 0%, rgba(118,75,162,.06) 100%);
+                    border-left: 4px solid #667eea;
+                    border-radius: 12px;
+                    padding: 1.1rem 1.4rem;
+                    margin-top: 1.5rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
                 }
 
-                @media (max-width: 768px) {
-                    .stats-grid {
-                        grid-template-columns: 1fr;
-                    }
-
-                    .stat-card {
-                        padding: 1.5rem;
-                    }
-
-                    .stat-value {
-                        font-size: 1.75rem;
-                    }
-
-                    .stat-icon {
-                        width: 48px;
-                        height: 48px;
-                        font-size: 1.5rem;
-                    }
-
-                    .dashboard-title {
-                        font-size: 1.5rem;
-                    }
-
-                    .quick-actions {
-                        grid-template-columns: 1fr;
-                    }
+                .dr-info-box i {
+                    color: #667eea;
+                    font-size: 1.3rem;
+                    flex-shrink: 0;
                 }
 
-                /* Loading skeleton */
-                .stat-skeleton {
-                    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-                    background-size: 200% 100%;
-                    animation: loading 1.5s infinite;
-                    border-radius: 16px;
-                    height: 180px;
+                .dr-info-title {
+                    font-size: 0.88rem;
+                    font-weight: 600;
+                    color: #2d3748;
+                    margin-bottom: 0.15rem;
                 }
 
-                @keyframes loading {
-                    0% { background-position: 200% 0; }
-                    100% { background-position: -200% 0; }
+                .dr-info-desc {
+                    font-size: 0.82rem;
+                    color: #64748b;
+                    margin: 0;
+                }
+
+                @media (max-width: 576px) {
+                    .dr-stats-grid {
+                        grid-template-columns: 1fr 1fr;
+                        gap: 0.875rem;
+                    }
+
+                    .dr-stat-card {
+                        padding: 1.1rem;
+                    }
+
+                    .dr-stat-value {
+                        font-size: 1.35rem;
+                    }
+
+                    .dr-actions-grid {
+                        grid-template-columns: 1fr 1fr;
+                    }
                 }
             `}</style>
 
-           
-                <MetaData title={'Dashboard Overview - Reports'} />
-                
-                <div className="dashboard-report-container">
-                    {/* Header */}
-                    <div className="dashboard-header">
-                        <h1 className="dashboard-title">
-                            <span>📊</span>
-                            <span>ພາບລວມລາຍງານ</span>
-                        </h1>
-                        <p className="dashboard-subtitle">
-                            ຕິດຕາມ ແລະ ວິເຄາະຂໍ້ມູນທາງທຸລະກິດແບບ Real-time
-                        </p>
-                    </div>
+            <MetaData title="Dashboard — Reports" />
 
-                    {/* Stats Cards */}
-                    <div className="stats-grid">
-                        {stats.map((stat, index) => (
-                            <div 
-                                key={index} 
-                                className="stat-card"
-                                style={{ '--card-gradient': stat.gradient }}
-                            >
-                                <div className="stat-header">
-                                    <div className="stat-info">
-                                        <div className="stat-title">{stat.title}</div>
-                                        <div className="stat-subtitle">{stat.subtitle}</div>
-                                    </div>
-                                    <div className="stat-icon">
-                                        {stat.icon}
-                                    </div>
+            <div className="dr-container">
+                <div className="dr-header">
+                    <h1 className="dr-title">ພາບລວມລາຍງານ</h1>
+                    <p className="dr-subtitle">ຕິດຕາມ ແລະ ວິເຄາະຂໍ້ມູນທາງທຸລະກິດ</p>
+                </div>
+
+                <div className="dr-stats-grid">
+                    {stats.map((s, i) => (
+                        <div key={i} className="dr-stat-card" style={{ '--card-gradient': s.gradient }}>
+                            <div className="dr-stat-row">
+                                <div>
+                                    <div className="dr-stat-label">{s.title}</div>
+                                    <div className="dr-stat-sublabel">{s.subtitle}</div>
                                 </div>
-                                
-                                <div className="stat-value">{stat.value}</div>
-                                
-                                <div className="stat-footer">
-                                    <span className={`stat-trend ${stat.trendUp ? 'up' : 'down'}`}>
-                                        <span className="trend-icon">
-                                            {stat.trendUp ? '↑' : '↓'}
-                                        </span>
-                                        <span>{stat.trend}</span>
-                                    </span>
-                                    <span className="stat-period">vs ເດືອນກ່ອນ</span>
+                                <div className="dr-stat-icon">
+                                    <i className={s.icon}></i>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-
-                    {/* Info Banner */}
-                    <div className="info-banner">
-                        <div className="info-banner-content">
-                            <div className="info-icon">
-                                <i className="fas fa-info-circle"></i>
-                            </div>
-                            <div className="info-text">
-                                <div className="info-title">ລາຍງານໂດຍລະອຽດ</div>
-                                <p className="info-description">
-                                    ເພື່ອເບິ່ງລາຍງານແບບລະອຽດ ແລະ ການວິເຄາະຂັ້ນສູງ ກະລຸນາເລືອກເມນູດ້ານຊ້າຍ
-                                </p>
-                            </div>
+                            <div className="dr-stat-value">{s.value}</div>
                         </div>
-                    </div>
+                    ))}
+                </div>
 
-                    {/* Quick Actions */}
-                    <div className="quick-actions">
-                        <a href="/admin/reports/customers" className="action-btn">
-                            <span className="action-icon">👥</span>
-                            <span>ລາຍງານລູກຄ້າ</span>
-                        </a>
-                        <a href="/admin/reports/sales" className="action-btn">
-                            <span className="action-icon">💰</span>
-                            <span>ລາຍງານການຂາຍ</span>
-                        </a>
-                        <a href="/admin/reports/orders" className="action-btn">
-                            <span className="action-icon">📦</span>
-                            <span>ລາຍງານອໍເດີ</span>
-                        </a>
-                        <a href="/admin/reports/finance" className="action-btn">
-                            <span className="action-icon">📈</span>
-                            <span>ລາຍງານການເງິນ</span>
-                        </a>
+                <div className="dr-info-box">
+                    <i className="fas fa-info-circle"></i>
+                    <div>
+                        <div className="dr-info-title">ລາຍງານໂດຍລະອຽດ</div>
+                        <p className="dr-info-desc">ເລືອກລາຍງານທີ່ຕ້ອງການຈາກເມນູດ້ານຊ້າຍ</p>
                     </div>
                 </div>
-            
+
+                <div className="dr-actions-grid">
+                    <a href="/admin/reports/customers" className="dr-action-link">
+                        <i className="fas fa-users"></i>
+                        <span>ລາຍງານລູກຄ້າ</span>
+                    </a>
+                    <a href="/admin/reports/sales" className="dr-action-link">
+                        <i className="fas fa-shopping-cart"></i>
+                        <span>ລາຍງານການຂາຍ</span>
+                    </a>
+                    <a href="/admin/reports/finance" className="dr-action-link">
+                        <i className="fas fa-chart-line"></i>
+                        <span>ລາຍງານການເງິນ</span>
+                    </a>
+                </div>
+            </div>
         </>
     );
 }

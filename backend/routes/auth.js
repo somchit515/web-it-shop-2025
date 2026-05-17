@@ -56,26 +56,14 @@ router.route("/me/upload_avatar").put(isAuthenticatedUser, uploadAvatar);
 
 router
   .route("/admin/users")
-  .post(isAuthenticatedUser, authorizeRoles("admin", "superAdmin"), newUser) // อนุญาต Admin ด้วย
-  .get(isAuthenticatedUser, authorizeRoles("admin", "superAdmin"), getAllUser); // อนุญาต Admin ด้วย
+  .post(isAuthenticatedUser, authorizeRoles("superAdmin"), newUser)
+  .get(isAuthenticatedUser, authorizeRoles("superAdmin"), getAllUser);
 
 router
   .route("/admin/users/:id")
-  .get(
-    isAuthenticatedUser,
-    authorizeRoles("admin", "superAdmin"),
-    getUserDetials
-  )
-  .put(
-    isAuthenticatedUser,
-    authorizeRoles("admin", "superAdmin"),
-    getUpdateUser
-  )
-  .delete(
-    isAuthenticatedUser,
-    authorizeRoles("admin", "superAdmin"),
-    getDeleteUser
-  );
+  .get(isAuthenticatedUser, authorizeRoles("superAdmin"), getUserDetials)
+  .put(isAuthenticatedUser, authorizeRoles("superAdmin"), getUpdateUser)
+  .delete(isAuthenticatedUser, authorizeRoles("superAdmin"), getDeleteUser);
 
 // Export the router for use in your main app file
 export default router;

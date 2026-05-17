@@ -1,0 +1,141 @@
+flowchart TD
+    classDef terminal  fill:#1e1b4b,stroke:#6366f1,stroke-width:3px,color:#c7d2fe,font-weight:bold
+    classDef process   fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#a7f3d0
+    classDef decision  fill:#1c1917,stroke:#f59e0b,stroke-width:2px,color:#fcd34d
+    classDef io        fill:#431407,stroke:#f97316,stroke-width:2px,color:#fed7aa
+    classDef error     fill:#450a0a,stroke:#ef4444,stroke-width:2px,color:#fca5a5
+    classDef db        fill:#0c1a2e,stroke:#3b82f6,stroke-width:2px,color:#93c5fd
+    classDef success   fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#86efac
+    classDef svc       fill:#431407,stroke:#f97316,stroke-width:2px,color:#fed7aa
+
+    START(["🛠️ Admin → ຈັດການ ສິນຄ້າ"])
+
+    %% ══════════════════════════════════════════════════
+    %%  PHASE 1 — ລາຍການ ສິນຄ້າ
+    %% ══════════════════════════════════════════════════
+    PROD_LIST[/"📦 ລາຍການ ສິນຄ້າ\n(ຊື່, ລາຄາ, stock, category, ຄະແນນ)"/]
+    SEARCH["🔍 ຄົ້ນຫາ / ກັ່ນຕອງ ໝວດໝູ່"]
+
+    ACTION{"ເລືອກ Action"}
+
+    %% ══════════════════════════════════════════════════
+    %%  PATH A — ເພີ່ມ ສິນຄ້າ ໃໝ່
+    %% ══════════════════════════════════════════════════
+    A_FORM[/"📝 ຟອມ ເພີ່ມ ສິນຄ້າ:\nຊື່, ລາຄາ, ລາຍລະອຽດ\ncategory, stock, seller"/]
+    A_VALIDATE{"ຂໍ້ມູນ\nຄົບ & ຖືກຕ້ອງ?"}
+    A_ERR[/"❌ ກະລຸນາ ກອກ ໃຫ້ຄົບ\n(ຊື່, ລາຄາ, category, stock)"/]
+
+    A_IMG{"ອັບໂຫຼດ ຮູບ\nສິນຄ້າ?"}
+    A_CLOUD["☁️ Upload → Cloudinary\nຮັບ URL + public_id"]
+    A_SAVE[("💾 ບັນທຶກ Product ໃໝ່\nD1 · Products")]
+    A_OK(["✅ ສິນຄ້າ ເພີ່ມ ສຳເລັດ"])
+
+    %% ══════════════════════════════════════════════════
+    %%  PATH B — ແກ້ໄຂ ສິນຄ້າ
+    %% ══════════════════════════════════════════════════
+    B_SELECT["👆 ເລືອກ ສິນຄ້າ ທີ່ ຈະ ແກ້ໄຂ"]
+    B_FORM[/"✏️ ຟອມ ແກ້ໄຂ:\n(ຂໍ້ມູນ ເດີມ ຕື່ມ ໄວ້ ແລ້ວ)"/]
+    B_CHK_IMG{"ປ່ຽນ ຮູບ?"}
+    B_DEL_OLD["ລຶບ ຮູບ ເກົ່າ ຈາກ Cloudinary\n(public_id)"]
+    B_UPLOAD["☁️ Upload ຮູບ ໃໝ່ → Cloudinary"]
+    B_UPDATE[("💾 ບັນທຶກ ການ ປ່ຽນແປງ\nD1 · Products")]
+    B_OK(["✅ ອັບເດດ ສຳເລັດ"])
+
+    %% ══════════════════════════════════════════════════
+    %%  PATH C — ລຶບ ສິນຄ້າ
+    %% ══════════════════════════════════════════════════
+    C_SELECT["☑️ ເລືອກ ສິນຄ້າ (ຫຼື bulk select)"]
+    C_CONFIRM{"ຢືນຢັນ ລຶບ?\n(ConfirmDialog)"}
+    C_CANCEL_D["ຍົກເລີກ ການ ລຶບ"]
+    C_DEL_IMG["ລຶບ ຮູບ ຈາກ Cloudinary\n(ທຸກ public_id)"]
+    C_DELETE[("🗑️ ລຶບ Product\nD1 · Products")]
+    C_OK(["✅ ລຶບ ສຳເລັດ"])
+
+    %% ══════════════════════════════════════════════════
+    %%  PATH D — ຈັດການ ໝວດໝູ່ (Category)
+    %% ══════════════════════════════════════════════════
+    D_LIST[/"📂 ລາຍການ ໝວດໝູ່\n(title, slug, img)"/]
+    D_ACTION{"Category Action?"}
+    D_ADD["ເພີ່ມ ໝວດໝູ່ ໃໝ່\n(title, slug, img)"]
+    D_EDIT["ແກ້ໄຂ ໝວດໝູ່"]
+    D_DEL_CAT{"ໝວດໝູ່ ມີ\nສິນຄ້າ ຢູ່?"}
+    D_BLOCK[/"⚠️ ບໍ່ສາມາດ ລຶບ ໄດ້\n(ມີ ສິນຄ້າ ໃນ ໝວດ)"/]
+    D_DEL["ລຶບ ໝວດໝູ່"]
+    D_SAVE_CAT[("💾 D2 · Categories")]
+    D_OK(["✅ ໝວດໝູ່ ອັບເດດ ສຳເລັດ"])
+
+    %% ══════════════════════════════════════════════════
+    %%  PATH E — Flash Deal
+    %% ══════════════════════════════════════════════════
+    E_FORM[/"⚡ ຟອມ Flash Deal:\nlabel, discount%, endsAt\nເລືອກ ສິນຄ້າ ທີ່ ຮ່ວມ"/]
+    E_VALIDATE{"discount% ≤ 90\nendsAt > ດຽວນີ້?"}
+    E_ERR[/"❌ ຂໍ້ມູນ Flash Deal ບໍ່ຖືກຕ້ອງ"/]
+    E_SAVE[("💾 ບັນທຶກ Flash Deal\nD3 · FlashDeal")]
+    E_OK(["✅ Flash Deal ເປີດ ໃຊ້ ງານ"])
+
+    %% ══════════════════════════════════════════════════
+    %%  PATH F — ຈັດການ Review
+    %% ══════════════════════════════════════════════════
+    F_LIST[/"⭐ ລາຍການ Review ຂອງ ສິນຄ້າ\n(rating, ຄຳຄິດເຫັນ, user, createdAt)"/]
+    F_DEL_CONFIRM{"ລຶບ Review ນີ້?"}
+    F_DEL_REV["ລຶບ Review\n+ ຄຳນວນ avg rating ໃໝ່"]
+    F_SAVE_REV[("💾 ອັບເດດ reviews[]\nD1 · Products")]
+    F_OK(["✅ Review ຖືກ ລຶບ ສຳເລັດ"])
+
+    %% ══════════════════════════════════════════════════
+    %%  CONNECTIONS — Phase 1
+    %% ══════════════════════════════════════════════════
+    START --> PROD_LIST --> SEARCH --> PROD_LIST
+    PROD_LIST --> ACTION
+
+    %% Path A
+    ACTION -->|"ເພີ່ມ ສິນຄ້າ"| A_FORM
+    A_FORM --> A_VALIDATE
+    A_VALIDATE -->|"ບໍ່ຄົບ"| A_ERR --> A_FORM
+    A_VALIDATE -->|"ຖືກຕ້ອງ"| A_IMG
+    A_IMG -->|"ມີ"| A_CLOUD --> A_SAVE
+    A_IMG -->|"ບໍ່ມີ"| A_SAVE
+    A_SAVE --> A_OK
+
+    %% Path B
+    ACTION -->|"ແກ້ໄຂ"| B_SELECT --> B_FORM
+    B_FORM --> B_CHK_IMG
+    B_CHK_IMG -->|"ແມ່ນ"| B_DEL_OLD --> B_UPLOAD --> B_UPDATE
+    B_CHK_IMG -->|"ບໍ່"| B_UPDATE
+    B_UPDATE --> B_OK
+
+    %% Path C
+    ACTION -->|"ລຶບ"| C_SELECT --> C_CONFIRM
+    C_CONFIRM -->|"ຍົກເລີກ"| C_CANCEL_D --> PROD_LIST
+    C_CONFIRM -->|"ຢືນຢັນ"| C_DEL_IMG --> C_DELETE --> C_OK
+
+    %% Path D
+    ACTION -->|"ໝວດໝູ່"| D_LIST --> D_ACTION
+    D_ACTION -->|"ເພີ່ມ"| D_ADD --> D_SAVE_CAT
+    D_ACTION -->|"ແກ້ໄຂ"| D_EDIT --> D_SAVE_CAT
+    D_ACTION -->|"ລຶບ"| D_DEL_CAT
+    D_DEL_CAT -->|"ມີ"| D_BLOCK --> D_LIST
+    D_DEL_CAT -->|"ບໍ່ມີ"| D_DEL --> D_SAVE_CAT
+    D_SAVE_CAT --> D_OK
+
+    %% Path E
+    ACTION -->|"Flash Deal"| E_FORM
+    E_FORM --> E_VALIDATE
+    E_VALIDATE -->|"ບໍ່ຖືກ"| E_ERR --> E_FORM
+    E_VALIDATE -->|"ຖືກ"| E_SAVE --> E_OK
+
+    %% Path F
+    ACTION -->|"ຈັດການ Review"| F_LIST --> F_DEL_CONFIRM
+    F_DEL_CONFIRM -->|"ແມ່ນ"| F_DEL_REV --> F_SAVE_REV --> F_OK
+    F_DEL_CONFIRM -->|"ບໍ່"| F_LIST
+
+    %% ══════════════════════════════════════════════════
+    %%  Apply Styles
+    %% ══════════════════════════════════════════════════
+    class START terminal
+    class A_OK,B_OK,C_OK,D_OK,E_OK,F_OK success
+    class PROD_LIST,A_FORM,B_FORM,D_LIST,E_FORM,F_LIST io
+    class ACTION,A_VALIDATE,A_IMG,B_CHK_IMG,C_CONFIRM,D_ACTION,D_DEL_CAT,E_VALIDATE,F_DEL_CONFIRM decision
+    class A_ERR,E_ERR,D_BLOCK,C_CANCEL_D error
+    class SEARCH,B_SELECT,C_SELECT,A_CLOUD,B_DEL_OLD,B_UPLOAD,C_DEL_IMG,D_ADD,D_EDIT,D_DEL,F_DEL_REV process
+    class A_SAVE,B_UPDATE,C_DELETE,D_SAVE_CAT,E_SAVE,F_SAVE_REV db

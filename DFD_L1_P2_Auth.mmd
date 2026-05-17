@@ -1,0 +1,103 @@
+flowchart TB
+    classDef actor   fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#c7d2fe
+    classDef process fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#a7f3d0,font-weight:bold
+    classDef store   fill:#1c1917,stroke:#78716c,stroke-width:2px,color:#d6d3d1
+    classDef svc     fill:#431407,stroke:#f97316,stroke-width:2px,color:#fed7aa
+    classDef err     fill:#450a0a,stroke:#ef4444,stroke-width:2px,color:#fca5a5
+
+    %% ══════════════════════════════════════════════════
+    %%  EXTERNAL ENTITIES
+    %% ══════════════════════════════════════════════════
+    USER["👤 ລູກຄ້າ / ຜູ້ໃຊ້"]
+    GOOGLE["🔐 Google OAuth"]
+    SMTP["📧 SMTP Email"]
+    OTHER["⚙️ Process ອື່ນໆ\n(3.0 Order / 4.0 Profile)"]
+
+    %% ══════════════════════════════════════════════════
+    %%  DATA STORES
+    %% ══════════════════════════════════════════════════
+    D4[("D4 · Users")]
+    D5[("D5 · Cookie / Session\n(httpOnly JWT)")]
+
+    %% ══════════════════════════════════════════════════
+    %%  SUB-PROCESSES
+    %% ══════════════════════════════════════════════════
+    P21("2.1\nລົງທະບຽນ\nRegister")
+    P22("2.2\nເຂົ້າສູ່ລະບົບ\nLocal Login")
+    P23("2.3\nGoogle Login\nOAuth")
+    P24("2.4\nລືມລະຫັດຜ່ານ\nForgot Password")
+    P25("2.5\nຕັ້ງລະຫັດໃໝ່\nReset Password")
+    P26("2.6\nອອກຈາກລະບົບ\nLogout")
+    P27("2.7\nຢືນຢັນ Session\nAuth Middleware")
+
+    %% ══════════════════════════════════════════════════
+    %%  2.1 ລົງທະບຽນ
+    %% ══════════════════════════════════════════════════
+    USER  -->|"ຊື່, email, password, avatar"| P21
+    D4    -->|"ກວດ email ຊ້ຳ"| P21
+    P21   -->|"hash password + ບັນທຶກ User"| D4
+    P21   -->|"JWT Cookie (httpOnly)"| D5
+    P21   -->|"User Profile + token"| USER
+
+    %% ══════════════════════════════════════════════════
+    %%  2.2 Local Login
+    %% ══════════════════════════════════════════════════
+    USER  -->|"email + password"| P22
+    D4    -->|"hashed password + User data"| P22
+    P22   -->|"bcrypt.compare ✓"| D4
+    P22   -->|"JWT Cookie (httpOnly)"| D5
+    P22   -->|"User Profile"| USER
+
+    %% ══════════════════════════════════════════════════
+    %%  2.3 Google Login
+    %% ══════════════════════════════════════════════════
+    USER   -->|"Google ID Token"| P23
+    P23    -->|"Verify Token"| GOOGLE
+    GOOGLE -->|"Profile: name, email, avatar"| P23
+    D4     -->|"ກວດ User ມີຢູ່ແລ້ວບໍ"| P23
+    P23    -->|"ສ້າງ User ໃໝ່ (authSource: google)"| D4
+    P23    -->|"JWT Cookie (httpOnly)"| D5
+    P23    -->|"User Profile"| USER
+
+    %% ══════════════════════════════════════════════════
+    %%  2.4 ລືມລະຫັດຜ່ານ
+    %% ══════════════════════════════════════════════════
+    USER  -->|"email"| P24
+    D4    -->|"ກວດ email ມີຢູ່"| P24
+    P24   -->|"resetToken + expire (30 min)"| D4
+    P24   -->|"Reset Link Email"| SMTP
+    SMTP  -->|"Email ພ້ອມ Link"| USER
+
+    %% ══════════════════════════════════════════════════
+    %%  2.5 Reset ລະຫັດຜ່ານ
+    %% ══════════════════════════════════════════════════
+    USER  -->|"token (URL) + password ໃໝ່"| P25
+    D4    -->|"resetToken + resetExpire"| P25
+    P25   -->|"hash password + ລຶບ token"| D4
+    P25   -->|"JWT Cookie (httpOnly)"| D5
+    P25   -->|"Login ອັດຕະໂນມັດ"| USER
+
+    %% ══════════════════════════════════════════════════
+    %%  2.6 Logout
+    %% ══════════════════════════════════════════════════
+    USER  -->|"Logout Request"| P26
+    P26   -->|"expire Cookie = now"| D5
+    P26   -->|"Cookie Cleared"| USER
+
+    %% ══════════════════════════════════════════════════
+    %%  2.7 Auth Middleware (ຢືນຢັນ Session)
+    %% ══════════════════════════════════════════════════
+    OTHER  -->|"Request + Cookie"| P27
+    D5     -->|"JWT Token"| P27
+    P27    -->|"verify + ດຶງ User ID"| D4
+    D4     -->|"User Object (role, id)"| P27
+    P27    -->|"req.user ✓ ສົ່ງຕໍ່"| OTHER
+    P27    -->|"401 Unauthorized"| USER
+
+    %% ══════════════════════════════════════════════════
+    %%  Apply Styles
+    %% ══════════════════════════════════════════════════
+    class USER,OTHER actor
+    class P21,P22,P23,P24,P25,P26,P27 process
+    class D4,D5 store
+    class GOOGLE,SMTP svc

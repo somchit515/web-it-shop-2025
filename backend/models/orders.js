@@ -79,7 +79,7 @@ const orderSchema = new mongoose.Schema(
     paymentMethod: {
       type: String,
       required: [true, "Please select payment method"],
-      enum: { values: ["COD", "BankTransfer"], message: "Please select COD or BankTransfer" },
+      enum: { values: ["COD", "BankTransfer", "PayAtStore"], message: "Please select COD, BankTransfer, or PayAtStore" },
       default: "COD",
     },
 
@@ -215,7 +215,11 @@ orderSchema.pre("save", function (next) {
   if (this.isNew) {
     pushEvent(
       "created",
-      `ສ້າງອໍເດີ — ວິທີຊຳລະ ${this.paymentMethod === "COD" ? "ເງິນສົດ (COD)" : "ໂອນເງິນ"}`
+      `ສ້າງອໍເດີ — ວິທີຊຳລະ ${
+        this.paymentMethod === "COD" ? "ເງິນສົດ (COD)" :
+        this.paymentMethod === "PayAtStore" ? "ຈ່າຍທີ່ໜ້າຮ້ານ" :
+        "ໂອນເງິນ"
+      }`
     );
   }
 

@@ -1,0 +1,102 @@
+flowchart TD
+    classDef terminal  fill:#1e1b4b,stroke:#6366f1,stroke-width:3px,color:#c7d2fe,font-weight:bold
+    classDef process   fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#a7f3d0
+    classDef decision  fill:#1c1917,stroke:#f59e0b,stroke-width:2px,color:#fcd34d
+    classDef io        fill:#431407,stroke:#f97316,stroke-width:2px,color:#fed7aa
+    classDef error     fill:#450a0a,stroke:#ef4444,stroke-width:2px,color:#fca5a5
+    classDef db        fill:#0c1a2e,stroke:#3b82f6,stroke-width:2px,color:#93c5fd
+    classDef success   fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#86efac
+    classDef event     fill:#3b0764,stroke:#a855f7,stroke-width:2px,color:#e9d5ff
+
+    START(["💵 Order COD ສ້າງສຳເລັດ"])
+
+    %% ══════════════════════════════════════════════════
+    %%  STAGE 1 — Unfulfilled
+    %% ══════════════════════════════════════════════════
+    S1[/"📋 paymentStatus = Pending\nfulfillmentStatus = Unfulfilled\nEvent: created ✦"/]
+    EMAIL1["📧 Email → ລູກຄ້າ: order created"]
+    ADMIN_DASH[/"🛠️ Admin ເຫັນ Order ໃໝ່\n(Dashboard badge + ລາຍການ ລໍຖ້າ)"/]
+
+    CAN1{"ລູກຄ້າ ຕ້ອງການ\nຍົກເລີກ?"}
+    DO_CANCEL["ລູກຄ້າ: POST /orders/:id/cancel\n(ໃສ່ ເຫດຜົນ)"]
+    RESTORE1["restore stock\ncancelReason ບັນທຶກ\nEvent: cancelled ✦"]
+    EMAIL_CAN["📧 Email → ລູກຄ້າ: cancelled"]
+    CANCELLED(["❌ Order ຍົກເລີກ"])
+
+    %% ══════════════════════════════════════════════════
+    %%  STAGE 2 — Processing
+    %% ══════════════════════════════════════════════════
+    ADMIN_PROC["🛠️ Admin ອັບເດດ:\nfulfillmentStatus → Processing\nEvent: processing ✦"]
+    S2[/"📦 paymentStatus = Pending\nfulfillmentStatus = Processing"/]
+
+    CAN2{"ລູກຄ້າ ຕ້ອງການ\nຍົກເລີກ?"}
+    DO_CANCEL2["ຍົກເລີກ\n(Processing — ຍັງ cancel ໄດ້)"]
+    RESTORE2["restore stock + Event: cancelled ✦"]
+
+    %% ══════════════════════════════════════════════════
+    %%  STAGE 3 — Shipped
+    %% ══════════════════════════════════════════════════
+    PACK["Admin ຈັດ ເຄື່ອງ + ບັນຈຸ"]
+    TRACKING["ໃສ່ trackingCode + carrier\n+ shippedAt"]
+    SHIPPED["fulfillmentStatus → Shipped\nEvent: shipped ✦"]
+    S3[/"🚚 paymentStatus = Pending\nfulfillmentStatus = Shipped\ntrackingCode ບັນທຶກ"/]
+    EMAIL2["📧 Email → ລູກຄ້າ: shipped\n(tracking code + carrier)"]
+
+    CUST_TRACK[/"ລູກຄ້າ ຕິດຕາມ ດ້ວຍ tracking code\n(ຍົກເລີກ ບໍ່ໄດ້ ແລ້ວ)"/]
+
+    %% ══════════════════════════════════════════════════
+    %%  STAGE 4 — Delivery
+    %% ══════════════════════════════════════════════════
+    DELIVER{"ຈັດສົ່ງ\nສຳເລັດ?"}
+
+    FAIL[/"❌ ລູກຄ້າ ບໍ່ຢູ່ /\nປະຕິເສດ ຮັບ"/]
+    RETURNED["fulfillmentStatus → Returned\nEvent: returned ✦"]
+    S_RET[/"↩️ ສິນຄ້າ ກັບ ຄືນ ຮ້ານ\n(Admin ພິຈາລະນາ refund)"/]
+
+    COLLECT[/"ລູກຄ້າ ຮັບ ເຄື່ອງ\n💵 ຈ່າຍ ເງິນ ສົດ ໃຫ້ Carrier"/]
+    MARK_DEL["Admin ອັບເດດ:\nfulfillmentStatus → Delivered\npaymentStatus → Paid\nEvent: delivered ✦"]
+    S4[/"✅ paymentStatus = Paid\nfulfillmentStatus = Delivered"/]
+    EMAIL3["📧 Email → ລູກຄ້າ: delivered\n(ຂໍໃຫ້ຂຽນ Review ⭐)"]
+
+    %% ══════════════════════════════════════════════════
+    %%  STAGE 5 — Post-delivery
+    %% ══════════════════════════════════════════════════
+    CAN_REVIEW{"ລູກຄ້າ ຕ້ອງການ\nຂຽນ Review?"}
+    REVIEW["⭐ ຂຽນ Review\n(rating 1–5 + ຄຳຄິດເຫັນ)"]
+    SAVE_REV[("💾 ບັນທຶກ Review\n+ ຄຳນວນ avg rating")]
+
+    SUCCESS(["🏁 Order ສຳເລັດ ທັງໝົດ"])
+
+    %% ══════════════════════════════════════════════════
+    %%  CONNECTIONS
+    %% ══════════════════════════════════════════════════
+    START --> S1 --> EMAIL1 --> ADMIN_DASH
+
+    ADMIN_DASH --> CAN1
+    CAN1 -->|"ແມ່ນ"| DO_CANCEL --> RESTORE1 --> EMAIL_CAN --> CANCELLED
+    CAN1 -->|"ບໍ່"| ADMIN_PROC
+
+    ADMIN_PROC --> S2 --> CAN2
+    CAN2 -->|"ແມ່ນ"| DO_CANCEL2 --> RESTORE2 --> EMAIL_CAN
+    CAN2 -->|"ບໍ່"| PACK
+
+    PACK --> TRACKING --> SHIPPED --> S3 --> EMAIL2 --> CUST_TRACK
+
+    CUST_TRACK --> DELIVER
+    DELIVER -->|"ສຳເລັດ"| COLLECT --> MARK_DEL --> S4 --> EMAIL3
+    DELIVER -->|"ບໍ່ສຳເລັດ"| FAIL --> RETURNED --> S_RET
+
+    EMAIL3 --> CAN_REVIEW
+    CAN_REVIEW -->|"ແມ່ນ"| REVIEW --> SAVE_REV --> SUCCESS
+    CAN_REVIEW -->|"ບໍ່"| SUCCESS
+
+    %% ══════════════════════════════════════════════════
+    %%  Apply Styles
+    %% ══════════════════════════════════════════════════
+    class START,CANCELLED success
+    class SUCCESS success
+    class S1,S2,S3,S4,CUST_TRACK,COLLECT,FAIL,S_RET io
+    class CAN1,CAN2,DELIVER,CAN_REVIEW decision
+    class EMAIL1,EMAIL2,EMAIL3,EMAIL_CAN,PACK,TRACKING,SHIPPED,ADMIN_PROC,DO_CANCEL,DO_CANCEL2,RESTORE1,RESTORE2,RETURNED,MARK_DEL,REVIEW process
+    class ADMIN_DASH io
+    class SAVE_REV db

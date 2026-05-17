@@ -6,6 +6,7 @@ import { sendOrderEmail } from "../utils/mailer.js"; // ปรับ path ถ้
 import { restoreStockBatch } from "../utils/stockManager.js";
 import { assertOwnershipOrAdmin } from "../utils/authHelpers.js";
 import { tryNotifyOrder } from "../utils/mailer.js";
+import { tryPushNotify, buildOrderPushPayload } from "../utils/pushNotifier.js";
 
 // ✅ Helper: ส่ง email ตาม status (รวม logic เพื่อใช้ได้หลายที่)
 function notifyStatusChange(order, newFulfillmentStatus, note = "") {
@@ -92,13 +93,20 @@ export const newOrder = catchAsyncErrors(async (req, res, next) => {
   }
 });
 
-// Get current user orders => /api/v1/me/orders
+// Get current user orders => /api/v1/me/orders?status=&q=
 export const myOrder = catchAsyncErrors(async (req, res, next) => {
-  const orders = await Order.find({ user: req.user._id });
+  const filter = { user: req.user._id };
 
-  if (!orders || orders.length === 0) {
-    return next(new ErrorHandler("No orders found for this user", 404));
+  const { status } = req.query;
+  if (status && status !== "all") {
+    // Capitalize first letter: "processing" → "Processing" ໃຫ້ match DB
+    const normalized = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    filter.fulfillmentStatus = normalized;
   }
+
+  const orders = await Order.find(filter)
+    .sort({ createdAt: -1 })
+    .populate("user", "name email");
 
   res.status(200).json({
     success: true,
@@ -158,18 +166,18 @@ export const allOrder = catchAsyncErrors(async (req, res, next) => {
     filter.paymentMethod = paymentMethod;
   }
 
-  // Search — match ใน orderId (suffix) หรือ shippingInfo.address (cheap-ish)
+  // Search — match ໃນ orderId / address / phone / trackingCode / name
   if (q && String(q).trim()) {
     const term = String(q).trim();
-    // escape regex special chars
     const safe = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const re = new RegExp(safe, "i");
     filter.$or = [
       { "shippingInfo.address": re },
       { "shippingInfo.phoneNo": re },
+      { "shippingInfo.name": re },
+      { "shippingInfo.fullName": re },
       { trackingCode: re },
     ];
-    // ถ้าเป็น ObjectId ที่สมบูรณ์ — ค้นใน _id ด้วย
     if (/^[0-9a-fA-F]{24}$/.test(term)) {
       filter.$or.push({ _id: term });
     }
@@ -256,8 +264,10 @@ export const updateOrder = catchAsyncErrors(async (req, res, next) => {
 
   await order.save();
 
-  // ✅ Send email notification (fire-and-forget)
+  // ✅ Send email + push notification (fire-and-forget)
   notifyStatusChange(order, newStatus);
+  const pushAction = { Shipped: "shipped", Delivered: "delivered", Cancelled: "cancelled" }[newStatus];
+  if (pushAction) tryPushNotify(order.user?._id || order.user, buildOrderPushPayload(pushAction, order._id));
 
   res.status(200).json({
     success: true,
@@ -566,13 +576,104 @@ export const cancelMyOrder = catchAsyncErrors(async (req, res, next) => {
 
   await order.save();
 
-  // ✅ Send cancellation email (fire-and-forget)
+  // ✅ Send cancellation email + push (fire-and-forget)
   notifyStatusChange(order, "Cancelled", order.cancelReason);
+  tryPushNotify(req.user._id, buildOrderPushPayload("cancelled", order._id));
 
   res.status(200).json({
     success: true,
     message: "ຍົກເລີກອໍເດີສຳເລັດ ສິນຄ້າຄືນສາງແລ້ວ",
     order,
+  });
+});
+
+/**
+ * ✅ Add a custom admin note to the order timeline
+ *    POST /api/v1/admin/orders/:id/note
+ *    body: { note: string }
+ */
+export const addOrderNote = catchAsyncErrors(async (req, res, next) => {
+  const { note } = req.body;
+  if (!note?.trim()) return next(new ErrorHandler("Note text is required", 400));
+
+  const order = await Order.findById(req.params.id);
+  if (!order) return next(new ErrorHandler("Order not found", 404));
+
+  // Use $push so the pre-save hook never fires (no status changes)
+  const newEvent = {
+    type: "note",
+    timestamp: new Date(),
+    note: note.trim(),
+    actor: req.user._id,
+  };
+
+  await Order.updateOne({ _id: order._id }, { $push: { events: newEvent } });
+
+  res.status(200).json({ success: true, message: "Note added", event: newEvent });
+});
+
+/**
+ * ✅ Issue refund for a Paid order — Admin only
+ *    POST /api/v1/admin/orders/:id/refund
+ *    body: { refundAmount?, refundBank?, refundAccount?, note?, cancelOrder? }
+ */
+export const issueRefund = catchAsyncErrors(async (req, res, next) => {
+  const order = await Order.findById(req.params.id).populate("user", "name email lang");
+  if (!order) return next(new ErrorHandler("Order not found", 404));
+
+  if (order.paymentStatus !== "Paid") {
+    return next(
+      new ErrorHandler("ສາມາດຄືນເງິນໄດ້ສະເພາະອໍເດີທີ່ຊຳລະແລ້ວ (Paid) ເທົ່ານັ້ນ", 400)
+    );
+  }
+
+  const {
+    refundAmount,
+    refundBank = "",
+    refundAccount = "",
+    note = "",
+    cancelOrder = true,
+  } = req.body;
+
+  const amount = refundAmount !== undefined ? Number(refundAmount) : order.totalAmount;
+
+  // Mark payment as Refunded
+  order.paymentStatus = "Refunded";
+  order.refundIssuedAt = new Date();
+  order.refundAmount = amount;
+  if (refundBank)    order.refundBank    = refundBank;
+  if (refundAccount) order.refundAccount = refundAccount;
+
+  // Cancel order + restore stock unless already Delivered/Cancelled
+  if (cancelOrder) {
+    const currentStatus = order.fulfillmentStatus;
+    if (currentStatus !== "Delivered" && currentStatus !== "Cancelled") {
+      await restoreStockBatch(order.orderItems);
+    }
+    if (currentStatus !== "Cancelled") {
+      order.fulfillmentStatus = "Cancelled";
+      order.cancelReason      = note || "ຄືນເງິນໂດຍ admin";
+      order.cancelledAt       = new Date();
+    }
+  }
+
+  await order.save(); // pre-save hook auto-appends 'refunded' + 'cancelled' events
+
+  // Fire-and-forget refund email + push
+  tryNotifyOrder({
+    to:     order.user?.email,
+    order:  order.toObject ? order.toObject() : order,
+    action: "refunded",
+    lang:   order.user?.lang || "la",
+    note,
+  });
+  tryPushNotify(order.user?._id || order.user, buildOrderPushPayload("refunded", order._id));
+
+  res.status(200).json({
+    success:       true,
+    message:       "ຄືນເງິນສຳເລັດ",
+    refundAmount:  amount,
+    refundIssuedAt: order.refundIssuedAt,
   });
 });
 
@@ -585,6 +686,14 @@ export const updateOrderStatus = catchAsyncErrors(async (req, res, next) => {
   if (!order) return next(new ErrorHandler("Order not found", 404));
 
   const currentStatus = order.fulfillmentStatus || order.status;
+
+  // 🔒 Lock: Delivered ແລະ Cancelled ແກ້ໄຂສະຖານະຕໍ່ບໍ່ໄດ້
+  if (currentStatus === "Delivered") {
+    return next(new ErrorHandler("ອໍເດີນີ້ຈັດສົ່ງສຳເລັດແລ້ວ — ບໍ່ສາມາດແກ້ໄຂສະຖານະໄດ້", 400));
+  }
+  if (currentStatus === "Cancelled") {
+    return next(new ErrorHandler("ອໍເດີນີ້ຖືກຍົກເລີກແລ້ວ — ບໍ່ສາມາດແກ້ໄຂສະຖານະໄດ້", 400));
+  }
 
   // ตัดสินใจ status ใหม่ที่จะใช้ (priority: fulfillmentStatus > orderStatus > derive)
   let newStatus = fulfillmentStatus || null;
@@ -617,9 +726,11 @@ export const updateOrderStatus = catchAsyncErrors(async (req, res, next) => {
 
   await order.save();
 
-  // ✅ Send email notification (fire-and-forget) — ใช้ค่าใหม่หลัง save
+  // ✅ Send email + push notification (fire-and-forget)
   if (newStatus) {
     notifyStatusChange(order, newStatus);
+    const pushAction = { Shipped: "shipped", Delivered: "delivered", Cancelled: "cancelled" }[newStatus];
+    if (pushAction) tryPushNotify(order.user?._id || order.user, buildOrderPushPayload(pushAction, order._id));
   }
 
   res.status(200).json({ success: true, order });

@@ -214,7 +214,9 @@ export default function AdminVerifyPayment() {
       // Sub-filter: dropdown filterStatus
       if (filterStatus !== 'all') {
         const status = (order.paymentStatus || '').toLowerCase();
-        if (filterStatus === 'pending' && status !== 'pending') return false;
+        const method = (order.paymentMethod || '').toLowerCase();
+        if (filterStatus === 'cod' && method !== 'cod') return false;
+        if (filterStatus === 'pending' && (status !== 'pending' || method === 'cod')) return false;
         if (filterStatus === 'awaiting' && status !== 'awaitingproof') return false;
       }
       // ค้นหา customer name (server-side ค้น orderId/address แล้ว — ตรงนี้ refine name)
@@ -880,7 +882,8 @@ export default function AdminVerifyPayment() {
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
                 <option value="all">ທັງໝົດ</option>
-                <option value="pending">Pending</option>
+                <option value="cod">💵 COD</option>
+                <option value="pending">Pending (BankTransfer)</option>
                 <option value="awaiting">Awaiting Proof</option>
               </select>
             </div>
@@ -937,6 +940,7 @@ export default function AdminVerifyPayment() {
           <div className="orders-grid">
             {pagedOrders.map((order) => {
               const hasProof = Array.isArray(order.paymentProof) && order.paymentProof.length > 0;
+              const isCOD = order.paymentMethod === 'COD';
               const paymentStatus = order.paymentStatus || order.paymentInfo?.status || 'Unknown';
               const customerName = order.user?.name || order.shippingInfo?.name || 'N/A';
               const orderDate = order.createdAt 
@@ -960,9 +964,23 @@ export default function AdminVerifyPayment() {
                         {orderDate}
                       </div>
                     </div>
-                    <span className={`order-status-badge ${paymentStatus.toLowerCase()}`}>
-                      {paymentStatus}
-                    </span>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <span style={{
+                        padding: '0.25rem 0.625rem',
+                        borderRadius: '20px',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        background: isCOD ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' : 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+                        color: isCOD ? '#065f46' : '#1e3a8a',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}>
+                        {isCOD ? '💵 COD' : '🏦 BankTransfer'}
+                      </span>
+                      <span className={`order-status-badge ${paymentStatus.toLowerCase()}`}>
+                        {paymentStatus}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Order Body */}
@@ -1033,17 +1051,38 @@ export default function AdminVerifyPayment() {
                     </div>
                   )}
 
+                  {/* COD info banner */}
+                  {isCOD && (
+                    <div style={{
+                      background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)',
+                      border: '1px solid #6ee7b7',
+                      borderRadius: '8px',
+                      padding: '0.625rem 1rem',
+                      margin: '0.75rem 0',
+                      fontSize: '0.8rem',
+                      color: '#065f46',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                    }}>
+                      <i className="fas fa-info-circle"></i>
+                      <span>ຊຳລະສົດ (COD) — ບໍ່ຕ້ອງການຫຼັກຖານໂອນເງິນ, ກົດ "ຢືນຢັນ" ໄດ້ທັນທີ</span>
+                    </div>
+                  )}
+
                   {/* Order Actions */}
                   <div className="order-actions">
-                    <button
-                      className="action-btn primary"
-                      onClick={() => openProofsModal(order)}
-                      disabled={!hasProof}
-                      title={hasProof ? "ເບິ່ງຫຼັກຖານ" : "ບໍ່ມີຫຼັກຖານ"}
-                    >
-                      <i className="fas fa-eye"></i>
-                      <span>ເບິ່ງຫຼັກຖານ</span>
-                    </button>
+                    {!isCOD && (
+                      <button
+                        className="action-btn primary"
+                        onClick={() => openProofsModal(order)}
+                        disabled={!hasProof}
+                        title={hasProof ? "ເບິ່ງຫຼັກຖານ" : "ບໍ່ມີຫຼັກຖານ"}
+                      >
+                        <i className="fas fa-eye"></i>
+                        <span>ເບິ່ງຫຼັກຖານ</span>
+                      </button>
+                    )}
 
                     <button
                       className="action-btn success"
@@ -1070,19 +1109,21 @@ export default function AdminVerifyPayment() {
                       <span>ປະຕິເສດ</span>
                     </button>
 
-                    <button
-                      className="action-btn secondary"
-                      onClick={() => handleDownloadAllProofs(order)}
-                      disabled={downloadingId === order._id || !hasProof}
-                      title={hasProof ? "ດາວໂຫຼດທັງໝົດ" : "ບໍ່ມີຫຼັກຖານ"}
-                    >
-                      {downloadingId === order._id ? (
-                        <i className="fas fa-spinner fa-spin"></i>
-                      ) : (
-                        <i className="fas fa-download"></i>
-                      )}
-                      <span>ZIP</span>
-                    </button>
+                    {!isCOD && (
+                      <button
+                        className="action-btn secondary"
+                        onClick={() => handleDownloadAllProofs(order)}
+                        disabled={downloadingId === order._id || !hasProof}
+                        title={hasProof ? "ດາວໂຫຼດທັງໝົດ" : "ບໍ່ມີຫຼັກຖານ"}
+                      >
+                        {downloadingId === order._id ? (
+                          <i className="fas fa-spinner fa-spin"></i>
+                        ) : (
+                          <i className="fas fa-download"></i>
+                        )}
+                        <span>ZIP</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               );

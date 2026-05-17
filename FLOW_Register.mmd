@@ -1,0 +1,95 @@
+flowchart TD
+    classDef terminal  fill:#1e1b4b,stroke:#6366f1,stroke-width:3px,color:#c7d2fe,font-weight:bold
+    classDef process   fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#a7f3d0
+    classDef decision  fill:#1c1917,stroke:#f59e0b,stroke-width:2px,color:#fcd34d
+    classDef io        fill:#431407,stroke:#f97316,stroke-width:2px,color:#fed7aa
+    classDef error     fill:#450a0a,stroke:#ef4444,stroke-width:2px,color:#fca5a5
+    classDef db        fill:#0c1a2e,stroke:#3b82f6,stroke-width:2px,color:#93c5fd
+
+    START([🚀 ເລີ່ມ Register])
+
+    %% ══════════════════════════════════════════════════
+    %%  FRONTEND — Input & Validation
+    %% ══════════════════════════════════════════════════
+    INPUT[/📝 ກອກຟອມ:\nຊື່, email, password,\nconfirm password, avatar/]
+
+    V1{"ຊື່ / email /\npassword ຫວ່າງ?"}
+    ERR1[/❌ ກະລຸນາ ກອກ ຂໍ້ມູນ ໃຫ້ຄົບ/]
+
+    V2{"email format\nຖືກຕ້ອງ?"}
+    ERR2[/❌ email ຮູບແບບ ບໍ່ຖືກຕ້ອງ/]
+
+    V3{"password\n≥ 6 ໂຕ?"}
+    ERR3[/❌ password ຕ້ອງ ≥ 6 ໂຕ/]
+
+    V4{"password\nກົງກັນ?"}
+    ERR4[/❌ password ບໍ່ກົງກັນ/]
+
+    %% ══════════════════════════════════════════════════
+    %%  BACKEND — Auth Controller
+    %% ══════════════════════════════════════════════════
+    SEND["📤 POST /api/auth/register"]
+
+    CHK_EMAIL{"email ຊ້ຳ\nໃນ DB?"}
+    ERR5[/❌ 400: Email ນີ້ຖືກໃຊ້ແລ້ວ/]
+
+    CHK_AVATAR{"ມີ avatar\nໄຟລ໌?"}
+    UPLOAD["☁️ Upload → Cloudinary\nຮັບ URL + public_id"]
+    DEFAULT["ໃຊ້ avatar URL default"]
+
+    HASH["🔒 bcrypt.hash(password, 10)"]
+
+    SAVE[("💾 ສ້າງ & ບັນທຶກ User ໃໝ່\nD4 · Users")]
+
+    %% ══════════════════════════════════════════════════
+    %%  JWT & Cookie
+    %% ══════════════════════════════════════════════════
+    JWT["🔑 ສ້າງ JWT Token\n(JWT_SECRET, expires 7d)"]
+    COOKIE["🍪 Set httpOnly Cookie\n(token, maxAge = 7d)"]
+
+    %% ══════════════════════════════════════════════════
+    %%  FRONTEND — Post-register
+    %% ══════════════════════════════════════════════════
+    RES[/"✅ 201: User Profile + token"/]
+    REDUX["🗃️ dispatch setUser()\nອັບເດດ Redux state"]
+    REDIRECT["➡️ Redirect → / (Home)"]
+
+    END([🏁 ລົງທະບຽນ ສຳເລັດ])
+
+    %% ══════════════════════════════════════════════════
+    %%  FLOW
+    %% ══════════════════════════════════════════════════
+    START --> INPUT
+
+    INPUT --> V1
+    V1 -->|"ແມ່ນ"| ERR1 --> INPUT
+    V1 -->|"ບໍ່"| V2
+
+    V2 -->|"ບໍ່ຖືກ"| ERR2 --> INPUT
+    V2 -->|"ຖືກ"| V3
+
+    V3 -->|"ບໍ່"| ERR3 --> INPUT
+    V3 -->|"ແມ່ນ"| V4
+
+    V4 -->|"ບໍ່ກົງ"| ERR4 --> INPUT
+    V4 -->|"ກົງ"| SEND
+
+    SEND --> CHK_EMAIL
+    CHK_EMAIL -->|"ຊ້ຳ"| ERR5 --> INPUT
+    CHK_EMAIL -->|"ໃໝ່"| CHK_AVATAR
+
+    CHK_AVATAR -->|"ມີ"| UPLOAD --> HASH
+    CHK_AVATAR -->|"ບໍ່ມີ"| DEFAULT --> HASH
+
+    HASH --> SAVE --> JWT --> COOKIE --> RES
+    RES --> REDUX --> REDIRECT --> END
+
+    %% ══════════════════════════════════════════════════
+    %%  Apply Styles
+    %% ══════════════════════════════════════════════════
+    class START,END terminal
+    class INPUT,RES io
+    class V1,V2,V3,V4,CHK_EMAIL,CHK_AVATAR decision
+    class ERR1,ERR2,ERR3,ERR4,ERR5 error
+    class SEND,UPLOAD,DEFAULT,HASH,JWT,COOKIE,REDUX,REDIRECT process
+    class SAVE db

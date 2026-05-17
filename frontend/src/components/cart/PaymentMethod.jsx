@@ -21,6 +21,8 @@ export default function PaymentMethod() {
 
   const { cartItems = [] } = useSelector(state => state.cart || {});
   const { shippingInfo = {} } = useSelector(state => state.shipping || {});
+
+  const isPickup = shippingInfo.shippingCarrierCode === 'PICKUP';
   const [checkStock] = useCheckStockMutation();
   const [validateCouponApi, { isLoading: validatingCoupon }] = useValidateCouponMutation();
 
@@ -101,10 +103,17 @@ export default function PaymentMethod() {
 
   useEffect(() => {
     if (!cartItems || cartItems.length === 0) {
-      // optional: redirect user if cart is empty
-      // navigate('/');
+      navigate('/cart', { replace: true });
     }
-  }, [cartItems]);
+    // deps [] = ກວດສະເພາະຕອນ mount, ບໍ່ trigger ຫຼັງ clearCart
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Reset method ທີ່ incompatible ຖ້າ carrier ປ່ຽນ
+  useEffect(() => {
+    if (isPickup && method === 'COD') setMethod('');
+    if (!isPickup && method === 'PayAtStore') setMethod('');
+  }, [isPickup]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatKip = (v) => {
     try {
@@ -225,7 +234,7 @@ export default function PaymentMethod() {
         toast.success('ສ້າງຄໍາສັ່ງແລ້ວ');
       }
 
-      if (method === 'COD') {
+      if (method === 'COD' || method === 'PayAtStore') {
         navigate('/me/orders?order_success=true', { replace: true });
         return;
       }
@@ -281,39 +290,89 @@ export default function PaymentMethod() {
                   ວິທີການຊໍາລະທີ່ມີ
                 </h3>
 
-                {/* COD Method */}
-                <motion.div
-                  className={`method-card ${method === 'COD' ? 'selected' : ''}`}
-                  onClick={() => setMethod('COD')}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                >
-                  <div className="method-header">
-                    <div className="method-icon">💰</div>
-                    <div className="method-info">
-                      <div className="method-title">Cash On Delivery (COD)</div>
-                      <div className="method-description">
-                        ຈ່າຍເງິນສົດເມື່ອຮັບສິນຄ້າ. ບໍ່ຕ້ອງໂອນເງິນລ່ວງໜ້າ.
-                      </div>
-                    </div>
-                    <div className="method-radio"></div>
-                  </div>
-                  
-                  <AnimatePresence>
-                    {method === 'COD' && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="method-details"
-                      >
-                        <div className="payment-note">
-                          <strong>ໝາຍເຫດ:</strong> ກະລຸນາເຕົມມະຕິເງິນໃຫ້ພ້ອມເມື່ອຜູ້ຂົນສົ່ງນຳສິນຄ້າມາໃຫ້. ຂອບໃຈທີ່ໃຊ້ບໍລິການ.
+                {/* ── Pay At Store — ສະແດງສະເພາະເມື່ອ PICKUP ── */}
+                <AnimatePresence>
+                  {isPickup && (
+                    <motion.div
+                      key="payatstore"
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className={`method-card ${method === 'PayAtStore' ? 'selected' : ''}`}
+                      onClick={() => setMethod('PayAtStore')}
+                      style={{ borderColor: method === 'PayAtStore' ? '#059669' : undefined }}
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                    >
+                      <div className="method-header">
+                        <div className="method-icon">🏪</div>
+                        <div className="method-info">
+                          <div className="method-title">ຈ່າຍທີ່ໜ້າຮ້ານ</div>
+                          <div className="method-description">
+                            ມາຮັບສິນຄ້າ ແລະ ຈ່າຍເງິນສົດທີ່ໜ້າຮ້ານໂດຍກົງ — ບໍ່ຕ້ອງໂອນລ່ວງໜ້າ
+                          </div>
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
+                        <div className="method-radio"></div>
+                      </div>
+
+                      <AnimatePresence>
+                        {method === 'PayAtStore' && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="method-details"
+                          >
+                            <div className="payment-note" style={{ background: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534' }}>
+                              <strong>📍 ທີ່ຢູ່ຮ້ານ:</strong> ຮ້ານ IT HUBB — ນະຄອນຫຼວງວຽງຈັນ<br />
+                              <strong>⏰ ເວລາທຳການ:</strong> ຈັນ–ສຸກ 8:00–18:00 | ເສົາ 9:00–17:00<br />
+                              <strong>📞 ໂທ:</strong> 021-911-821<br />
+                              <span style={{ marginTop: 6, display: 'block', fontSize: '0.82rem', color: '#15803d' }}>
+                                ⚠️ ກະລຸນາມາຮັບສິນຄ້າພາຍໃນ 3 ວັນ ຫຼັງຈາກສ້າງຄໍາສັ່ງ
+                              </span>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* COD Method — ຊ່ອນເມື່ອ PICKUP */}
+                {!isPickup && (
+                  <motion.div
+                    className={`method-card ${method === 'COD' ? 'selected' : ''}`}
+                    onClick={() => setMethod('COD')}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    <div className="method-header">
+                      <div className="method-icon">💰</div>
+                      <div className="method-info">
+                        <div className="method-title">Cash On Delivery (COD)</div>
+                        <div className="method-description">
+                          ຈ່າຍເງິນສົດເມື່ອຮັບສິນຄ້າ. ບໍ່ຕ້ອງໂອນເງິນລ່ວງໜ້າ.
+                        </div>
+                      </div>
+                      <div className="method-radio"></div>
+                    </div>
+
+                    <AnimatePresence>
+                      {method === 'COD' && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="method-details"
+                        >
+                          <div className="payment-note">
+                            <strong>ໝາຍເຫດ:</strong> ກະລຸນາເຕົມມະຕິເງິນໃຫ້ພ້ອມເມື່ອຜູ້ຂົນສົ່ງນຳສິນຄ້າມາໃຫ້. ຂອບໃຈທີ່ໃຊ້ບໍລິການ.
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                )}
 
                 {/* Bank Transfer Method */}
                 <motion.div
@@ -341,7 +400,7 @@ export default function PaymentMethod() {
                         exit={{ height: 0, opacity: 0 }}
                         className="method-details"
                       >
-                       
+
                       </motion.div>
                     )}
                   </AnimatePresence>

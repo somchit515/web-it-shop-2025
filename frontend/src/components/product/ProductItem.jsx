@@ -1,12 +1,12 @@
-// src/components/product/ProductItem.jsx
 import React, { useMemo, useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import StarRatings from "react-star-ratings";
 import PropTypes from "prop-types";
 import toast from "react-hot-toast";
-import { setcartItems } from "../redux/features/cartSlice"; // <-- ปรับ path ถ้าจำเป็น
+import { setcartItems } from "../redux/features/cartSlice";
 
+/* ─── helpers ─────────────────────────────────────────────── */
 const DEFAULT_IMG = "/images/default_product.png";
 
 const formatLAK = (val) => {
@@ -18,7 +18,7 @@ const formatLAK = (val) => {
       maximumFractionDigits: 0,
     }).format(n);
   } catch {
-    return `₭ ${n.toLocaleString()}`;
+    return `₭${n.toLocaleString()}`;
   }
 };
 
@@ -34,16 +34,248 @@ const resolveImg = (imgObjOrUrl) => {
   return `/uploads/products/${url}`;
 };
 
+/* ─── CSS ─────────────────────────────────────────────────── */
+if (typeof document !== "undefined" && !document.getElementById("pi-styles")) {
+  const s = document.createElement("style");
+  s.id = "pi-styles";
+  s.innerHTML = `
+@keyframes pi-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes pi-pop {
+  0%   { transform: scale(.85); opacity: 0; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+/* ── Card Shell ── */
+.pi-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #eef0f6;
+  overflow: hidden;
+  transition: transform .22s cubic-bezier(.2,.9,.2,1),
+              box-shadow .22s, border-color .22s;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  cursor: pointer;
+}
+.pi-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 48px rgba(15,23,42,.10), 0 4px 12px rgba(15,23,42,.05);
+  border-color: #ddd6fe;
+}
+
+/* ── Image Area ── */
+.pi-img-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 4.2;
+  background: #f6f7fb;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.pi-img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  padding: 14px;
+  transition: transform .38s cubic-bezier(.2,.9,.2,1);
+}
+.pi-card:hover .pi-img { transform: scale(1.08); }
+
+/* skeleton */
+.pi-skeleton {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg,#eef2f6 0%,#f7fafc 50%,#eef2f6 100%);
+  background-size: 200% 100%;
+  animation: pi-shimmer 1.3s linear infinite;
+  z-index: 2;
+}
+
+/* hover overlay */
+.pi-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top,
+    rgba(15,23,42,.6) 0%,
+    rgba(15,23,42,.1) 50%,
+    transparent 100%);
+  opacity: 0;
+  transition: opacity .25s;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 16px;
+}
+.pi-card:hover .pi-overlay { opacity: 1; }
+
+.pi-overlay-btn {
+  background: rgba(255,255,255,.95);
+  color: #4f46e5;
+  border: none;
+  border-radius: 999px;
+  padding: 7px 20px;
+  font-size: .75rem;
+  font-weight: 800;
+  cursor: pointer;
+  transform: translateY(10px);
+  transition: transform .22s, background .18s, color .18s;
+  letter-spacing: .02em;
+}
+.pi-card:hover .pi-overlay-btn { transform: translateY(0); }
+.pi-overlay-btn:hover { background: #4f46e5; color: #fff; }
+
+/* ── Badges ── */
+.pi-badge {
+  position: absolute;
+  top: 10px; left: 10px;
+  z-index: 4;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: .65rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+  animation: pi-pop .2s ease;
+}
+.pi-badge.sold-out {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+.pi-badge.sale {
+  background: linear-gradient(135deg,#f43f5e,#e11d48);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(244,63,94,.35);
+}
+
+/* ── Quick Cart ── */
+.pi-quick-cart {
+  position: absolute;
+  top: 10px; right: 10px;
+  z-index: 4;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,.14);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .88rem;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(.6) rotate(-20deg);
+  transition: opacity .2s, transform .22s cubic-bezier(.2,.9,.2,1), background .15s;
+}
+.pi-card:hover .pi-quick-cart {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+.pi-quick-cart:hover { background: #4f46e5; }
+.pi-quick-cart:disabled { opacity: .35 !important; cursor: not-allowed; }
+
+/* ── Body ── */
+.pi-body {
+  padding: 22px 18px 26px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 8px;
+}
+
+/* ── Name: 2-line clamp ── */
+.pi-name {
+  font-size: .83rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: calc(2 * 1.4 * 0.83rem);
+  text-decoration: none;
+  transition: color .15s;
+}
+.pi-name:hover { color: #4f46e5; }
+
+/* ── Rating ── */
+.pi-rating {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.pi-review-count {
+  font-size: .67rem;
+  color: #94a3b8;
+}
+
+/* ── Footer ── */
+.pi-footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* ── Price ── */
+.pi-price { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pi-price-main {
+  font-size: .92rem;
+  font-weight: 900;
+  color: #e11d48;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pi-price-main.no-sale { color: #1e293b; }
+.pi-price-original {
+  font-size: .68rem;
+  color: #cbd5e1;
+  text-decoration: line-through;
+  line-height: 1;
+}
+
+/* ── View Button ── */
+.pi-btn-view {
+  flex-shrink: 0;
+  background: #f1f0fe;
+  color: #4f46e5;
+  border: none;
+  border-radius: 10px;
+  padding: 7px 13px;
+  font-size: .72rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .16s, color .16s, box-shadow .16s, transform .16s;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  letter-spacing: .01em;
+}
+.pi-btn-view:hover {
+  background: #4f46e5;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(79,70,229,.3);
+  transform: translateY(-1px);
+}
+`;
+  document.head.appendChild(s);
+}
+
+/* ─── Component ───────────────────────────────────────────── */
 const ProductItem = ({ product, columnSize }) => {
   const dispatch = useDispatch();
-
-  const [hover, setHover] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
-  const [imgError, setImgError] = useState(false);
+  const [imgError, setImgError]   = useState(false);
 
   const imgSrc = useMemo(() => {
     if (!product) return DEFAULT_IMG;
-    const first = product.images && product.images.length > 0 ? product.images[0] : null;
+    const first = product.images?.length > 0 ? product.images[0] : null;
     return resolveImg(first) || DEFAULT_IMG;
   }, [product]);
 
@@ -52,277 +284,102 @@ const ProductItem = ({ product, columnSize }) => {
     e.currentTarget.src = DEFAULT_IMG;
   }, []);
 
-  const handleImgLoad = useCallback(() => {
-    setImgLoaded(true);
-  }, []);
+  const productName = product?.name || "Untitled";
+  const productId   = product?._id || "";
+  const inStock     = Number(product?.stock) > 0;
+  const salePrice   = product?.salePrice ?? null;
+  const discountPct = salePrice && product?.price
+    ? Math.round((1 - salePrice / product.price) * 100) : 0;
 
-  const productName = product?.name || "Untitled product";
-  const productId = product?._id || "";
-  const inStock = Number(product?.stock) > 0;
-  const salePrice = product?.salePrice ?? null;
-
-  // inject skeleton keyframes and simple slide-in for add button once
-  if (typeof document !== "undefined" && !document.getElementById("productitem-keyframes")) {
-    const style = document.createElement("style");
-    style.id = "productitem-keyframes";
-    style.innerHTML = `
-      @keyframes skeleton-shimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-      }
-      @keyframes slide-fade-in {
-        from { transform: translateY(-6px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  // hover transform + shadow
-  const wrapperStyle = {
-    transition: "transform .18s cubic-bezier(.2,.9,.2,1), box-shadow .18s cubic-bezier(.2,.9,.2,1)",
-    transform: hover ? "translateY(-6px)" : "translateY(0)",
-    boxShadow: hover
-      ? "0 14px 34px rgba(2,6,23,0.20), 0 8px 16px rgba(2,6,23,0.08)"
-      : "0 2px 6px rgba(2,6,23,0.06), 0 1px 3px rgba(2,6,23,0.04)",
-    border: "1px solid #e6eef8",
-    background: "linear-gradient(180deg,#ffffff,#fbfdff)",
-    willChange: "transform",
-  };
-
-  // image container reduced height to leave space for title
-  const imageContainerStyle = {
-    height: 180,
-    background: "#fff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    borderBottom: "1px solid #f3f4f6",
-    overflow: "hidden",
-  };
-
-  // skeleton styles (shimmer)
-  const skeletonBase = {
-    position: "absolute",
-    inset: 0,
-    display: imgLoaded ? "none" : "block",
-    background: "linear-gradient(90deg, #eef2f6 0%, #f7fafc 50%, #eef2f6 100%)",
-    backgroundSize: "200% 100%",
-    animation: "skeleton-shimmer 1.2s linear infinite",
-    zIndex: 2,
-  };
-
-  // Title clamp: 2 lines with ellipsis
-  const titleStyle = {
-    display: "-webkit-box",
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: "vertical",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    lineHeight: "1.15",
-    minHeight: 42,
-    color: "#0f172a",
-    fontSize: 15,
-    fontWeight: 700,
-    marginBottom: 6,
-  };
-
-  // Add-to-cart button style (absolute top-right inside image area)
-  const addBtnStyle = {
-    position: "absolute",
-    right: 10,
-    top: 10,
-    zIndex: 5,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    border: "none",
-    background: hover ? "#0f63ff" : "rgba(15,99,255,0.9)",
-    color: "#fff",
-    cursor: inStock ? "pointer" : "not-allowed",
-    boxShadow: hover ? "0 6px 18px rgba(2,6,23,0.18)" : "0 4px 12px rgba(2,6,23,0.08)",
-    transform: hover ? "translateY(0)" : "translateY(-6px)",
-    opacity: hover ? 1 : 0,
-    transition: "all .18s ease",
-    animation: hover ? "slide-fade-in .18s ease" : "none",
-  };
-
-  // handler to add to cart
   const handleAddToCart = (e) => {
     e.preventDefault();
-    e.stopPropagation(); // prevent Link navigation
-
-    if (!product) return;
-    if (!inStock) {
-      toast.error("ສິນຄ້າໝົດ");
-      return;
-    }
-
-    const cartItem = {
+    e.stopPropagation();
+    if (!inStock) return toast.error("ສິນຄ້າໝົດ");
+    dispatch(setcartItems({
       product: productId,
       name: productName,
       price: salePrice ?? product.price,
       image: imgSrc,
       stock: product.stock ?? 0,
       quantity: 1,
-    };
-
-    try {
-      dispatch(setcartItems(cartItem));
-      toast.success("ເພີ່ມໄປກະຕ່າ");
-    } catch (err) {
-      console.error(err);
-      toast.error("ເກີດຂໍ້ຜິດພາດ");
-    }
+    }));
+    toast.success("ເພີ່ມໄປກະຕ່າ 🛒");
   };
 
-  return (
-    <div
-      className={`col-sm-12 col-md-6 col-lg-${columnSize} my-3`}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      onFocus={() => setHover(true)}
-      onBlur={() => setHover(false)}
-    >
-      <div
-        className="card h-100 rounded overflow-hidden"
-        style={wrapperStyle}
-        role="group"
-        aria-label={productName}
-      >
-        <Link
-          to={`/product/${productId}`}
-          className="d-block"
-          aria-label={`View ${productName}`}
-          title={productName}
-        >
-          <div style={imageContainerStyle}>
-            {/* skeleton shown until image loads */}
-            <div style={skeletonBase} aria-hidden="true" />
+  const colClass = columnSize === "auto"
+    ? ""
+    : `col-sm-6 col-md-4 col-lg-${columnSize} my-2`;
 
-            {/* Quick add-to-cart button (top-right) */}
+  return (
+    <div className={colClass} style={columnSize === "auto" ? {} : { display: "flex" }}>
+      <div className="pi-card" style={{ width: "100%" }}>
+
+        {/* image */}
+        <Link to={`/product/${productId}`} className="d-block" tabIndex={-1}>
+          <div className="pi-img-wrap">
+            {!imgLoaded && !imgError && <div className="pi-skeleton" aria-hidden="true" />}
+
+            {!inStock && <span className="pi-badge sold-out">ໝົດ</span>}
+            {salePrice && inStock && discountPct > 0 && (
+              <span className="pi-badge sale">-{discountPct}%</span>
+            )}
+
             <button
               type="button"
+              className="pi-quick-cart"
               onClick={handleAddToCart}
-              aria-label={inStock ? `Add ${productName} to cart` : `${productName} out of stock`}
-              title={inStock ? "ເພີ່ມໄປກະຕ່າ" : "ສິນຄ້າໝົດ"}
-              style={addBtnStyle}
               disabled={!inStock}
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              {/* simple cart icon (SVG) */}
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M6 6h15l-1.5 9h-11L6 6z" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="10" cy="20" r="1" fill="white" />
-                <circle cx="18" cy="20" r="1" fill="white" />
-              </svg>
-            </button>
-
-            {/* stock/sale badge */}
-            {!inStock && (
-              <div
-                style={{
-                  position: "absolute",
-                  left: 10,
-                  top: 10,
-                  background: "rgba(220,38,38,0.95)",
-                  color: "#fff",
-                  padding: "4px 8px",
-                  borderRadius: 6,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  zIndex: 4,
-                }}
-                aria-hidden="true"
-              >
-                ສິນຄ້າໝົດ
-              </div>
-            )}
-
-            {salePrice && inStock && (
-              <div
-                style={{
-                  position: "absolute",
-                  left: 10,
-                  top: 10,
-                  background: "#0f63ff",
-                  color: "#fff",
-                  padding: "4px 8px",
-                  borderRadius: 6,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  zIndex: 4,
-                }}
-                aria-hidden="true"
-              >
-                ຂາຍລູກຄ້າ
-              </div>
-            )}
+              title={inStock ? "ເພີ່ມໄປກະຕ່າ" : "ສິນຄ້າໝົດ"}
+            >🛒</button>
 
             <img
               src={imgError ? DEFAULT_IMG : imgSrc}
               alt={productName}
               loading="lazy"
-              onLoad={handleImgLoad}
+              className="pi-img"
+              onLoad={() => setImgLoaded(true)}
               onError={handleImgError}
-              style={{
-                width: "100%",
-                maxHeight: "100%",
-                objectFit: "contain",
-                zIndex: 3,
-                display: "block",
-              }}
             />
+
+            <div className="pi-overlay">
+              <button type="button" className="pi-overlay-btn">ເບິ່ງລາຍລະອຽດ →</button>
+            </div>
           </div>
         </Link>
 
-        <div className="card-body d-flex flex-column" style={{ padding: "16px 18px" }}>
-          <h6 className="card-title" style={titleStyle}>
-            <Link to={`/product/${productId}`} className="text-dark text-decoration-none" title={productName}>
-              {productName}
-            </Link>
-          </h6>
+        {/* body */}
+        <div className="pi-body">
+          <Link to={`/product/${productId}`} className="pi-name" title={productName}>
+            {productName}
+          </Link>
 
-          <div className="d-flex align-items-center mb-2">
+          <div className="pi-rating">
             <StarRatings
               rating={Number(product?.rating) || 0}
-              starRatedColor="#ffb229"
+              starRatedColor="#f59e0b"
               numberOfStars={5}
               name={`rating-${productId}`}
-              starDimension="18px"
+              starDimension="13px"
               starSpacing="1px"
             />
-            <small className="text-muted ms-2">({product?.numOfReviews || 0})</small>
+            <span className="pi-review-count">({product?.numOfReviews || 0})</span>
           </div>
 
-          <div className="mt-auto d-flex justify-content-between align-items-center" style={{ gap: 12 }}>
-            <div style={{ fontWeight: 800, fontSize: 16, color: salePrice ? "#dc2626" : "#0b1220" }}>
+          <div className="pi-footer">
+            <div className="pi-price">
               {salePrice ? (
-                <span>
-                  <span style={{ textDecoration: "line-through", color: "#6b7280", fontWeight: 600, marginRight: 8 }}>
-                    {formatLAK(product?.price)}
-                  </span>
-                  <span>{formatLAK(salePrice)}</span>
-                </span>
+                <>
+                  <span className="pi-price-original">{formatLAK(product?.price)}</span>
+                  <span className="pi-price-main">{formatLAK(salePrice)}</span>
+                </>
               ) : (
-                formatLAK(product?.price)
+                <span className="pi-price-main no-sale">{formatLAK(product?.price)}</span>
               )}
             </div>
-
-            <Link
-              to={`/product/${productId}`}
-              className="btn btn-sm btn-primary"
-              aria-label={`Open ${productName} details`}
-              style={{ fontWeight: 700, padding: "6px 12px" }}
-            >
-              ເບີ່ງ
-            </Link>
+            <Link to={`/product/${productId}`} className="pi-btn-view">ເບິ່ງ <span style={{fontSize:".8em",opacity:.7}}>→</span></Link>
           </div>
         </div>
+
       </div>
     </div>
   );
@@ -330,20 +387,18 @@ const ProductItem = ({ product, columnSize }) => {
 
 ProductItem.propTypes = {
   product: PropTypes.shape({
-    _id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-    name: PropTypes.string,
-    images: PropTypes.array,
-    price: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-    salePrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-    rating: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    _id:          PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    name:         PropTypes.string,
+    images:       PropTypes.array,
+    price:        PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    salePrice:    PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    rating:       PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     numOfReviews: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-    stock: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    stock:        PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   }).isRequired,
   columnSize: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
 };
 
-ProductItem.defaultProps = {
-  columnSize: 4,
-};
+ProductItem.defaultProps = { columnSize: 4 };
 
 export default React.memo(ProductItem);

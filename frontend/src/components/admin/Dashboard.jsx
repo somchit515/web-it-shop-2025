@@ -1,21 +1,18 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import AdminLayout from '../layout/AdminLayout';
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import SaleChart from '../charts/SaleChart';
 import { useLazyGetDashboardSalesQuery } from '../redux/api/OrderApi';
 import { clearUser } from '../redux/features/userSlice';
-import Loader from "../layout/Loader";
-import toast from "react-hot-toast";
+import Loader from '../layout/Loader';
+import toast from 'react-hot-toast';
 import { DateTime } from 'luxon';
 
-// ตั้งค่า timezone และรูปแบบตัวเลข
 const TZ = 'Asia/Vientiane';
-const USE_EU_FORMAT = false;
 
-// เวอร์ชัน timezone-aware
 function startOfDayInZone(date) {
   return DateTime.fromJSDate(new Date(date))
     .setZone(TZ, { keepLocalTime: true })
@@ -23,7 +20,6 @@ function startOfDayInZone(date) {
     .toUTC()
     .toISO();
 }
-
 function endOfDayInZone(date) {
   return DateTime.fromJSDate(new Date(date))
     .setZone(TZ, { keepLocalTime: true })
@@ -32,22 +28,18 @@ function endOfDayInZone(date) {
     .toISO();
 }
 
-// ฟังก์ชันฟอร์แมตราคา
-function formatCurrencyLAK(value) {
-  const num = Number(value || 0);
-  if (!USE_EU_FORMAT) {
-    return num.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  } else {
-    const en = num.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return en.replace(/,/g, '#').replace(/\./, ',').replace(/#/g, '.');
-  }
+function fmtLAK(value) {
+  const n = Number(value || 0);
+  return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
+
+const PRESETS = [
+  { id: 'today',  label: 'ມື້ນີ້' },
+  { id: '7d',    label: '7 ວັນ' },
+  { id: '30d',   label: '30 ວັນ' },
+  { id: 'mtd',   label: 'ເດືອນນີ້' },
+  { id: 'ytd',   label: 'ປີນີ້' },
+];
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -55,37 +47,35 @@ function Dashboard() {
 
   const [startDate, setStartdate] = useState(new Date());
   const [endDate, setEnddate] = useState(new Date());
+  const [activePreset, setActivePreset] = useState('today');
+  const [chartMode, setChartMode] = useState('daily');
 
-  const [getDashboardSales, { data: salesData, error, isLoading }] = useLazyGetDashboardSalesQuery();
+  const [getDashboardSales, { data: salesData, error, isLoading }] =
+    useLazyGetDashboardSalesQuery();
 
-  // ✅ ป้องกัน Toast Spam: ใช้ ref เก็บสถานะว่าเคยแสดง toast ไปแล้ว
   const errorShownRef = useRef(false);
   const initialFetchRef = useRef(false);
 
-  // Initial fetch ครั้งเดียวเมื่อ mount
   useEffect(() => {
     if (initialFetchRef.current) return;
     initialFetchRef.current = true;
-    const s = startOfDayInZone(startDate);
-    const e = endOfDayInZone(endDate);
-    getDashboardSales({ startDate: s, endDate: e });
+    // Default: today
+    const now = new Date();
+    const s = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const e = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    setStartdate(s);
+    setEnddate(e);
+    getDashboardSales({ startDate: startOfDayInZone(s), endDate: endOfDayInZone(e) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // จัดการ error แบบไม่ spam toast + redirect ถ้า 401
   useEffect(() => {
-    if (!error) {
-      errorShownRef.current = false;
-      return;
-    }
+    if (!error) { errorShownRef.current = false; return; }
     if (errorShownRef.current) return;
     errorShownRef.current = true;
-
     const status = error?.status;
-    const msg = error?.data?.message || 'Failed to fetch dashboard sales.';
-
-    // ถ้า session หมดอายุ → clear state แล้ว redirect ไปหน้า login
-    if (status === 401 || /login|ເຂົ້າສູ່ລະບົບ/i.test(msg)) {
+    const msg = error?.data?.message || 'ໂຫລດ dashboard ບໍ່ໄດ້';
+    if (status === 401) {
       toast.error('ເຊດຊັນໝົດອາຍຸ ກະລຸນາເຂົ້າສູ່ລະບົບໃໝ່');
       dispatch(clearUser());
       setTimeout(() => navigate('/login', { replace: true }), 800);
@@ -99,318 +89,193 @@ function Dashboard() {
     toast.error(msg);
   }, [error, dispatch, navigate]);
 
-  const submitHandler = () => {
-    if (!startDate || !endDate || startDate > endDate) {
-      return toast.error("Please select a valid date range.");
+  // ── Quick preset ──────────────────────────────────────────────
+  const applyPreset = (preset) => {
+    const now = new Date();
+    let s, e;
+    switch (preset) {
+      case 'today':
+        s = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        e = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case '7d':
+        s = new Date(now.getTime() - 6 * 86400000);
+        e = new Date();
+        break;
+      case '30d':
+        s = new Date(now.getTime() - 29 * 86400000);
+        e = new Date();
+        break;
+      case 'mtd':
+        s = new Date(now.getFullYear(), now.getMonth(), 1);
+        e = new Date();
+        break;
+      case 'ytd':
+        s = new Date(now.getFullYear(), 0, 1);
+        e = new Date();
+        break;
+      default: return;
     }
-    errorShownRef.current = false; // reset เพื่อให้ toast ใหม่ได้ถ้ามี error
-    const s = startOfDayInZone(startDate);
-    const e = endOfDayInZone(endDate);
-    getDashboardSales({ startDate: s, endDate: e });
+    setStartdate(s);
+    setEnddate(e);
+    setActivePreset(preset);
+    errorShownRef.current = false;
+    getDashboardSales({ startDate: startOfDayInZone(s), endDate: endOfDayInZone(e) });
   };
 
+  const submitHandler = () => {
+    if (!startDate || !endDate || startDate > endDate)
+      return toast.error('ກະລຸນາເລືອກຊ່ວງວັນທີ່ຖືກຕ້ອງ');
+    setActivePreset(null);
+    errorShownRef.current = false;
+    getDashboardSales({ startDate: startOfDayInZone(startDate), endDate: endOfDayInZone(endDate) });
+  };
+
+  // ── Derived stats ─────────────────────────────────────────────
   const chartSales = salesData?.sales || salesData?.saleData || [];
   const totalSales = Number(salesData?.totalSales ?? 0);
   const totalOrders = Number(salesData?.totalNumOrders ?? salesData?.totalOrders ?? 0);
+  const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
+  const bestDay = chartSales.length > 0
+    ? chartSales.reduce((best, d) => (d.sales > (best?.sales || 0) ? d : best), chartSales[0])
+    : null;
 
   return (
     <>
       <style>{`
-        /* Dashboard Specific Styles */
-        .dashboard-container {
-          padding: 0;
-          height: 100%;
+        .db-container { padding: 0; }
+        .db-title {
+          font-size: 1.75rem; font-weight: 700; color: #1e293b; margin-bottom: 0.25rem;
+          display: flex; align-items: center; gap: 10px;
         }
+        .db-subtitle { font-size: 0.95rem; color: #64748b; margin-bottom: 1.5rem; }
 
-        .dashboard-header {
-          margin-bottom: 2rem;
+        /* Preset buttons */
+        .preset-bar {
+          display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem;
+          background: white; padding: 1rem 1.25rem;
+          border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          border: 1px solid rgba(0,0,0,0.05); align-items: center;
         }
-
-        .dashboard-title {
-          font-size: 1.75rem;
-          font-weight: 700;
-          color: #1e293b;
-          margin-bottom: 0.5rem;
+        .preset-label { font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-right: 4px; }
+        .preset-btn {
+          padding: 6px 16px; border-radius: 999px; border: 1.5px solid #e2e8f0;
+          background: white; color: #475569; font-size: 0.85rem; font-weight: 600;
+          cursor: pointer; transition: all 0.18s ease; white-space: nowrap;
         }
-
-        .dashboard-subtitle {
-          font-size: 0.95rem;
-          color: #64748b;
-        }
-
-        /* Date Filter Section */
-        .filter-section {
-          background: white;
-          border-radius: 16px;
-          padding: 1.5rem;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-          margin-bottom: 1.5rem;
-          border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        .filter-title {
-          font-size: 1rem;
-          font-weight: 600;
-          color: #334155;
-          margin-bottom: 1rem;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .filter-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1rem;
-          align-items: end;
-        }
-
-        .date-field {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .date-label {
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: #475569;
-        }
-
-        .react-datepicker-wrapper {
-          width: 100%;
-        }
-
-        .react-datepicker__input-container input {
-          width: 100%;
-          padding: 12px 16px;
-          border: 2px solid #e2e8f0;
-          border-radius: 12px;
-          font-size: 0.95rem;
-          transition: all 0.2s ease;
-          background: white;
-          color: #1e293b;
-        }
-
-        .react-datepicker__input-container input:focus {
-          outline: none;
-          border-color: #667eea;
-          box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-        }
-
-        .btn-fetch {
-          padding: 12px 32px;
+        .preset-btn:hover { border-color: #667eea; color: #667eea; }
+        .preset-btn.active {
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border: none;
-          border-radius: 12px;
-          font-size: 0.95rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          height: fit-content;
+          color: white; border-color: transparent;
+          box-shadow: 0 4px 12px rgba(102,126,234,0.35);
         }
+        .preset-divider { width: 1px; height: 24px; background: #e2e8f0; margin: 0 6px; }
 
+        /* Date filter row */
+        .filter-row {
+          display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
+          background: white; padding: 1.25rem;
+          border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          border: 1px solid rgba(0,0,0,0.05); margin-bottom: 1.5rem;
+        }
+        .date-field { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 160px; }
+        .date-label { font-size: 0.8rem; font-weight: 600; color: #475569; }
+        .react-datepicker-wrapper { width: 100%; }
+        .react-datepicker__input-container input {
+          width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0;
+          border-radius: 10px; font-size: 0.9rem; transition: all 0.2s ease;
+          background: white; color: #1e293b;
+        }
+        .react-datepicker__input-container input:focus {
+          outline: none; border-color: #667eea;
+          box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
+        }
+        .btn-fetch {
+          padding: 10px 28px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white; border: none; border-radius: 10px; font-size: 0.9rem;
+          font-weight: 600; cursor: pointer; transition: all 0.25s ease;
+          box-shadow: 0 4px 12px rgba(102,126,234,0.28);
+          display: flex; align-items: center; gap: 8px; white-space: nowrap;
+        }
         .btn-fetch:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+          transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.4);
         }
+        .btn-fetch:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
-        .btn-fetch:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-          transform: none;
-        }
-
-        /* Stats Cards */
+        /* Stats grid */
         .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 1.5rem;
-          margin-bottom: 2rem;
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 1.25rem; margin-bottom: 1.5rem;
         }
-
         .stat-card {
-          background: white;
-          border-radius: 16px;
-          padding: 1.5rem;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-          border: 1px solid rgba(0, 0, 0, 0.05);
-          transition: all 0.3s ease;
-          position: relative;
-          overflow: hidden;
+          background: white; border-radius: 16px; padding: 1.5rem;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          border: 1px solid rgba(0,0,0,0.05); position: relative; overflow: hidden;
+          transition: all 0.25s ease;
         }
-
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
         .stat-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 4px;
+          content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
           background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
         }
-
-        .stat-card.success::before {
-          background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        .stat-card.green::before  { background: linear-gradient(90deg, #10b981, #059669); }
+        .stat-card.red::before    { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        .stat-card.amber::before  { background: linear-gradient(90deg, #f59e0b, #d97706); }
+        .stat-card.blue::before   { background: linear-gradient(90deg, #3b82f6, #1d4ed8); }
+        .stat-icon-wrap {
+          width: 44px; height: 44px; border-radius: 12px; display: flex;
+          align-items: center; justify-content: center; font-size: 1.25rem;
+          margin-bottom: 0.75rem;
         }
-
-        .stat-card.danger::before {
-          background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        .stat-icon-wrap.green  { background: rgba(16,185,129,0.1); color: #10b981; }
+        .stat-icon-wrap.red    { background: rgba(239,68,68,0.1); color: #ef4444; }
+        .stat-icon-wrap.amber  { background: rgba(245,158,11,0.1); color: #f59e0b; }
+        .stat-icon-wrap.blue   { background: rgba(59,130,246,0.1); color: #3b82f6; }
+        .stat-lbl { font-size: 0.8rem; font-weight: 600; color: #64748b; margin-bottom: 4px; }
+        .stat-val {
+          font-size: 1.6rem; font-weight: 700; color: #1e293b; line-height: 1.2;
+          word-break: break-all;
         }
+        .stat-sub { font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
 
-        .stat-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-        }
-
-        .stat-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 1rem;
-        }
-
-        .stat-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.5rem;
-        }
-
-        .stat-icon.success {
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
-          color: #10b981;
-        }
-
-        .stat-icon.danger {
-          background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
-          color: #ef4444;
-        }
-
-        .stat-trend {
-          font-size: 0.75rem;
-          font-weight: 600;
-          padding: 4px 8px;
-          border-radius: 6px;
-          background: rgba(102, 126, 234, 0.1);
-          color: #667eea;
-        }
-
-        .stat-label {
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: #64748b;
-          margin-bottom: 0.5rem;
-        }
-
-        .stat-value {
-          font-size: 2rem;
-          font-weight: 700;
-          color: #1e293b;
-          line-height: 1.2;
-        }
-
-        .stat-value.success {
-          color: #10b981;
-        }
-
-        .stat-value.danger {
-          color: #ef4444;
-        }
-
-        .stat-description {
-          font-size: 0.8rem;
-          color: #94a3b8;
-          margin-top: 0.5rem;
-        }
-
-        /* Chart Section */
+        /* Chart section */
         .chart-section {
-          background: white;
-          border-radius: 16px;
-          padding: 1.5rem;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-          border: 1px solid rgba(0, 0, 0, 0.05);
-          margin-bottom: 2rem;
+          background: white; border-radius: 16px; padding: 1.5rem;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          border: 1px solid rgba(0,0,0,0.05);
         }
-
         .chart-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-          padding-bottom: 1rem;
-          border-bottom: 1px solid #e2e8f0;
+          display: flex; justify-content: space-between; align-items: center;
+          margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0;
+          flex-wrap: wrap; gap: 12px;
         }
-
         .chart-title {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: #1e293b;
-          display: flex;
-          align-items: center;
-          gap: 10px;
+          font-size: 1.1rem; font-weight: 700; color: #1e293b;
+          display: flex; align-items: center; gap: 8px;
         }
-
-        .chart-subtitle {
-          font-size: 0.875rem;
-          color: #64748b;
+        .chart-mode-tabs {
+          display: flex; gap: 4px; background: #f1f5f9;
+          border-radius: 10px; padding: 4px;
+        }
+        .chart-mode-tab {
+          padding: 6px 18px; border-radius: 8px; border: none; background: transparent;
+          font-size: 0.85rem; font-weight: 600; color: #64748b;
+          cursor: pointer; transition: all 0.18s ease;
+        }
+        .chart-mode-tab.active {
+          background: white; color: #667eea;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
 
         /* Responsive */
-        @media (max-width: 991.98px) {
-          .filter-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .stats-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .dashboard-title {
-            font-size: 1.5rem;
-          }
+        @media (max-width: 768px) {
+          .stats-grid { grid-template-columns: 1fr 1fr; }
+          .preset-bar { gap: 6px; }
+          .filter-row { flex-direction: column; }
+          .btn-fetch { width: 100%; justify-content: center; }
         }
-
-        @media (max-width: 767.98px) {
-          .filter-section {
-            padding: 1rem;
-          }
-
-          .chart-section {
-            padding: 1rem;
-          }
-
-          .stat-card {
-            padding: 1rem;
-          }
-
-          .stat-value {
-            font-size: 1.5rem;
-          }
-
-          .dashboard-header {
-            margin-bottom: 1rem;
-          }
-        }
-
-        @media (max-width: 575.98px) {
-          .dashboard-title {
-            font-size: 1.25rem;
-          }
-
-          .btn-fetch {
-            width: 100%;
-          }
+        @media (max-width: 480px) {
+          .stats-grid { grid-template-columns: 1fr; }
         }
       `}</style>
 
@@ -420,118 +285,133 @@ function Dashboard() {
             <Loader />
           </div>
         ) : null}
-        <div className="dashboard-container" style={isLoading ? { display: 'none' } : undefined}>
-          {/* Dashboard Header */}
-          <div className="dashboard-header">
-            <h1 className="dashboard-title">
-              <i className="fas fa-chart-line" style={{ color: '#667eea' }}></i> Dashboard
-            </h1>
-            <p className="dashboard-subtitle">
-              ພາບລວມຍອດຂາຍ ແລະ ສະຖິຕິລະບົບ
-            </p>
-          </div>
 
-          {/* Filter Section */}
-          <div className="filter-section">
-            <div className="filter-title">
-              <i className="fas fa-calendar-alt" style={{ color: '#667eea' }}></i>
-              ເລືອກຊ່ວງເວລາ
-            </div>
-            <div className="filter-grid">
-              <div className="date-field">
-                <label className="date-label">ວັນທີ່ເລີ່ມຕົ້ນ</label>
-                <DatePicker
-                  selected={startDate}
-                  onChange={(date) => setStartdate(date)}
-                  selectsStart
-                  startDate={startDate}
-                  endDate={endDate}
-                  className='form-control'
-                  dateFormat="dd/MM/yyyy"
-                />
-              </div>
-              
-              <div className="date-field">
-                <label className="date-label">ວັນທີ່ສິ້ນສຸດ</label>
-                <DatePicker
-                  selected={endDate}
-                  onChange={(date) => setEnddate(date)}
-                  selectsEnd
-                  startDate={startDate}
-                  endDate={endDate}
-                  minDate={startDate}
-                  className='form-control'
-                  dateFormat="dd/MM/yyyy"
-                />
-              </div>
+        <div className="db-container" style={isLoading ? { display: 'none' } : undefined}>
 
+          {/* Header */}
+          <h1 className="db-title">
+            <i className="fas fa-chart-line" style={{ color: '#667eea' }} />
+            Dashboard
+          </h1>
+          <p className="db-subtitle">ພາບລວມຍອດຂາຍ ແລະ ສະຖິຕິລະບົບ</p>
+
+          {/* Quick Presets */}
+          <div className="preset-bar">
+            <span className="preset-label">ດ່ວນ:</span>
+            {PRESETS.map((p) => (
               <button
-                className="btn-fetch"
-                onClick={submitHandler}
-                disabled={isLoading || !startDate || !endDate || startDate > endDate}
+                key={p.id}
+                className={`preset-btn${activePreset === p.id ? ' active' : ''}`}
+                onClick={() => applyPreset(p.id)}
+                disabled={isLoading}
               >
-                <i className="fas fa-search"></i>
-                {isLoading ? 'ກຳລັງໂຫລດ...' : 'ຄົ້ນຫາ'}
+                {p.label}
               </button>
-            </div>
+            ))}
+            <div className="preset-divider" />
+            <span className="preset-label" style={{ marginLeft: 4 }}>ກຳໜົດເອງ:</span>
           </div>
 
-          {/* Stats Cards */}
+          {/* Custom date range */}
+          <div className="filter-row">
+            <div className="date-field">
+              <label className="date-label">ວັນທີ່ເລີ່ມຕົ້ນ</label>
+              <DatePicker
+                selected={startDate}
+                onChange={(d) => { setStartdate(d); setActivePreset(null); }}
+                selectsStart
+                startDate={startDate}
+                endDate={endDate}
+                dateFormat="dd/MM/yyyy"
+              />
+            </div>
+            <div className="date-field">
+              <label className="date-label">ວັນທີ່ສິ້ນສຸດ</label>
+              <DatePicker
+                selected={endDate}
+                onChange={(d) => { setEnddate(d); setActivePreset(null); }}
+                selectsEnd
+                startDate={startDate}
+                endDate={endDate}
+                minDate={startDate}
+                dateFormat="dd/MM/yyyy"
+              />
+            </div>
+            <button
+              className="btn-fetch"
+              onClick={submitHandler}
+              disabled={isLoading || !startDate || !endDate || startDate > endDate}
+            >
+              <i className="fas fa-search" />
+              {isLoading ? 'ກຳລັງໂຫລດ...' : 'ຄົ້ນຫາ'}
+            </button>
+          </div>
+
+          {/* Stats cards (4) */}
           <div className="stats-grid">
-            {/* Total Sales Card */}
-            <div className="stat-card success">
-              <div className="stat-header">
-                <div className="stat-icon success">
-                  <i className="fas fa-dollar-sign"></i>
-                </div>
-                <div className="stat-trend">
-                  <i className="fas fa-arrow-up"></i> ລວມ
-                </div>
+            <div className="stat-card green">
+              <div className="stat-icon-wrap green">
+                <i className="fas fa-coins" />
               </div>
-              <div className="stat-label">ຍອດຂາຍທັງໝົດ</div>
-              <div className="stat-value success">
-                ₭{formatCurrencyLAK(totalSales)}
-              </div>
-              <div className="stat-description">
-                ຍອດຂາຍໃນຊ່ວງເວລາທີ່ເລືອກ
-              </div>
+              <div className="stat-lbl">ຍອດຂາຍທັງໝົດ</div>
+              <div className="stat-val">₭{fmtLAK(totalSales)}</div>
+              <div className="stat-sub">ໃນຊ່ວງເວລາທີ່ເລືອກ</div>
             </div>
 
-            {/* Total Orders Card */}
-            <div className="stat-card danger">
-              <div className="stat-header">
-                <div className="stat-icon danger">
-                  <i className="fas fa-shopping-cart"></i>
-                </div>
-                <div className="stat-trend">
-                  <i className="fas fa-chart-bar"></i> ຈຳນວນ
-                </div>
+            <div className="stat-card red">
+              <div className="stat-icon-wrap red">
+                <i className="fas fa-shopping-cart" />
               </div>
-              <div className="stat-label">ຈຳນວນອໍເດີທັງໝົດ</div>
-              <div className="stat-value danger">
-                {totalOrders.toLocaleString()}
+              <div className="stat-lbl">ຈຳນວນອໍເດີ</div>
+              <div className="stat-val">{totalOrders.toLocaleString()}</div>
+              <div className="stat-sub">ອໍເດີທັງໝົດ</div>
+            </div>
+
+            <div className="stat-card amber">
+              <div className="stat-icon-wrap amber">
+                <i className="fas fa-calculator" />
               </div>
-              <div className="stat-description">
-                ອໍເດີທີ່ສຳເລັດໃນຊ່ວງເວລານີ້
+              <div className="stat-lbl">ຍອດຂາຍສະເລ່ຍ / ອໍເດີ</div>
+              <div className="stat-val">₭{fmtLAK(avgOrderValue)}</div>
+              <div className="stat-sub">Average order value</div>
+            </div>
+
+            <div className="stat-card blue">
+              <div className="stat-icon-wrap blue">
+                <i className="fas fa-star" />
+              </div>
+              <div className="stat-lbl">ວັນທີ່ຂາຍດີສຸດ</div>
+              <div className="stat-val" style={{ fontSize: bestDay ? '1.2rem' : '1.6rem' }}>
+                {bestDay ? `₭${fmtLAK(bestDay.sales)}` : '—'}
+              </div>
+              <div className="stat-sub">
+                {bestDay ? bestDay.date : 'ບໍ່ມີຂໍ້ມູນ'}
               </div>
             </div>
           </div>
 
-          {/* Chart Section */}
+          {/* Chart */}
           <div className="chart-section">
             <div className="chart-header">
-              <div>
-                <div className="chart-title">
-                  <i className="fas fa-chart-area" style={{ color: '#667eea' }}></i>
-                  ກຣາບຍອດຂາຍ ແລະ ອໍເດີ
-                </div>
-                <div className="chart-subtitle">
-                  ສະແດງຂໍ້ມູນໃນແຕ່ລະວັນ
-                </div>
+              <div className="chart-title">
+                <i className="fas fa-chart-area" style={{ color: '#667eea' }} />
+                ກຣາບຍອດຂາຍ ແລະ ອໍເດີ
+              </div>
+              <div className="chart-mode-tabs">
+                {[{ id: 'daily', label: 'ລາຍວັນ' }, { id: 'monthly', label: 'ລາຍເດືອນ' }].map((m) => (
+                  <button
+                    key={m.id}
+                    className={`chart-mode-tab${chartMode === m.id ? ' active' : ''}`}
+                    onClick={() => setChartMode(m.id)}
+                  >
+                    {m.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <SaleChart salesData={Array.isArray(chartSales) ? chartSales : []} />
+            <SaleChart salesData={chartSales} mode={chartMode} />
           </div>
+
         </div>
       </AdminLayout>
     </>

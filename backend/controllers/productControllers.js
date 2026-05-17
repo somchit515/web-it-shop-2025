@@ -259,6 +259,7 @@ export const createProductReview = catchAsyncErrors(async (req, res, next) => {
       if (review.user.toString() === req?.user._id.toString()) {
         review.comment = comment;
         review.rating = rating;
+        review.createdAt = new Date();
       }
     });
   } else {
@@ -352,7 +353,8 @@ export const canUserReview = catchAsyncErrors(async (req, res, next) => {
     // 2. Filter these orders to ensure they contain the specific product (req.query.productId)
     const orders = await Order.find({
         user: req.user._id,
-        "orderItems.product": req.query.productId
+        "orderItems.product": req.query.productId,
+        fulfillmentStatus: "Delivered",
     });
 
     // NOTE: If you are using Mongoose's lean() or indexing, 

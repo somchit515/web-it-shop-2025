@@ -1,28 +1,18 @@
-// src/redux/api/productApi.js
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const productApi = createApi({
   reducerPath: "productApi",
+  
+  // 🚀 ປັບໃຫ້ເລືອກ URL ອັດຕະໂນມັດ ແລະ ເນັ້ນການໃຊ້ Cookie Auth
   baseQuery: fetchBaseQuery({
-main
-    baseUrl: "http://localhost:8000/api/v1", // change in dev if needed
-    // ✅ ใช้ cookie auth อย่างเดียว (ลบ localStorage token ออก)
+    baseUrl: "http://localhost:8000/api/v1",
     credentials: "include",
-
-    baseUrl: "https://ithub-sy2u.onrender.com/api/v1", // change in dev if needed
-    prepareHeaders: (headers, { getState }) => {
-      const token = getTokenFromLocal();
-      if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
- master
   }),
+
   tagTypes: ["Product", "Products", "Reviews", "Reports"],
 
   endpoints: (builder) => ({
-    // Make params default to {} so de-structuring won't fail when undefined
+    // ດຶງລາຍຊື່ສິນຄ້າທັງໝົດ
     getProducts: builder.query({
       query: (params = {}) => {
         return {
@@ -50,7 +40,7 @@ main
       providesTags: (result, error, id) => [{ type: "Product", id }],
     }),
 
-    // ✅ Batch check stock ก่อน checkout — รับ items: [{product, quantity}]
+    // ✅ Batch check stock ກ່ອນ checkout
     checkStock: builder.mutation({
       query: (items) => ({
         url: "/products/check-stock",
@@ -101,7 +91,7 @@ main
       query: ({ id, body }) => ({
         url: `/admin/products/${id}/upload_images`,
         method: "PUT",
-        body, // FormData or JSON depending on backend
+        body, 
       }),
       invalidatesTags: (result, error, { id }) => [{ type: "Product", id }],
     }),
@@ -146,16 +136,15 @@ main
         body,
       }),
       invalidatesTags: ["Reviews"],
-    }), // ============================================ // 📊 REPORTS ENDPOINTS (Super Admin) // ============================================
+    }),
 
+    // 📊 REPORTS ENDPOINTS (Super Admin)
     getCustomerReport: builder.query({
       query: () => "/admin/reports/customer",
       providesTags: ["Reports"],
     }),
 
-    // ✅ เพิ่ม Sales Report
     getSalesReport: builder.query({
-      // สมมติว่ารับ { startDate, endDate } เป็นพารามิเตอร์
       query: ({ startDate, endDate } = {}) => ({
         url: "/admin/reports/sales",
         params: { start: startDate, end: endDate },
@@ -163,15 +152,16 @@ main
       providesTags: ["Reports"],
     }),
 
-    // ✅ เพิ่ม Returns Report
     getReturnsReport: builder.query({
       query: () => "/admin/reports/returns",
       providesTags: ["Reports"],
     }),
 
-    // ✅ เพิ่ม Income Expense Report
     getIncomeExpenseReport: builder.query({
-      query: () => "/admin/reports/income-expense",
+      query: ({ startDate, endDate } = {}) => ({
+        url: "/admin/reports/finance",
+        params: startDate && endDate ? { startDate, endDate } : undefined,
+      }),
       providesTags: ["Reports"],
     }),
   }),
@@ -182,24 +172,19 @@ export const {
   useGetAdminProductsQuery,
   useGetProductDetailsQuery,
   useCheckStockMutation,
-
   useCreateProductMutation,
   useCreateProductsBatchMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
-
   useUploadProductImagesMutation,
   useDeleteProductImageMutation,
-
   useGetProductReviewsQuery,
   useLazyGetProductReviewsQuery,
   useDeleteReviewMutation,
-
   useSubmitReviewMutation,
-  useCanUserReviewQuery, // ✅ Export Hook สำหรับ Reports ทั้งหมด
-
+  useCanUserReviewQuery,
   useGetCustomerReportQuery,
   useGetSalesReportQuery,
   useGetReturnsReportQuery,
-  useGetIncomeExpenseReportQuery, // เพิ่ม Hooks ที่เหลือ
+  useGetIncomeExpenseReportQuery,
 } = productApi;

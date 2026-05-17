@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import { useGetMeQuery } from "../redux/api/userApi";
 import { useLogoutMutation } from "../redux/authApi";
 import Search from "./Search";
+import PushNotificationToggle from "../notifications/PushNotificationToggle";
 import "./Header.css";
 
 const navItems = [
@@ -151,6 +152,7 @@ export default function Header() {
                         <i className="fas fa-user-circle"></i>
                         <span>ໂປຣໄຟລ໌</span>
                       </Link>
+                      <PushNotificationToggle />
                       <div className="custom-dropdown-divider"></div>
                       <button
                         className="custom-dropdown-item text-danger"

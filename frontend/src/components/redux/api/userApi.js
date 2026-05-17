@@ -3,15 +3,13 @@ import { setIsAuthenticate, setUser, clearUser } from "../features/userSlice";
 
 export const userApi = createApi({
   reducerPath: "userApi",
- main
-  // 🛑 FIX: ເພີ່ມ credentials: "include" ເພື່ອໃຫ້ສົ່ງ Cookie ໄປຫາ Backend (ແກ້ 401 Unauthorized)
-  baseQuery: fetchBaseQuery({ 
+
+  // 🚀 ປັບໃຫ້ເລືອກ URL ອັດຕະໂນມັດ ແລະ ເພີ່ມ credentials: "include"
+  baseQuery: fetchBaseQuery({
     baseUrl: "http://localhost:8000/api/v1",
-    credentials: "include", 
+    credentials: "include",
   }),
 
-  baseQuery: fetchBaseQuery({ baseUrl: "https://ithub-sy2u.onrender.com/api/v1" }),
- master
   tagTypes: ["User", "Users"],
 
   endpoints: (builder) => ({
@@ -155,10 +153,6 @@ export const userApi = createApi({
     }),
   }),
 });
-
-// =====================
-// EXPORT HOOKS
-// =====================
 
 export const {
   // USER HOOKS

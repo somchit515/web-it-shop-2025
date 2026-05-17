@@ -1,18 +1,14 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { userApi } from "./api/userApi"; // ກວດສອບ path ໃຫ້ຖືກຕາມ Folder ຂອງທ່ານ
+import { userApi } from "./api/userApi"; 
 
 export const authApi = createApi({
   reducerPath: "authApi",
- main
-  // 🛑 FIX: ເພີ່ມ credentials: "include" ເພື່ອໃຫ້ Browser ສົ່ງ Cookie/Token ໄປຫາ Backend ທຸກ Request
-  baseQuery: fetchBaseQuery({ 
+  
+  baseQuery: fetchBaseQuery({
     baseUrl: "http://localhost:8000/api/v1",
-    credentials: "include", 
+    credentials: "include",
   }),
 
-  baseQuery: fetchBaseQuery({ baseUrl: "https://ithub-sy2u.onrender.com/api/v1" }),
-  // 💡 แนะนำ: เพิ่ม tagTypes ที่นี่ด้วย เพื่อความเป็นระเบียบ
- master
   tagTypes: ["User"],
 
   endpoints: (builder) => ({
@@ -36,7 +32,7 @@ export const authApi = createApi({
           body,
         };
       },
-      // 🛑 FIX: ເມື່ອ Login ສຳເລັດ, ໃຫ້ໄປດຶງຂໍ້ມູນ User (getMe) ມາທັນທີ
+      // ✅ ເມື່ອ Login ສຳເລັດ, ໃຫ້ໄປດຶງຂໍ້ມູນ User (getMe) ມາທັນທີ
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
@@ -53,7 +49,7 @@ export const authApi = createApi({
         url: "/logout",
         method: "GET",
       }),
-      // 🚀 Invalidates tags ເພື່ອໃຫ້ລະບົບຮູ້ວ່າຂໍ້ມູນ User ເກົ່າໃຊ້ບໍ່ໄດ້ແລ້ວ
+      // 🚀 ເຮັດໃຫ້ຂໍ້ມູນ User ໃນ Cache ກາຍເປັນຄ່າເກົ່າ (Invalidate)
       invalidatesTags: ["User"],
     }),
 
@@ -76,7 +72,6 @@ export const authApi = createApi({
   }),
 });
 
-// Export Hooks ສຳລັບໃຊ້ໃນ Component
 export const {
   useLoginMutation,
   useRegisterMutation,

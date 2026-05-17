@@ -20,6 +20,10 @@ function AppWrapper() {
     location.pathname.startsWith("/password/reset");
 
   const isAdminPage = location.pathname.startsWith("/admin");
+  const isFullWidthPage =
+    location.pathname === "/about" ||
+    location.pathname === "/contact" ||
+    location.pathname === "/recommended";
 
   // Header: ซ่อนเฉพาะ auth pages (admin ให้แสดงด้วย)
   const showHeader = !isAuthPage;
@@ -32,7 +36,7 @@ function AppWrapper() {
       <ConfirmDialog />
       {showHeader && <Header />}
 
-      <div className="container">
+      <div className={isFullWidthPage ? "" : "container"}>
         <Routes>
           {/* render route arrays WITHOUT commas */}
           {useUserRoutes()}

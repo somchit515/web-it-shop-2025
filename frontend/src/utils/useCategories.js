@@ -1,51 +1,32 @@
-codex/add-a-greeting-feature-hj6ijz
-=======
-codex/add-a-greeting-feature-azctjh
- master
 import { useCallback, useEffect, useState } from "react";
+import { DEFAULT_CATEGORIES } from "./categories";
 
 export default function useCategories() {
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
+  const load = useCallback(async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
       const res = await fetch("/api/v1/categories");
       const data = await res.json();
-      setCategories(Array.isArray(data?.categories) ? data.categories : []);
+      if (data.success && Array.isArray(data.categories) && data.categories.length > 0) {
+        setCategories(data.categories);
+      } else {
+        setCategories(DEFAULT_CATEGORIES);
+      }
     } catch {
-      setCategories([]);
+      setCategories(DEFAULT_CATEGORIES);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    load();
+    window.addEventListener("categories:updated", load);
+    return () => window.removeEventListener("categories:updated", load);
+  }, [load]);
 
-  return { categories, isLoading, refresh };
- codex/add-a-greeting-feature-hj6ijz
-
-
-import { useEffect, useState } from "react";
-import { getCategories } from "./categories";
-
-export default function useCategories() {
-  const [categories, setCategories] = useState(getCategories());
-
-  useEffect(() => {
-    const refresh = () => setCategories(getCategories());
-    window.addEventListener("storage", refresh);
-    window.addEventListener("categories:updated", refresh);
-    return () => {
-      window.removeEventListener("storage", refresh);
-      window.removeEventListener("categories:updated", refresh);
-    };
-  }, []);
-
-  return categories;
-master
-master
+  return { categories, isLoading, refresh: load };
 }

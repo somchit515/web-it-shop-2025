@@ -62,7 +62,8 @@ export function getEmailTemplate({ lang = 'la', action = 'confirm', order = {}, 
   if (lang === 'la') {
     // ✅ NEW: ສ້າງ order ສຳເລັດ (receipt)
     if (action === 'created') {
-      const isCOD = order.paymentMethod === 'COD';
+      const isPayAtStore = order.paymentMethod === 'PayAtStore';
+      const isCOD = order.paymentMethod === 'COD' || isPayAtStore;
       return {
         subject: `🛒 ໄດ້ຮັບຄຳສັ່ງຊື້ #${String(order._id).substring(0, 8)} ແລ້ວ`,
         text: `ຂອບໃຈ! ໄດ້ຮັບຄຳສັ່ງຊື້ ${order._id} ຍອດ ₭${formatCurrencyLAK(order.totalAmount)}`,
@@ -73,10 +74,16 @@ export function getEmailTemplate({ lang = 'la', action = 'confirm', order = {}, 
             <p>ພວກເຮົາໄດ້ຮັບຄຳສັ່ງຊື້ຂອງທ່ານແລ້ວ (ID: <strong>${order._id}</strong>)</p>
             ${orderHtml}
             <div style="background: #f0f9ff; padding: 14px 16px; border-radius: 10px; margin: 16px 0; border-left: 4px solid #3b82f6;">
-              <strong>💳 ວິທີຊຳລະ:</strong> ${isCOD ? '💵 ເງິນສົດເມື່ອຮັບສິນຄ້າ (COD)' : '🏦 ໂອນເງິນຜ່ານທະນາຄານ'}<br>
-              ${isCOD
-                ? '<small>ກະລຸນາກຽມເງິນສົດໃຫ້ພ້ອມເມື່ອພະນັກງານຂົນສົ່ງມາສົ່ງ</small>'
-                : '<small>ກະລຸນາໂອນເງິນ ແລະ ອັບໂຫຼດສະຫຼິບໃບໂອນຢູ່ໃນລະບົບ</small>'}
+              <strong>💳 ວິທີຊຳລະ:</strong> ${
+                isPayAtStore ? '🏪 ຈ່າຍທີ່ໜ້າຮ້ານ' :
+                isCOD ? '💵 ເງິນສົດເມື່ອຮັບສິນຄ້າ (COD)' :
+                '🏦 ໂອນເງິນຜ່ານທະນາຄານ'
+              }<br>
+              ${isPayAtStore
+                ? '<small>ກະລຸນາມາຮັບສິນຄ້າ ແລະ ຊຳລະທີ່ໜ້າຮ້ານພາຍໃນ 3 ວັນ</small>'
+                : isCOD
+                  ? '<small>ກະລຸນາກຽມເງິນສົດໃຫ້ພ້ອມເມື່ອພະນັກງານຂົນສົ່ງມາສົ່ງ</small>'
+                  : '<small>ກະລຸນາໂອນເງິນ ແລະ ອັບໂຫຼດສະຫຼິບໃບໂອນຢູ່ໃນລະບົບ</small>'}
             </div>
             <p>ສະຖານະປະຈຸບັນ: <strong>ກຳລັງດຳເນີນການ</strong></p>
             <p style="text-align: center; margin: 24px 0;">
@@ -159,6 +166,38 @@ export function getEmailTemplate({ lang = 'la', action = 'confirm', order = {}, 
             <p style="text-align: center; margin: 24px 0;">
               <a href="${orderLink}" style="display: inline-block; padding: 10px 20px; background: #64748b; color: white; text-decoration: none; border-radius: 8px;">
                 ເບິ່ງລາຍລະອຽດ
+              </a>
+            </p>
+          </div>
+        `
+      };
+    }
+
+    if (action === 'refunded') {
+      const refundAmt = order.refundAmount ?? order.totalAmount;
+      const bank = order.refundBank || '';
+      const acct = order.refundAccount || '';
+      return {
+        subject: `💸 ຄືນເງິນສຳລັບອໍເດີ #${String(order._id).substring(0, 8)}`,
+        text: `ພວກເຮົາໄດ້ອອກໃບຄືນເງິນ ₭${formatCurrencyLAK(refundAmt)} ສຳລັບອໍເດີ ${order._id} ແລ້ວ`,
+        html: `
+          <div style="font-family:'Noto Sans Lao',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;">
+            <h2 style="color:#8b5cf6;">💸 ພວກເຮົາໄດ້ຄືນເງິນໃຫ້ທ່ານແລ້ວ</h2>
+            <p>ສະບາຍດີ ທ່ານ ${order.user?.name || ''},</p>
+            <p>ພວກເຮົາໄດ້ດຳເນີນການ <strong>ຄືນເງິນ</strong> ສຳລັບຄຳສັ່ງຊື້ <strong>#${order._id}</strong> ແລ້ວ.</p>
+            <div style="background:#f5f3ff;padding:16px 20px;border-radius:12px;margin:16px 0;border-left:4px solid #8b5cf6;">
+              <p style="margin:0 0 6px;"><strong>💰 ຍອດຄືນເງິນ:</strong> ₭${formatCurrencyLAK(refundAmt)}</p>
+              ${bank ? `<p style="margin:0 0 6px;"><strong>🏦 ທະນາຄານ:</strong> ${bank}</p>` : ''}
+              ${acct ? `<p style="margin:0;"><strong>📋 ເລກບັນຊີ:</strong> ${acct}</p>` : ''}
+            </div>
+            ${note ? `
+            <div style="background:#fefce8;padding:12px 16px;border-radius:10px;border-left:4px solid #f59e0b;margin:12px 0;">
+              <strong>ໝາຍເຫດ:</strong> ${note}
+            </div>` : ''}
+            <p>ກະລຸນາລໍຖ້າ 3–5 ວັນທຳການ ສຳລັບເງິນເຂົ້າບັນຊີ. ຖ້າມີຄຳຖາມ ກະລຸນາຕິດຕໍ່ທີມງານ.</p>
+            <p style="text-align:center;margin:24px 0;">
+              <a href="${orderLink}" style="display:inline-block;padding:12px 24px;background:#8b5cf6;color:white;text-decoration:none;border-radius:8px;font-weight:600;">
+                ເບິ່ງລາຍລະອຽດອໍເດີ
               </a>
             </p>
           </div>

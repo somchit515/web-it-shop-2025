@@ -1,295 +1,205 @@
-import React, { useState } from 'react';
-import {
-  MapPin,
-  Phone,
-  Mail,
-  Clock,
-  Facebook,
-  Instagram,
-  MessageCircle,
-  Send,
-  Loader2,
-  CheckCircle2,
-  ChevronDown,
-  Users,
-  Headphones,
-  Award
-} from 'lucide-react';
-import './Contact.css';
+import React, { useState } from "react";
+import MetaData from "../layout/MetaData";
+import "./Contact.css";
 
-const Contact = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    subject: '',
-    message: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [openFaq, setOpenFaq] = useState(0);
+const CONTACT_INFO = [
+  { icon: "📍", title: "ທີ່ຢູ່", content: "ໂພນສະຫວັນ, ເມືອງ ແປກ, ແຂວງຊຽງຂວາງ, ສປປ ລາວ", link: null,                              color: "#ef4444" },
+  { icon: "📞", title: "ໂທລະສັບ",  content: "+856 20 5704771",   link: "tel:+856205704771",           color: "#10b981" },
+  { icon: "✉️", title: "ອີເມວ",    content: "info@ithubb.com",   link: "mailto:info@ithubb.com",      color: "#6366f1" },
+  { icon: "🕐", title: "ເວລາເຮັດວຽກ", content: "ຈັນ – ເສົາ: 08:00 – 18:00", link: null,              color: "#f59e0b" },
+];
 
-  const contactInfo = [
-    {
-      icon: MapPin,
-      title: 'ທີ່ຢູ່',
-      content: 'ໂພນສະຫວັນ, ເມືອງ ແປກ, ແຂວງຊຽງຂວາງ, ສປປ ລາວ',
-      link: null,
-      color: '#ef4444'
-    },
-    {
-      icon: Phone,
-      title: 'ໂທລະສັບ',
-      content: '+856 20 5704771',
-      link: 'tel:+856205704771',
-      color: '#10b981'
-    },
-    {
-      icon: Mail,
-      title: 'ອີເມວ',
-      content: 'info@ithubb.com',
-      link: 'mailto:info@ithubb.com',
-      color: '#3b82f6'
-    },
-    {
-      icon: Clock,
-      title: 'ເວລາເຮັດວຽກ',
-      content: 'ຈັນ - ເສົາ: 8:00 - 18:00',
-      link: null,
-      color: '#f59e0b'
-    }
-  ];
+const SOCIALS = [
+  { icon: "📘", name: "Facebook",  color: "#1877f2", link: "#" },
+  { icon: "📸", name: "Instagram", color: "#e4405f", link: "#" },
+  { icon: "💬", name: "WhatsApp",  color: "#25d366", link: "#" },
+  { icon: "🟢", name: "Line",      color: "#00b900", link: "#" },
+];
 
-  const socialLinks = [
-    { icon: Facebook, name: 'Facebook', color: '#1877f2', link: '#' },
-    { icon: Instagram, name: 'Instagram', color: '#e4405f', link: '#' },
-    { icon: MessageCircle, name: 'WhatsApp', color: '#25d366', link: '#' },
-    { icon: MessageCircle, name: 'Line', color: '#00b900', link: '#' }
-  ];
+const FAQS = [
+  { q: "ເວລາເຮັດວຽກຂອງພວກເຮົາແມ່ນແນວໃດ?",          a: "ພວກເຮົາເປີດໃຫ້ບໍລິການທຸກວັນຈັນ – ເສົາ ເວລາ 08:00 – 18:00 ນ. ສຳລັບວັນອາທິດ ແລະ ວັນພັກ ກະລຸນາກວດສອບກ່ອນ." },
+  { q: "ຈະຕິດຕໍ່ແນວໃດ ຖ້າມີບັນຫາກັບສິນຄ້າ?",        a: "ທ່ານສາມາດຕິດຕໍ່ໄດ້ທາງໂທລະສັບ, ອີເມວ, ຫຼື ຜ່ານແບບຟອມຂ້າງລຸ່ມ. ທີມງານຈະຕອບກັບພາຍໃນ 24 ຊົ່ວໂມງ." },
+  { q: "ມີການຮັບປະກັນສິນຄ້າບໍ?",                     a: "ສິນຄ້າທຸກຊະນິດມີການຮັບປະກັນຕາມທີ່ຜູ້ຜະລິດກຳນົດ. ສຳລັບລາຍລະອຽດເພີ່ມເຕີມ ກະລຸນາສອບຖາມທີມງານ." },
+  { q: "ມີການຈັດສົ່ງສິນຄ້າທົ່ວປະເທດບໍ?",              a: "ມີ — ພວກເຮົາຈັດສົ່ງທົ່ວລາວ. ຄ່າຈັດສົ່ງຂຶ້ນກັບທີ່ຕັ້ງ ແລະ ນໍ້າໜັກສິນຄ້າ. ກວດລາຄາໄດ້ໃນໂຕ checkout." },
+];
 
-  const stats = [
-    { icon: Users, value: '5000+', label: 'ລູກຄ້າທີ່ໄວ້ວາງໃຈ' },
-    { icon: Headphones, value: '24/7', label: 'ການສະຫນັບສະຫນູນ' },
-    { icon: Award, value: '100%', label: 'ຄວາມພໍໃຈ' }
-  ];
+export default function Contact() {
+  const [form, setForm] = useState({ name: "", email: "", phone: "", subject: "", message: "" });
+  const [errors, setErrors]       = useState({});
+  const [sending, setSending]     = useState(false);
+  const [success, setSuccess]     = useState(false);
+  const [openFaq, setOpenFaq]     = useState(null);
 
-  const faqs = [
-    {
-      question: 'ເວລາເຮັດວຽກຂອງພວກເຮົາແມ່ນແນວໃດ?',
-      answer: 'ພວກເຮົາເປີດໃຫ້ບໍລິການທຸກວັນຈັນ - ເສົາ ເວລາ 8:00 - 18:00 ນ. ສຳລັບວັນອາທິດ ແລະ ວັນພັກຕ່າງໆ ກະລຸນາກວດສອບກັບພວກເຮົາກ່ອນ.'
-    },
-    {
-      question: 'ຈະຕິດຕໍ່ແນວໃດ ຖ້າມີບັນຫາກັບສິນຄ້າ?',
-      answer: 'ທ່ານສາມາດຕິດຕໍ່ພວກເຮົາໄດ້ທາງໂທລະສັບ, ອີເມວ, ຫຼື ຜ່ານແບບຟອມຂ້າງເທິງນີ້. ທີມງານຂອງພວກເຮົາຈະຕອບກັບໃນໄວທີ່ສຸດ.'
-    },
-    {
-      question: 'ມີການຮັບປະກັນສິນຄ້າບໍ?',
-      answer: 'ສິນຄ້າທຸກຊະນິດມີການຮັບປະກັນຕາມທີ່ຜູ້ຜະລິດກຳນົດ. ສຳລັບລາຍລະອຽດເພີ່ມເຕີມ ກະລຸນາສອບຖາມກັບທີມງານຂອງພວກເຮົາ.'
-    },
-    {
-      question: 'ມີການຈັດສົ່ງສິນຄ້າບໍ?',
-      answer: 'ພວກເຮົາມີບໍລິການຈັດສົ່ງທົ່ວປະເທດ. ຄ່າຈັດສົ່ງຂຶ້ນກັບທີ່ຕັ້ງ ແລະ ນໍ້າໜັກຂອງສິນຄ້າ. ກະລຸນາຕິດຕໍ່ສອບຖາມລາຄາ.'
-    }
-  ];
-
-  const validateField = (name, value) => {
-    switch (name) {
-      case 'email':
-        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          return 'ກະລຸນາປ້ອນອີເມວທີ່ຖືກຕ້ອງ';
-        }
-        break;
-      case 'phone':
-        if (value && !/^[0-9+\s-]{8,}$/.test(value)) {
-          return 'ກະລຸນາປ້ອນເບີໂທລະສັບທີ່ຖືກຕ້ອງ';
-        }
-        break;
-    }
-    return '';
+  const validate = (name, value) => {
+    if (name === "email" && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+      return "ກະລຸນາປ້ອນອີເມວທີ່ຖືກຕ້ອງ";
+    if (name === "phone" && value && !/^[0-9+\s-]{8,}$/.test(value))
+      return "ກະລຸນາປ້ອນເບີໂທທີ່ຖືກຕ້ອງ";
+    return "";
   };
 
-  const handleChange = (e) => {
+  const onChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-
-    const error = validateField(name, value);
-    setErrors(prev => ({ ...prev, [name]: error }));
+    setForm(p => ({ ...p, [name]: value }));
+    setErrors(p => ({ ...p, [name]: validate(name, value) }));
   };
 
-  const handleSubmit = async (e) => {
+  const onSubmit = (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setShowSuccess(false);
-
+    setSending(true);
     setTimeout(() => {
-      setShowSuccess(true);
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        subject: '',
-        message: ''
-      });
-      setIsSubmitting(false);
-
-      setTimeout(() => setShowSuccess(false), 5000);
+      setSuccess(true);
+      setForm({ name: "", email: "", phone: "", subject: "", message: "" });
+      setSending(false);
+      setTimeout(() => setSuccess(false), 5000);
     }, 1500);
   };
 
-  const toggleFaq = (index) => {
-    setOpenFaq(openFaq === index ? null : index);
-  };
-
   return (
-    <div className="contact-page">
-      <section className="contact-hero">
-        <div className="hero-content">
-          <h1 className="hero-title">ຕິດຕໍ່ພວກເຮົາ</h1>
-          <p className="hero-subtitle">
-            ພວກເຮົາພ້ອມໃຫ້ບໍລິການ ແລະ ຕອບຄຳຖາມທຸກຂໍ້ສົງໃສຂອງທ່ານ
-          </p>
-        </div>
-      </section>
+    <>
+      <MetaData title="ຕິດຕໍ່ IT HUBB — ພ້ອມຊ່ວຍເຫຼືອທ່ານຕະຫຼອດ 24/7" />
 
-      <div className="contact-content">
-        <div className="stats-section">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <div key={index} className="stat-card">
-                <div className="stat-icon">
-                  <Icon size={28} />
-                </div>
-                <div className="stat-value">{stat.value}</div>
-                <div className="stat-label">{stat.label}</div>
+      <div className="ct-page">
+
+        {/* ══ HERO ══ */}
+        <section className="ct-hero">
+          <div className="ct-hero-orb ct-orb1" />
+          <div className="ct-hero-orb ct-orb2" />
+          <div className="ct-hero-orb ct-orb3" />
+          <div className="ct-hero-inner">
+            <div className="ct-hero-badge">📞 ພ້ອມຊ່ວຍເຫຼືອທ່ານ</div>
+            <h1 className="ct-hero-title">
+              ຕິດຕໍ່<br />
+              <span className="ct-gradient-text">IT HUBB</span>
+            </h1>
+            <p className="ct-hero-sub">
+              ທີມງານຂອງພວກເຮົາພ້ອມຕອບທຸກຄຳຖາມ — ໄວ, ໃສ່ໃຈ, ແລະ ເປັນມິດ
+            </p>
+            <div className="ct-hero-chips">
+              <span>⚡ ຕອບໄວ &lt; 1 ຊົ່ວໂມງ</span>
+              <span>🌐 ຮອງຮັບລາວ / ໄທ / EN</span>
+              <span>🕐 24/7 ທຸກວັນ</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ══ STATS ══ */}
+        <section className="ct-stats">
+          <div className="ct-stat">
+            <span className="ct-stat-icon">👥</span>
+            <div className="ct-stat-num">10,000+</div>
+            <div className="ct-stat-label">ລູກຄ້າໄວ້ວາງໃຈ</div>
+          </div>
+          <div className="ct-stat">
+            <span className="ct-stat-icon">🎧</span>
+            <div className="ct-stat-num">24/7</div>
+            <div className="ct-stat-label">ສະໜັບສະໜູນ</div>
+          </div>
+          <div className="ct-stat">
+            <span className="ct-stat-icon">⭐</span>
+            <div className="ct-stat-num">99.9%</div>
+            <div className="ct-stat-label">ຄວາມພໍໃຈ</div>
+          </div>
+          <div className="ct-stat">
+            <span className="ct-stat-icon">⚡</span>
+            <div className="ct-stat-num">&lt;1h</div>
+            <div className="ct-stat-label">ເວລາຕອບສະໜອງ</div>
+          </div>
+        </section>
+
+        {/* ══ MAIN CONTENT ══ */}
+        <section className="ct-main">
+
+          {/* Left — info + social */}
+          <div className="ct-info-col">
+            <div className="ct-info-card">
+              <div className="ct-card-head">
+                <span className="ct-card-icon">📋</span>
+                <h2>ຂໍ້ມູນຕິດຕໍ່</h2>
               </div>
-            );
-          })}
-        </div>
-
-        <div className="content-grid">
-          <div className="info-card">
-            <h2 className="info-title">
-              <Mail size={24} />
-              <span>ຂໍ້ມູນຕິດຕໍ່</span>
-            </h2>
-
-            <div className="info-list">
-              {contactInfo.map((item, index) => {
-                const Icon = item.icon;
-                return (
-                  <div key={index} className="info-item">
-                    <div className="info-icon" style={{ backgroundColor: `${item.color}15` }}>
-                      <Icon size={24} style={{ color: item.color }} />
+              <div className="ct-info-list">
+                {CONTACT_INFO.map((item, i) => (
+                  <div key={i} className="ct-info-item">
+                    <div className="ct-info-ic" style={{ background: item.color + "18" }}>
+                      <span style={{ fontSize: "1.3rem" }}>{item.icon}</span>
                     </div>
-                    <div className="info-details">
-                      <div className="info-label">{item.title}</div>
-                      <div className="info-text">
-                        {item.link ? (
-                          <a href={item.link} className="info-link">{item.content}</a>
-                        ) : (
-                          item.content
-                        )}
-                      </div>
+                    <div className="ct-info-body">
+                      <div className="ct-info-label">{item.title}</div>
+                      {item.link
+                        ? <a href={item.link} className="ct-info-val ct-info-link">{item.content}</a>
+                        : <div className="ct-info-val">{item.content}</div>
+                      }
                     </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>
+
+              <div className="ct-divider" />
+
+              <div className="ct-social-head">ຕິດຕາມພວກເຮົາ</div>
+              <div className="ct-social-row">
+                {SOCIALS.map((s, i) => (
+                  <a key={i} href={s.link} className="ct-social-btn" style={{ borderColor: s.color + "50" }}>
+                    <span style={{ background: s.color + "18", borderRadius: "8px", padding: "6px 8px", fontSize: "1.1rem" }}>{s.icon}</span>
+                    <span>{s.name}</span>
+                  </a>
+                ))}
+              </div>
             </div>
 
-            <div className="divider"></div>
-
-            <h3 className="social-title">ຕິດຕາມພວກເຮົາ</h3>
-            <div className="social-links">
-              {socialLinks.map((social, index) => {
-                const Icon = social.icon;
-                return (
-                  <a
-                    key={index}
-                    href={social.link}
-                    className="social-btn"
-                    style={{ borderColor: `${social.color}40` }}
-                  >
-                    <div className="social-icon" style={{ backgroundColor: `${social.color}15` }}>
-                      <Icon size={20} style={{ color: social.color }} />
-                    </div>
-                    <span>{social.name}</span>
-                  </a>
-                );
-              })}
+            {/* Quick contact chips */}
+            <div className="ct-quick-card">
+              <div className="ct-quick-title">🚀 ຕິດຕໍ່ດ່ວນ</div>
+              <a href="tel:+856205704771" className="ct-quick-btn ct-quick-phone">
+                <span>📞</span> ໂທດຽວນີ້
+              </a>
+              <a href="mailto:info@ithubb.com" className="ct-quick-btn ct-quick-mail">
+                <span>✉️</span> ສົ່ງອີເມວ
+              </a>
             </div>
           </div>
 
-          <div className="form-card">
-            <h2 className="form-title">ສົ່ງຂໍ້ຄວາມຫາພວກເຮົາ</h2>
+          {/* Right — form */}
+          <div className="ct-form-card">
+            <div className="ct-card-head">
+              <span className="ct-card-icon">✉️</span>
+              <h2>ສົ່ງຂໍ້ຄວາມຫາພວກເຮົາ</h2>
+            </div>
 
-            {showSuccess && (
-              <div className="success-message">
-                <CheckCircle2 size={20} />
-                <span>ສົ່ງຂໍ້ຄວາມສຳເລັດ! ພວກເຮົາຈະຕິດຕໍ່ກັບທ່ານໃນໄວໆນີ້</span>
+            {success && (
+              <div className="ct-success">
+                ✅ ສົ່ງຂໍ້ຄວາມສຳເລັດ! ພວກເຮົາຈະຕິດຕໍ່ກັບທ່ານໃນໄວໆນີ້
               </div>
             )}
 
-            <form onSubmit={handleSubmit}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">
-                    ຊື່ຂອງທ່ານ<span className="required">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    className="form-input"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="ປ້ອນຊື່ຂອງທ່ານ"
-                    required
-                  />
+            <form onSubmit={onSubmit} className="ct-form">
+              <div className="ct-form-row">
+                <div className="ct-fg">
+                  <label className="ct-label">ຊື່ຂອງທ່ານ <span className="ct-req">*</span></label>
+                  <input name="name" value={form.name} onChange={onChange}
+                    className="ct-input" placeholder="ປ້ອນຊື່ຂອງທ່ານ" required />
                 </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    ອີເມວ<span className="required">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    className={`form-input ${errors.email ? 'error' : ''}`}
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="example@email.com"
-                    required
-                  />
-                  {errors.email && <span className="error-message">{errors.email}</span>}
+                <div className="ct-fg">
+                  <label className="ct-label">ອີເມວ <span className="ct-req">*</span></label>
+                  <input name="email" type="email" value={form.email} onChange={onChange}
+                    className={`ct-input${errors.email ? " ct-err" : ""}`}
+                    placeholder="example@email.com" required />
+                  {errors.email && <span className="ct-err-msg">{errors.email}</span>}
                 </div>
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">ເບີໂທລະສັບ</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    className={`form-input ${errors.phone ? 'error' : ''}`}
-                    value={formData.phone}
-                    onChange={handleChange}
-                    placeholder="+856 20 XXXX XXXX"
-                  />
-                  {errors.phone && <span className="error-message">{errors.phone}</span>}
+              <div className="ct-form-row">
+                <div className="ct-fg">
+                  <label className="ct-label">ເບີໂທ</label>
+                  <input name="phone" type="tel" value={form.phone} onChange={onChange}
+                    className={`ct-input${errors.phone ? " ct-err" : ""}`}
+                    placeholder="+856 20 XXXX XXXX" />
+                  {errors.phone && <span className="ct-err-msg">{errors.phone}</span>}
                 </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    ຫົວຂໍ້<span className="required">*</span>
-                  </label>
-                  <select
-                    name="subject"
-                    className="form-select"
-                    value={formData.subject}
-                    onChange={handleChange}
-                    required
-                  >
+                <div className="ct-fg">
+                  <label className="ct-label">ຫົວຂໍ້ <span className="ct-req">*</span></label>
+                  <select name="subject" value={form.subject} onChange={onChange}
+                    className="ct-select" required>
                     <option value="">ເລືອກຫົວຂໍ້</option>
                     <option value="general">ສອບຖາມທົ່ວໄປ</option>
                     <option value="product">ສອບຖາມສິນຄ້າ</option>
@@ -300,89 +210,80 @@ const Contact = () => {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">
-                  ຂໍ້ຄວາມ<span className="required">*</span>
-                </label>
-                <textarea
-                  name="message"
-                  className="form-textarea"
-                  value={formData.message}
-                  onChange={handleChange}
-                  placeholder="ເຂົ້າຂໍ້ຄວາມຂອງທ່ານ..."
-                  required
-                ></textarea>
+              <div className="ct-fg">
+                <label className="ct-label">ຂໍ້ຄວາມ <span className="ct-req">*</span></label>
+                <textarea name="message" value={form.message} onChange={onChange}
+                  className="ct-textarea" rows={5}
+                  placeholder="ເຂົ້າຂໍ້ຄວາມຂອງທ່ານ..." required />
               </div>
 
-              <button type="submit" className="submit-btn" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 size={20} className="spinner" />
-                    <span>ກຳລັງສົ່ງ...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send size={20} />
-                    <span>ສົ່ງຂໍ້ຄວາມ</span>
-                  </>
-                )}
+              <button type="submit" className="ct-submit" disabled={sending}>
+                {sending ? "⏳ ກຳລັງສົ່ງ..." : "🚀 ສົ່ງຂໍ້ຄວາມ"}
               </button>
             </form>
           </div>
-        </div>
+        </section>
 
-        <div className="map-section">
-          <h2 className="map-title">ແຜນທີ່ຕັ້ງຂອງພວກເຮົາ</h2>
-          <div className="map-wrapper">
-            <div className="map-container">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3872.2394859615465!2d103.2037906639804!3d19.455378387444224!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sth!2sla!4v1766043171934!5m2!1sth!2sla"
-                width="100%"
-                height="450"
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="IT HUBB Location"
-              />
-            </div>
-            <a
-              href="https://maps.app.goo.gl/Csui3b2heX8YUFwR6"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-google-maps"
-            >
-              <MapPin size={20} />
-              <span>ນຳທາງດ້ວຍ Google Maps</span>
+        {/* ══ MAP ══ */}
+        <section className="ct-map-section">
+          <div className="ct-section-head">
+            <div className="ct-tag">📍 ທີ່ຕັ້ງຂອງພວກເຮົາ</div>
+            <h2>ຊອກຫາ<span className="ct-gradient-text"> IT HUBB</span></h2>
+            <p>ໂພນສະຫວັນ, ເມືອງ ແປກ, ແຂວງຊຽງຂວາງ, ສປປ ລາວ</p>
+          </div>
+          <div className="ct-map-wrap">
+            <iframe
+              src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3872.2394859615465!2d103.2037906639804!3d19.455378387444224!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sth!2sla!4v1766043171934!5m2!1sth!2sla"
+              width="100%" height="420" allowFullScreen loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade" title="IT HUBB Location"
+            />
+          </div>
+          <div className="ct-map-btn-row">
+            <a href="https://maps.app.goo.gl/Csui3b2heX8YUFwR6"
+              target="_blank" rel="noopener noreferrer" className="ct-maps-btn">
+              📍 ນຳທາງດ້ວຍ Google Maps
             </a>
           </div>
-        </div>
+        </section>
 
-        <div className="faq-section">
-          <h2 className="faq-title">ຄຳຖາມທີ່ພົບເລື້ອຍ</h2>
-          <div className="faq-list">
-            {faqs.map((faq, index) => (
-              <div
-                key={index}
-                className={`faq-item ${openFaq === index ? 'active' : ''}`}
-                onClick={() => toggleFaq(index)}
+        {/* ══ FAQ ══ */}
+        <section className="ct-faq">
+          <div className="ct-section-head ct-section-head--light">
+            <div className="ct-tag ct-tag--light">❓ FAQ</div>
+            <h2>ຄຳຖາມທີ່<span className="ct-gradient-text"> ພົບເລື້ອຍ</span></h2>
+          </div>
+          <div className="ct-faq-list">
+            {FAQS.map((f, i) => (
+              <div key={i}
+                className={`ct-faq-item${openFaq === i ? " ct-faq-open" : ""}`}
+                onClick={() => setOpenFaq(openFaq === i ? null : i)}
               >
-                <div className="faq-question">
-                  <span>{faq.question}</span>
-                  <ChevronDown
-                    size={20}
-                    className={`faq-icon ${openFaq === index ? 'rotated' : ''}`}
-                  />
+                <div className="ct-faq-q">
+                  <span>{f.q}</span>
+                  <span className={`ct-faq-arrow${openFaq === i ? " ct-faq-arrow--up" : ""}`}>›</span>
                 </div>
-                <div className={`faq-answer ${openFaq === index ? 'open' : ''}`}>
-                  {faq.answer}
-                </div>
+                <div className="ct-faq-a">{f.a}</div>
               </div>
             ))}
           </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+        </section>
 
-export default Contact;
+        {/* ══ CTA ══ */}
+        <section className="ct-cta">
+          <div className="ct-cta-orb ct-cta-orb1" />
+          <div className="ct-cta-orb ct-cta-orb2" />
+          <div className="ct-cta-inner">
+            <div className="ct-cta-icon">💬</div>
+            <h2>ຍັງມີຄຳຖາມ<br /><span>ຕິດຕໍ່ຫາພວກເຮົາໄດ້ເລີຍ!</span></h2>
+            <p>ທີມງານຂອງພວກເຮົາພ້ອມຊ່ວຍທ່ານ — ບໍ່ຕ້ອງລໍຖ້າ</p>
+            <div className="ct-cta-btns">
+              <a href="tel:+856205704771" className="ct-cta-btn-primary">📞 ໂທຫາພວກເຮົາ</a>
+              <a href="mailto:info@ithubb.com" className="ct-cta-btn-outline">✉️ ສົ່ງອີເມວ</a>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </>
+  );
+}

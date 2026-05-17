@@ -1,11 +1,7 @@
- codex/add-a-greeting-feature-hj6ijz
-
- codex/add-a-greeting-feature-azctjh
+// src/utils/categories.js
 
 const STORAGE_KEY = "ithubb_dynamic_categories_v1";
 
- master
-master
 export const DEFAULT_CATEGORIES = [
   { key: "laptops", title: "Laptops", slug: "laptops", img: "/images/categories/labtop.avif" },
   { key: "cameras", title: "Cameras", slug: "cameras", img: "/images/categories/cameras.jpg" },
@@ -18,19 +14,13 @@ export const DEFAULT_CATEGORIES = [
   { key: "sports", title: "Sports Items", slug: "sports", img: "/images/categories/sports.avif" },
 ];
 
- codex/add-a-greeting-feature-hj6ijz
-
-codex/add-a-greeting-feature-azctjh
- master
+// Helper Function ສໍາລັບແປງຊື່ໃຫ້ເປັນ format slug (ຕົວພິມນ້ອຍ, ບໍ່ມີວ່າງ)
 export const normalizeSlug = (slug = "") =>
   slug.toString().trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
-export const slugToKey = (slug, categories = DEFAULT_CATEGORIES) => {
- codex/add-a-greeting-feature-hj6ijz
-
-
 const normalize = (text = "") => text.toString().trim();
 
+// ດຶງຂໍ້ມູນ Categories ຈາກ LocalStorage
 export const getCategories = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -42,11 +32,13 @@ export const getCategories = () => {
   }
 };
 
+// ບັນທຶກ Categories ລົງ LocalStorage ແລະບອກໃຫ້ Component ອື່ນຮູ້ຕົວ
 export const saveCategories = (categories) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(categories));
   window.dispatchEvent(new Event("categories:updated"));
 };
 
+// ເພີ່ມ ຫຼື ອັບເດດ Category
 export const upsertCategory = (category) => {
   const all = getCategories();
   const key = normalize(category.key || category.slug).toLowerCase().replace(/\s+/g, "-");
@@ -68,41 +60,27 @@ export const upsertCategory = (category) => {
   return { ok: true, categories: next };
 };
 
+// ລຶບ Category ດ້ວຍ slug
 export const removeCategoryBySlug = (slug) => {
   const next = getCategories().filter((c) => c.slug !== slug);
   saveCategories(next);
   return next;
 };
 
+// ແປງຈາກ Slug ໄປເປັນ Key
 export const slugToKey = (slug, categories = getCategories()) => {
- master
- master
   const found = categories.find((c) => c.slug === slug);
   return found ? found.key : slug;
 };
 
- codex/add-a-greeting-feature-hj6ijz
-export const keyToSlug = (key, categories = DEFAULT_CATEGORIES) => {
-
- codex/add-a-greeting-feature-azctjh
-export const keyToSlug = (key, categories = DEFAULT_CATEGORIES) => {
-
+// ແປງຈາກ Key ໄປເປັນ Slug
 export const keyToSlug = (key, categories = getCategories()) => {
- master
-master
   const found = categories.find((c) => c.key === key);
   return found ? found.slug : key;
 };
 
- codex/add-a-greeting-feature-hj6ijz
-export const slugToTitle = (slug, categories = DEFAULT_CATEGORIES) => {
-
- codex/add-a-greeting-feature-azctjh
-export const slugToTitle = (slug, categories = DEFAULT_CATEGORIES) => {
-
+// ແປງຈາກ Slug ໄປເປັນ Title (ຊື່ສະແດງຜົນ)
 export const slugToTitle = (slug, categories = getCategories()) => {
- master
- master
   const found = categories.find((c) => c.slug === slug);
   return found ? found.title : slug;
 };

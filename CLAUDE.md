@@ -226,6 +226,13 @@
 - ✅ Admin page: `/admin/coupons` — card grid + inline form + toggle/edit/delete
 - ✅ Sidebar menu: "ລະຫັດສ່ວນຫຼຸດ"
 
+#### #22 Review System
+- ✅ `backend/models/product.js`: ເພີ່ມ `createdAt: { type: Date, default: Date.now }` ໃນ review subdocument
+- ✅ `canUserReview`: ກວດ `fulfillmentStatus: "Delivered"` (ເຄີຍກວດແຕ່ order ມີ ບໍ່ກວດວ່າ Delivered)
+- ✅ `createProductReview`: ອັບເດດ `review.createdAt = new Date()` ເມື່ອ update review ເກົ່າ
+- ✅ `ProductDetails.jsx`: ສົ່ງ `onSuccess={refetch}` ໃຫ້ `<NewReviews>` → ຮາຍການ review refresh ທັນທີ
+- ✅ `NewReviews.jsx` / `ListReviews.jsx`: ມີຢູ່ແລ້ວ, Bootstrap JS fallback included
+
 ---
 
 ## 🚧 ສິ່ງທີ່ຍັງຕ້ອງເຮັດ
@@ -269,12 +276,13 @@
 
 ### Priority P3 — Future Enhancements
 
-- 🔮 **Refund flow** — Admin issue refund for Paid orders (ປະຈຸບັນບລ໋ອກ user cancel)
-- 🔮 **Order notes/timeline** — Admin add custom notes ໃນ timeline
-- 🔮 **Bulk admin actions** — Bulk update order status
-- 🔮 **Real cron** — ປ່ຽນ setInterval orderCleanup ໄປໃຊ້ node-cron
+- ✅ **Refund flow** — Admin issue refund for Paid orders
+- ✅ **Order notes/timeline** — Admin add custom notes ໃນ timeline
+- ✅ **Bulk admin actions** — Bulk update order status ໃນ ListOrder
+- ✅ **Real cron** — ປ່ຽນ setInterval orderCleanup ໄປໃຊ້ node-cron
+- ✅ **Review system** — User leave review ຫຼັງ Delivered (ກວດ fulfillmentStatus)
+- ✅ **Push notifications** — Web push for order updates (VAPID, Service Worker, toggle in header)
 - 🔮 **Stripe integration** — Real payment gateway (placeholder ມີຢູ່ແລ້ວ)
-- 🔮 **Review system** — User leave review ຫຼັງ Delivered
 - 🔮 **Loyalty points** — Earn points ຕໍ່ການຊື້ → ໃຊ້ເປັນ discount
 - 🔮 **Push notifications** — Web push for order updates
 - 🔮 **Multi-language UI** — i18n switcher (Lao/EN/Thai)

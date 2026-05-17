@@ -61,17 +61,12 @@ export default function ShipmentsPage() {
     setPage(1);
   }, [tab, searchTerm]);
 
-  const handleUpdate = async (order) => {
+  const handleUpdate = async ({ _id, fulfillmentStatus, trackingCode }) => {
     try {
-      await updateStatus({
-        id: order._id,
-        // ✅ ส่ง fulfillmentStatus — backend pre-save hook จะ sync legacy fields เอง
-        fulfillmentStatus: order.fulfillmentStatus || order.orderStatus,
-        trackingCode: order.trackingCode,
-      }).unwrap();
+      await updateStatus({ id: _id, fulfillmentStatus, trackingCode }).unwrap();
       toast.success("ອັບເດດສຳເລັດ!");
-    } catch (error) {
-      toast.error("ອັບເດດລົ້ມເຫລວ");
+    } catch (err) {
+      toast.error(err?.data?.message || "ອັບເດດລົ້ມເຫລວ");
     }
   };
 
@@ -683,19 +678,21 @@ export default function ShipmentsPage() {
 }
 
 function Row({ order, onSave, updating }) {
-  // ✅ ใช้ fulfillmentStatus เป็นหลัก (fallback orderStatus สำหรับ orders เก่า)
   const initialStatus = order.fulfillmentStatus || order.status || order.orderStatus || "Unfulfilled";
   const [fulfillmentStatus, setFulfillmentStatus] = useState(initialStatus);
   const [tracking, setTracking] = useState(order.trackingCode || "");
 
+  // 🔒 Lock rows ທີ່ສຳເລັດ/ຍົກເລີກແລ້ວ
+  const isLocked = initialStatus === "Delivered" || initialStatus === "Cancelled";
+
   const canSave =
-    fulfillmentStatus !== initialStatus ||
-    tracking !== order.trackingCode;
+    !isLocked && (fulfillmentStatus !== initialStatus || tracking !== (order.trackingCode || ""));
 
   const customerName = order.user?.name || order.shippingInfo?.fullName || "ບໍ່ມີຊື່";
+  const statusInfo = FULFILLMENT_LIST.find((s) => s.value === initialStatus);
 
   return (
-    <tr>
+    <tr style={isLocked ? { opacity: 0.6, background: "#f8fafc" } : {}}>
       <td>
         <span className="order-id">#{order._id.slice(-8)}</span>
       </td>
@@ -717,9 +714,11 @@ function Row({ order, onSave, updating }) {
           className="status-select"
           value={fulfillmentStatus}
           onChange={(e) => setFulfillmentStatus(e.target.value)}
+          disabled={isLocked}
           style={{
             color: FULFILLMENT_LIST.find((s) => s.value === fulfillmentStatus)?.color,
             fontWeight: 600,
+            ...(isLocked ? { cursor: "not-allowed", background: "#f1f5f9" } : {}),
           }}
         >
           {FULFILLMENT_LIST.map((s) => (
@@ -736,16 +735,14 @@ function Row({ order, onSave, updating }) {
           value={tracking}
           onChange={(e) => setTracking(e.target.value)}
           placeholder="EX1234567890"
+          disabled={isLocked}
+          style={isLocked ? { background: "#f1f5f9", cursor: "not-allowed" } : {}}
         />
       </td>
       <td>
-        <button 
-          className="save-btn" 
-          onClick={() => onSave({
-            ...order,
-            fulfillmentStatus,
-            trackingCode: tracking,
-          })}
+        <button
+          className="save-btn"
+          onClick={() => onSave({ _id: order._id, fulfillmentStatus, trackingCode: tracking })}
           disabled={!canSave || updating}
         >
           {updating ? (
