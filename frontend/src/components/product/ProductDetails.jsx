@@ -1,6 +1,7 @@
 // src/components/product/ProductDetails.jsx
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useGetProductDetailsQuery } from "../redux/api/productsApi";
+import { useGetFlashDealQuery } from "../redux/api/flashDealApi";
 import { useParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import StarRatings from "react-star-ratings";
@@ -36,6 +37,22 @@ function ProductDetails() {
     params?.id
   );
   const product = useMemo(() => data?.product || null, [data]);
+
+  // Flash Deal
+  const { data: flashData } = useGetFlashDealQuery();
+  const flashDeal = flashData?.deal;
+  const isInFlashDeal = useMemo(() => {
+    if (!flashDeal?.isActive || !flashDeal?.discountPercent || !product) return false;
+    const now = new Date();
+    if (flashDeal.endsAt && new Date(flashDeal.endsAt) < now) return false;
+    return flashDeal.products?.some((p) => (p._id || p) === product._id);
+  }, [flashDeal, product]);
+  const flashDiscount = isInFlashDeal ? flashDeal.discountPercent : 0;
+  const displayPrice = useMemo(() => {
+    if (!product) return 0;
+    const base = product.salePrice || product.price;
+    return flashDiscount > 0 ? Math.round(base * (1 - flashDiscount / 100)) : base;
+  }, [product, flashDiscount]);
 
   const formatLAK = useCallback((val) => {
     const n = Number(val ?? 0);
@@ -114,14 +131,14 @@ function ProductDetails() {
     const cartItem = {
       product: product._id,
       name: product.name,
-      price: product.price,
+      price: displayPrice,
       image: resolveImg((product.images && product.images[0]) || null),
       stock: Number(product.stock) || 0,
       quantity,
     };
     dispatch(setcartItems(cartItem));
     toast.success("ເພີ່ມໄປກະຕ່າສຳເລັດ");
-  }, [dispatch, product, quantity, resolveImg]);
+  }, [dispatch, product, quantity, resolveImg, displayPrice]);
 
   if (isLoading) return <Loader />;
 
@@ -250,7 +267,23 @@ function ProductDetails() {
               </div>
 
               <div className="pd-price-box">
-                <div className="pd-price">{formatLAK(product?.price)}</div>
+                {isInFlashDeal && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{
+                      background: "linear-gradient(135deg,#f43f5e,#e11d48)",
+                      color: "#fff", borderRadius: 6, padding: "2px 10px",
+                      fontSize: ".78rem", fontWeight: 800,
+                    }}>
+                      ⚡ Flash Deal -{flashDiscount}%
+                    </span>
+                    <span style={{ fontSize: ".85rem", color: "#94a3b8", textDecoration: "line-through" }}>
+                      {formatLAK(product?.salePrice || product?.price)}
+                    </span>
+                  </div>
+                )}
+                <div className="pd-price" style={isInFlashDeal ? { color: "#e11d48" } : undefined}>
+                  {formatLAK(displayPrice)}
+                </div>
                 <div className={`pd-stock ${inStock ? "in" : "out"}`}>
                   {inStock ? <FaCheckCircle /> : <FaTimesCircle />}
                   {inStock

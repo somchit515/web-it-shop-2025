@@ -3,7 +3,7 @@ import AdminLayout from "../layout/AdminLayout";
 import MetaData from "../layout/MetaData";
 import toast from "react-hot-toast";
 import { useGetFlashDealQuery, useUpdateFlashDealMutation } from "../redux/api/flashDealApi";
-import { useGetProductsQuery } from "../redux/api/productsApi";
+import { useGetAdminProductsQuery } from "../redux/api/productsApi";
 import Breadcrumb from "./_shared/Breadcrumb";
 
 /* ─── helpers ─────────────────────────────────────────────── */
@@ -237,7 +237,7 @@ const CSS = `
 /* ─── Component ───────────────────────────────────────────── */
 export default function FlashDealManager() {
   const { data: flashData, isLoading: loadingDeal } = useGetFlashDealQuery();
-  const { data: productsData, isLoading: loadingProducts } = useGetProductsQuery({ page: 1 });
+  const { data: productsData, isLoading: loadingProducts } = useGetAdminProductsQuery();
   const [updateFlashDeal, { isLoading: saving }] = useUpdateFlashDealMutation();
 
   const [label,          setLabel]          = useState("Flash Deal");
