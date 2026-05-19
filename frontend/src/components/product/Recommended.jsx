@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import MetaData from "../layout/MetaData";
 import ProductItem from "./ProductItem";
 
-const API = "http://localhost:8000/api/v1";
+const API = "/api/v1";
 
 const TABS = [
   { key: "bestseller", label: "ສິນຄ້າຂາຍດີ", icon: "🔥", desc: "ສິນຄ້າທີ່ລູກຄ້ານິຍົມຊື້ຫຼາຍທີ່ສຸດ" },
