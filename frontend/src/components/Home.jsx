@@ -187,6 +187,15 @@ const Home = () => {
   if (rating !== null) params.rating = rating;
 
   const { data, isLoading, error, isError } = useGetProductsQuery(params);
+  const { data: flashData } = useGetFlashDealQuery();
+  const flashDealMap = useMemo(() => {
+    const deal = flashData?.deal;
+    if (!deal?.isActive || !deal?.discountPercent || !deal?.products?.length) return {};
+    if (deal.endsAt && new Date(deal.endsAt) < new Date()) return {};
+    const map = {};
+    deal.products.forEach((p) => { map[p._id || p] = deal.discountPercent; });
+    return map;
+  }, [flashData]);
 
   useEffect(() => {
     if (isError) toast.error(error?.data?.message || error?.message || "Failed to fetch products");
@@ -263,7 +272,7 @@ const Home = () => {
                   </div>
                   <div className="hs-product-grid">
                     {products.slice(0, 10).map((p) => (
-                      <ProductItem key={p._id} product={p} columnSize="auto" />
+                      <ProductItem key={p._id} product={p} columnSize="auto" flashDiscount={flashDealMap[p._id] || 0} />
                     ))}
                   </div>
                 </div>
@@ -323,7 +332,7 @@ const Home = () => {
                     </div>
                   ) : (
                     products.map((p) => (
-                      <ProductItem key={p._id} product={p} columnSize={4} />
+                      <ProductItem key={p._id} product={p} columnSize={4} flashDiscount={flashDealMap[p._id] || 0} />
                     ))
                   )}
                 </div>

@@ -268,7 +268,7 @@ if (typeof document !== "undefined" && !document.getElementById("pi-styles")) {
 }
 
 /* ─── Component ───────────────────────────────────────────── */
-const ProductItem = ({ product, columnSize }) => {
+const ProductItem = ({ product, columnSize, flashDiscount = 0 }) => {
   const dispatch = useDispatch();
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError]   = useState(false);
@@ -291,6 +291,12 @@ const ProductItem = ({ product, columnSize }) => {
   const discountPct = salePrice && product?.price
     ? Math.round((1 - salePrice / product.price) * 100) : 0;
 
+  // Flash Deal override: calculate final display price
+  const basePrice     = salePrice ?? product?.price ?? 0;
+  const flashPrice    = flashDiscount > 0 ? Math.round(basePrice * (1 - flashDiscount / 100)) : null;
+  const displayPrice  = flashPrice ?? salePrice ?? product?.price;
+  const originalPrice = flashPrice ? basePrice : (salePrice ? product?.price : null);
+
   const handleAddToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -298,7 +304,7 @@ const ProductItem = ({ product, columnSize }) => {
     dispatch(setcartItems({
       product: productId,
       name: productName,
-      price: salePrice ?? product.price,
+      price: displayPrice,
       image: imgSrc,
       stock: product.stock ?? 0,
       quantity: 1,
@@ -320,7 +326,10 @@ const ProductItem = ({ product, columnSize }) => {
             {!imgLoaded && !imgError && <div className="pi-skeleton" aria-hidden="true" />}
 
             {!inStock && <span className="pi-badge sold-out">ໝົດ</span>}
-            {salePrice && inStock && discountPct > 0 && (
+            {flashDiscount > 0 && inStock && (
+              <span className="pi-badge sale">⚡ -{flashDiscount}%</span>
+            )}
+            {!flashDiscount && salePrice && inStock && discountPct > 0 && (
               <span className="pi-badge sale">-{discountPct}%</span>
             )}
 
@@ -367,13 +376,15 @@ const ProductItem = ({ product, columnSize }) => {
 
           <div className="pi-footer">
             <div className="pi-price">
-              {salePrice ? (
+              {originalPrice ? (
                 <>
-                  <span className="pi-price-original">{formatLAK(product?.price)}</span>
-                  <span className="pi-price-main">{formatLAK(salePrice)}</span>
+                  <span className="pi-price-original">{formatLAK(originalPrice)}</span>
+                  <span className="pi-price-main" style={flashPrice ? { color: "#e11d48" } : undefined}>
+                    {formatLAK(displayPrice)}
+                  </span>
                 </>
               ) : (
-                <span className="pi-price-main no-sale">{formatLAK(product?.price)}</span>
+                <span className="pi-price-main no-sale">{formatLAK(displayPrice)}</span>
               )}
             </div>
             <Link to={`/product/${productId}`} className="pi-btn-view">ເບິ່ງ <span style={{fontSize:".8em",opacity:.7}}>→</span></Link>
