@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useLoginMutation, useGoogleLoginMutation } from "../redux/authApi";
 import { setIsAuthenticate, setUser } from "../redux/features/userSlice";
@@ -9,7 +9,10 @@ import MetaData from "../layout/MetaData";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
+
+  const redirectTo = location.state?.from || "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,10 +35,10 @@ export default function Login() {
     }
   }, []);
 
-  // ถ้าล็อกอินอยู่แล้ว → ไปหน้าแรก
+  // ถ้าล็อกอินอยู่แล้ว → ไปยังหน้าที่ต้องการ
   useEffect(() => {
-    if (isAuthenticate) navigate("/", { replace: true });
-  }, [isAuthenticate, navigate]);
+    if (isAuthenticate) navigate(redirectTo, { replace: true });
+  }, [isAuthenticate, navigate, redirectTo]);
 
   // ล็อกอินด้วยอีเมล/รหัสผ่าน
   const handleEmailLogin = async (e) => {
@@ -61,7 +64,7 @@ export default function Login() {
       dispatch(setUser(res.user));
       dispatch(setIsAuthenticate(true));
       toast.success("ເຂົ້າສູ່ລະບົບສຳເລັດ");
-      navigate("/", { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       toast.error(err?.data?.message || "ອີເມວ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ");
     }
@@ -76,7 +79,7 @@ export default function Login() {
       dispatch(setUser(res.user));
       dispatch(setIsAuthenticate(true));
       toast.success("ເຂົ້າສູ່ລະບົບດ້ວຍ Google ສຳເລັດ");
-      navigate("/", { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       toast.error(err?.data?.message || "Google login failed");
     }

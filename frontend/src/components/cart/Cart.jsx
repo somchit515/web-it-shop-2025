@@ -17,6 +17,7 @@ function Cart() {
 
   // safe selector with fallback
   const { cartItems = [] } = useSelector((state) => state.cart || { cartItems: [] });
+  const { isAuthenticate, loading: authLoading } = useSelector((state) => state.auth);
 
   // ✅ Stock validation state
   const [checkStock, { isLoading: isCheckingStock }] = useCheckStockMutation();
@@ -120,6 +121,11 @@ function Cart() {
   // ✅ ตรวจ stock อีกครั้งก่อน checkout (defense in depth)
   const checkoutHandler = async () => {
     if (cartItems.length === 0) return;
+
+    if (!isAuthenticate) {
+      navigate('/login', { state: { from: '/cart' } });
+      return;
+    }
 
     if (hasStockIssues) {
       toast.error('ມີສິນຄ້າທີ່ສາງບໍ່ພຽງພໍ ກະລຸນາແກ້ໄຂກ່ອນ');
@@ -405,10 +411,12 @@ function Cart() {
                   <button
                     className="checkout-btn"
                     onClick={checkoutHandler}
-                    disabled={hasStockIssues || isCheckingStock}
+                    disabled={isAuthenticate ? (hasStockIssues || isCheckingStock) : false}
                     title={hasStockIssues ? 'ກະລຸນາແກ້ໄຂບັນຫາ stock ກ່ອນ' : ''}
                   >
-                    {isCheckingStock
+                    {!authLoading && !isAuthenticate
+                      ? '🔐 ເຂົ້າສູ່ລະບົບເພື່ອ Checkout'
+                      : isCheckingStock
                       ? 'ກຳລັງກວດສິນຄ້າ...'
                       : hasStockIssues
                       ? '⚠️ ມີສິນຄ້າທີ່ມີບັນຫາ'
