@@ -1,10 +1,11 @@
 // src/components/Cart.jsx
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MetaData from '../layout/MetaData';
 import { useSelector, useDispatch } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { setcartItems, removeItemFromCart } from '../redux/features/cartSlice';
 import { useCheckStockMutation } from '../redux/api/productsApi';
+import { useGetFlashDealQuery } from '../redux/api/flashDealApi';
 import toast from 'react-hot-toast';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -18,6 +19,17 @@ function Cart() {
   // safe selector with fallback
   const { cartItems = [] } = useSelector((state) => state.cart || { cartItems: [] });
   const { isAuthenticate, loading: authLoading } = useSelector((state) => state.auth);
+
+  // ✅ Flash Deal
+  const { data: flashData } = useGetFlashDealQuery();
+  const flashDealMap = useMemo(() => {
+    const deal = flashData?.deal;
+    if (!deal?.isActive || !deal?.discountPercent || !deal?.products?.length) return {};
+    if (deal.endsAt && new Date(deal.endsAt) < new Date()) return {};
+    const map = {};
+    deal.products.forEach((p) => { map[p._id || p] = deal.discountPercent; });
+    return map;
+  }, [flashData]);
 
   // ✅ Stock validation state
   const [checkStock, { isLoading: isCheckingStock }] = useCheckStockMutation();
@@ -296,6 +308,21 @@ function Cart() {
 
                       <div className="cart-info">
                         <Link to={`/product/${item.product}`} className="cart-title">{item.name}</Link>
+
+                        {/* ✅ Flash Deal badge */}
+                        {flashDealMap[item.product] && (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            background: 'linear-gradient(135deg,#f43f5e,#e11d48)',
+                            color: '#fff', borderRadius: 6,
+                            padding: '2px 8px', fontSize: '0.72rem', fontWeight: 800,
+                            marginTop: 4, marginBottom: 2,
+                            boxShadow: '0 2px 6px rgba(244,63,94,.35)',
+                          }}>
+                            ⚡ Flash Deal -{flashDealMap[item.product]}%
+                          </span>
+                        )}
+
                         <div className="cart-meta">
                           <span className="muted-small">Seller: {item.seller || 'ITHUBB'}</span> •
                           <span className="muted-small"> Stock: {typeof item.stock !== 'undefined' ? item.stock : '—'}</span>
