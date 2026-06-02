@@ -556,9 +556,14 @@ export default function Login() {
         }
 
         .forgot-link {
+          background: none;
+          border: none;
+          padding: 0;
           color: #667eea;
           text-decoration: none;
           font-weight: 600;
+          font-size: inherit;
+          font-family: inherit;
           transition: color 0.2s ease;
           cursor: pointer;
         }
@@ -932,12 +937,13 @@ export default function Login() {
                 />
                 <label htmlFor="remember">ຈື່ລະຫັດຜ່ານ</label>
               </div>
-              <a
+              <button
+                type="button"
                 className="forgot-link"
                 onClick={() => navigate("/password/forgot")}
               >
                 ລືມລະຫັດ?
-              </a>
+              </button>
             </div>
 
             {/* Submit Button */}
@@ -980,7 +986,7 @@ export default function Login() {
           {/* Register Link */}
           <div className="register-link">
             ຍັງບໍ່ມີບັນຊີ?{" "}
-            <a onClick={() => navigate("/register")}>ສະໝັກສະມາຊິກ</a>
+            <button type="button" className="forgot-link" onClick={() => navigate("/register")}>ສະໝັກສະມາຊິກ</button>
           </div>
         </div>
         </div>
