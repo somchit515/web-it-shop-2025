@@ -12,6 +12,7 @@ const navItems = [
   { label: "Home",        path: "/",             icon: "fas fa-home" },
   { label: "ໃໝ່",         path: "/new-arrivals", icon: "fas fa-certificate", badge: "NEW", badgeColor: "#0ea5e9" },
   { label: "Sale",        path: "/sale",          icon: "fas fa-tag",         badge: "HOT", badgeColor: "#e11d48" },
+  { label: "⚡ Flash",    path: "/flash-deal",    icon: "fas fa-bolt",        badge: "LIVE", badgeColor: "#f43f5e" },
   { label: "Recommended", path: "/recommended",  icon: "fas fa-star" },
   { label: "Blog",        path: "/blog",          icon: "fas fa-blog" },
   { label: "About",       path: "/about",         icon: "fas fa-info-circle" },
@@ -27,8 +28,9 @@ export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const user = useSelector((state) => state.auth?.user);
-  const cartItems    = useSelector((state) => state.cart?.cartItems || []);
-  const compareItems = useSelector((state) => state.compare?.items || []);
+  const cartItems     = useSelector((state) => state.cart?.cartItems || []);
+  const compareItems  = useSelector((state) => state.compare?.items || []);
+  const wishlistItems = useSelector((state) => state.wishlist?.items || []);
 
   const dropdownRef = useRef(null);
 
@@ -114,6 +116,14 @@ export default function Header() {
               >
                 <i className="fas fa-bars"></i>
               </button>
+
+              {/* Wishlist */}
+              <NavLink to="/wishlist" className="cart-link" aria-label="Wishlist" title="ລາຍການໂປດ" style={{ position: "relative" }}>
+                <span style={{ fontSize: "1.1rem" }}>{wishlistItems.length > 0 ? "❤️" : "🤍"}</span>
+                {wishlistItems.length > 0 && (
+                  <span className="cart-badge" style={{ background: "#e11d48" }}>{wishlistItems.length}</span>
+                )}
+              </NavLink>
 
               {/* Compare */}
               <NavLink to="/compare" className="cart-link" aria-label="Compare" title="ປຽບທຽບສິນຄ້າ" style={{ position: "relative" }}>

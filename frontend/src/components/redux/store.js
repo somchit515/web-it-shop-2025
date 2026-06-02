@@ -2,7 +2,8 @@ import { configureStore } from "@reduxjs/toolkit";
 import userReducer from "./features/userSlice";
 import cartReducer from "./features/cartSlice";
 import shippingReducer from "./features/shippingSlice";
-import compareReducer from "./features/compareSlice";
+import compareReducer  from "./features/compareSlice";
+import wishlistReducer from "./features/wishlistSlice";
 
 import { productApi } from "./api/productsApi";
 import { authApi } from "./authApi";
@@ -18,7 +19,8 @@ export const store = configureStore({
     auth: userReducer,
     cart: cartReducer,
     shipping: shippingReducer,
-    compare: compareReducer,
+    compare:  compareReducer,
+    wishlist: wishlistReducer,
 
     // API Reducers
     [productApi.reducerPath]: productApi.reducer,

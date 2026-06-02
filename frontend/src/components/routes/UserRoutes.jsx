@@ -11,6 +11,10 @@ import NewArrivals from "../product/NewArrivals";
 import SalePage from "../product/SalePage";
 import BrandsPage from "../product/BrandsPage";
 import ComparePage from "../product/ComparePage";
+import WishlistPage from "../product/WishlistPage";
+import FlashDealPage from "../product/FlashDealPage";
+import TrackingPage from "../order/TrackingPage";
+import SearchPage from "../product/SearchPage";
 
 // AUTH PAGES
 import Login from "../auth/Login";
@@ -169,6 +173,10 @@ function UserRoutes() {
       <Route path="/brands" element={<BrandsPage />} />
       <Route path="/brand/:brandName" element={<BrandsPage />} />
       <Route path="/compare" element={<ComparePage />} />
+      <Route path="/wishlist" element={<WishlistPage />} />
+      <Route path="/flash-deal" element={<FlashDealPage />} />
+      <Route path="/track" element={<TrackingPage />} />
+      <Route path="/search" element={<SearchPage />} />
 
     </>
   );

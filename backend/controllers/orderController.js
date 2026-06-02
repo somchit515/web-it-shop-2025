@@ -735,3 +735,23 @@ export const updateOrderStatus = catchAsyncErrors(async (req, res, next) => {
 
   res.status(200).json({ success: true, order });
 });
+
+// Public: Track order by tracking code => GET /api/v1/track/:code
+export const trackOrderByCode = catchAsyncErrors(async (req, res, next) => {
+  const order = await Order.findOne({ trackingCode: req.params.code });
+  if (!order) return next(new ErrorHandler("ບໍ່ພົບລະຫັດພັດດຸນີ້", 404));
+
+  res.status(200).json({
+    success: true,
+    tracking: {
+      trackingCode: order.trackingCode,
+      status: order.fulfillmentStatus || order.orderStatus,
+      paymentMethod: order.paymentMethod,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      events: (order.events || []).map((e) => ({
+        type: e.type, timestamp: e.timestamp, note: e.note,
+      })),
+    },
+  });
+});

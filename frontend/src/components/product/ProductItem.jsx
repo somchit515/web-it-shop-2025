@@ -6,6 +6,7 @@ import PropTypes from "prop-types";
 import toast from "react-hot-toast";
 import { setcartItems } from "../redux/features/cartSlice";
 import { addToCompare } from "../redux/features/compareSlice";
+import { toggleWishlist } from "../redux/features/wishlistSlice";
 
 /* ─── helpers ─────────────────────────────────────────────── */
 const DEFAULT_IMG = "/images/default_product.png";
@@ -173,6 +174,10 @@ if (typeof document !== "undefined" && !document.getElementById("pi-styles")) {
 }
 .pi-quick-cart:hover { background: #4f46e5; }
 .pi-quick-cart:disabled { opacity: .35 !important; cursor: not-allowed; }
+.pi-card:hover .pi-wish-btn {
+  opacity: 1 !important;
+  transform: scale(1) rotate(0deg) !important;
+}
 
 /* ── Body ── */
 .pi-body {
@@ -275,12 +280,20 @@ const ProductItem = ({ product, columnSize, flashDiscount = 0 }) => {
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError]   = useState(false);
 
-  const isInCompare = compareItems.some((p) => p._id === product?._id);
+  const wishlistItems = useSelector((state) => state.wishlist?.items || []);
+  const isInCompare   = compareItems.some((p) => p._id === product?._id);
+  const isWishlisted  = wishlistItems.some((p) => p._id === product?._id);
 
   const handleCompare = (e) => {
     e.preventDefault();
     e.stopPropagation();
     dispatch(addToCompare(product));
+  };
+
+  const handleWishlist = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dispatch(toggleWishlist(product));
   };
 
   const imgSrc = useMemo(() => {
@@ -343,6 +356,23 @@ const ProductItem = ({ product, columnSize, flashDiscount = 0 }) => {
               <span className="pi-badge sale">-{discountPct}%</span>
             )}
 
+            <button
+              type="button"
+              onClick={handleWishlist}
+              title={isWishlisted ? "ລຶບອອກລາຍການໂປດ" : "ເພີ່ມລາຍການໂປດ"}
+              style={{
+                position: "absolute", top: 44, right: 10, zIndex: 4,
+                width: 34, height: 34, borderRadius: "50%",
+                background: isWishlisted ? "#fff0f3" : "#fff",
+                border: "none", display: "flex", alignItems: "center",
+                justifyContent: "center", fontSize: ".9rem",
+                cursor: "pointer", opacity: 0,
+                transform: "scale(.6) rotate(-20deg)",
+                transition: "opacity .2s, transform .22s cubic-bezier(.2,.9,.2,1)",
+                boxShadow: "0 2px 10px rgba(0,0,0,.14)",
+              }}
+              className="pi-wish-btn"
+            >{isWishlisted ? "❤️" : "🤍"}</button>
             <button
               type="button"
               className="pi-quick-cart"

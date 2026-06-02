@@ -14,6 +14,7 @@ import {
   cancelMyOrder,
   issueRefund,
   addOrderNote,
+  trackOrderByCode,
 } from "../controllers/orderController.js";
 
 import {
@@ -27,6 +28,7 @@ const router = express.Router();
 
 /* ===================  PUBLIC / AUTHENTICATED  =================== */
 
+router.route("/track/:code").get(trackOrderByCode); // public
 router.route("/orders/new").post(isAuthenticatedUser, newOrder);
 router.route("/orders/:id").get(isAuthenticatedUser, getOrderDetails);
 router.route("/me/orders").get(isAuthenticatedUser, myOrder);

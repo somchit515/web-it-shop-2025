@@ -39,7 +39,7 @@ const Search = () => {
 
         if (keyword.trim()) {
             saveToRecent(keyword.trim());
-            navigate(`/?keyword=${encodeURIComponent(keyword)}`);
+            navigate(`/search?keyword=${encodeURIComponent(keyword)}`);
             setIsFocused(false);
             inputRef.current?.blur();
         } else {
