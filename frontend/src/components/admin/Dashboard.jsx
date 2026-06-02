@@ -2,8 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import AdminLayout from '../layout/AdminLayout';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
 import SaleChart from '../charts/SaleChart';
 import { useLazyGetDashboardSalesQuery } from '../redux/api/OrderApi';
 import { clearUser } from '../redux/features/userSlice';
@@ -28,6 +26,14 @@ function endOfDayInZone(date) {
     .toISO();
 }
 
+function toDateStr(d) {
+  const date = new Date(d);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function fmtLAK(value) {
   const n = Number(value || 0);
   return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -45,8 +51,8 @@ function Dashboard() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const [startDate, setStartdate] = useState(new Date());
-  const [endDate, setEnddate] = useState(new Date());
+  const [startDate, setStartdate] = useState(toDateStr(new Date()));
+  const [endDate, setEnddate] = useState(toDateStr(new Date()));
   const [activePreset, setActivePreset] = useState('today');
   const [chartMode, setChartMode] = useState('daily');
 
@@ -63,8 +69,8 @@ function Dashboard() {
     const now = new Date();
     const s = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const e = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    setStartdate(s);
-    setEnddate(e);
+    setStartdate(toDateStr(s));
+    setEnddate(toDateStr(e));
     getDashboardSales({ startDate: startOfDayInZone(s), endDate: endOfDayInZone(e) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -116,8 +122,8 @@ function Dashboard() {
         break;
       default: return;
     }
-    setStartdate(s);
-    setEnddate(e);
+    setStartdate(toDateStr(s));
+    setEnddate(toDateStr(e));
     setActivePreset(preset);
     errorShownRef.current = false;
     getDashboardSales({ startDate: startOfDayInZone(s), endDate: endOfDayInZone(e) });
@@ -180,13 +186,12 @@ function Dashboard() {
         }
         .date-field { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 160px; }
         .date-label { font-size: 0.8rem; font-weight: 600; color: #475569; }
-        .react-datepicker-wrapper { width: 100%; }
-        .react-datepicker__input-container input {
+        .date-input {
           width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0;
           border-radius: 10px; font-size: 0.9rem; transition: all 0.2s ease;
-          background: white; color: #1e293b;
+          background: white; color: #1e293b; font-family: inherit; cursor: pointer;
         }
-        .react-datepicker__input-container input:focus {
+        .date-input:focus {
           outline: none; border-color: #667eea;
           box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
         }
@@ -316,25 +321,22 @@ function Dashboard() {
           <div className="filter-row">
             <div className="date-field">
               <label className="date-label">ວັນທີ່ເລີ່ມຕົ້ນ</label>
-              <DatePicker
-                selected={startDate}
-                onChange={(d) => { setStartdate(d); setActivePreset(null); }}
-                selectsStart
-                startDate={startDate}
-                endDate={endDate}
-                dateFormat="dd/MM/yyyy"
+              <input
+                type="date"
+                className="date-input"
+                value={startDate}
+                max={endDate}
+                onChange={(e) => { setStartdate(e.target.value); setActivePreset(null); }}
               />
             </div>
             <div className="date-field">
               <label className="date-label">ວັນທີ່ສິ້ນສຸດ</label>
-              <DatePicker
-                selected={endDate}
-                onChange={(d) => { setEnddate(d); setActivePreset(null); }}
-                selectsEnd
-                startDate={startDate}
-                endDate={endDate}
-                minDate={startDate}
-                dateFormat="dd/MM/yyyy"
+              <input
+                type="date"
+                className="date-input"
+                value={endDate}
+                min={startDate}
+                onChange={(e) => { setEnddate(e.target.value); setActivePreset(null); }}
               />
             </div>
             <button
