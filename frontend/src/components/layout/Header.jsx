@@ -9,11 +9,13 @@ import PushNotificationToggle from "../notifications/PushNotificationToggle";
 import "./Header.css";
 
 const navItems = [
-  { label: "Home", path: "/", icon: "fas fa-home" },
-  { label: "Recommended", path: "/recommended", icon: "fas fa-star" },
-  { label: "Blog", path: "/blogs", icon: "fas fa-blog" },
-  { label: "About", path: "/about", icon: "fas fa-info-circle" },
-  { label: "Contact", path: "/contact", icon: "fas fa-envelope" },
+  { label: "Home",        path: "/",             icon: "fas fa-home" },
+  { label: "ໃໝ່",         path: "/new-arrivals", icon: "fas fa-certificate", badge: "NEW", badgeColor: "#0ea5e9" },
+  { label: "Sale",        path: "/sale",          icon: "fas fa-tag",         badge: "HOT", badgeColor: "#e11d48" },
+  { label: "Recommended", path: "/recommended",  icon: "fas fa-star" },
+  { label: "Blog",        path: "/blog",          icon: "fas fa-blog" },
+  { label: "About",       path: "/about",         icon: "fas fa-info-circle" },
+  { label: "Contact",     path: "/contact",       icon: "fas fa-envelope" },
 ];
 
 export default function Header() {
@@ -25,7 +27,8 @@ export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const user = useSelector((state) => state.auth?.user);
-  const cartItems = useSelector((state) => state.cart?.cartItems || []);
+  const cartItems    = useSelector((state) => state.cart?.cartItems || []);
+  const compareItems = useSelector((state) => state.compare?.items || []);
 
   const dropdownRef = useRef(null);
 
@@ -77,9 +80,20 @@ export default function Header() {
                     key={item.path}
                     to={item.path}
                     className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+                    style={item.badge ? { position: "relative" } : undefined}
                   >
                     <i className={item.icon} aria-hidden="true"></i>
                     <span>{item.label}</span>
+                    {item.badge && (
+                      <span style={{
+                        position: "absolute", top: -6, right: -8,
+                        background: item.badgeColor, color: "#fff",
+                        fontSize: ".52rem", fontWeight: 800,
+                        padding: "1px 5px", borderRadius: 999,
+                        letterSpacing: ".04em", lineHeight: 1.6,
+                        pointerEvents: "none",
+                      }}>{item.badge}</span>
+                    )}
                   </NavLink>
                 ))}
               </nav>
@@ -100,6 +114,14 @@ export default function Header() {
               >
                 <i className="fas fa-bars"></i>
               </button>
+
+              {/* Compare */}
+              <NavLink to="/compare" className="cart-link" aria-label="Compare" title="ປຽບທຽບສິນຄ້າ" style={{ position: "relative" }}>
+                <span style={{ fontSize: "1.1rem" }}>⚖️</span>
+                {compareItems.length > 0 && (
+                  <span className="cart-badge" style={{ background: "#7c3aed" }}>{compareItems.length}</span>
+                )}
+              </NavLink>
 
               {/* Cart */}
               <NavLink to="/cart" className="cart-link" aria-label={`Cart (${cartItems.length} items)`}>

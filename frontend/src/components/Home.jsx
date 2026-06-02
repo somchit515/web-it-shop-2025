@@ -261,6 +261,34 @@ const Home = () => {
                 </div>
               </div>
 
+              {/* ── Quick Access Banners ── */}
+              <div className="px-2 mb-4">
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+                  {[
+                    { to: "/new-arrivals", bg: "linear-gradient(135deg,#0ea5e9,#0369a1)", icon: "🆕", title: "ສິນຄ້າໃໝ່", sub: "New Arrivals" },
+                    { to: "/sale",         bg: "linear-gradient(135deg,#e11d48,#f43f5e)", icon: "🔥", title: "ລາຄາພິເສດ", sub: "Sale & Flash Deal" },
+                    { to: "/brands",       bg: "linear-gradient(135deg,#7c3aed,#6d28d9)", icon: "🏷️", title: "ທຸກ Brand",   sub: "Brands & Sellers" },
+                    { to: "/compare",      bg: "linear-gradient(135deg,#0f172a,#1e293b)", icon: "⚖️", title: "ປຽບທຽບ",     sub: "Compare Products" },
+                  ].map((b) => (
+                    <Link key={b.to} to={b.to} style={{
+                      background: b.bg, borderRadius: 14, padding: "16px 14px",
+                      color: "#fff", textDecoration: "none", display: "flex",
+                      alignItems: "center", gap: 10, transition: "transform .2s, box-shadow .2s",
+                      boxShadow: "0 4px 14px rgba(0,0,0,.15)",
+                    }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,.22)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,.15)"; }}
+                    >
+                      <span style={{ fontSize: "1.6rem", flexShrink: 0 }}>{b.icon}</span>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: ".9rem", lineHeight: 1.2 }}>{b.title}</div>
+                        <div style={{ fontSize: ".7rem", opacity: .75, marginTop: 2 }}>{b.sub}</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
               {/* ── ສິນຄ້າແນະນຳ ── */}
               {products.length > 0 && (
                 <div className="px-2 mb-5">
