@@ -1,186 +1,320 @@
-// src/pages/Profile.jsx
 import React, { useState } from 'react';
-import Userlayout from '../layout/Userlayout';
 import { useSelector } from 'react-redux';
 import MetaData from '../layout/MetaData';
 import Loader from '../layout/Loader';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
-function Profile() {
+const CSS = `
+  .pf-root {
+    background: #f1f5f9;
+    min-height: 100vh;
+    font-family: "Noto Sans Lao","Inter",sans-serif;
+    padding-bottom: 48px;
+  }
+
+  /* ── Hero banner ── */
+  .pf-hero {
+    background: linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);
+    padding: 40px 20px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+  .pf-hero::before {
+    content:'';position:absolute;right:-60px;top:-60px;
+    width:260px;height:260px;border-radius:50%;
+    background:rgba(255,255,255,.06);pointer-events:none;
+  }
+  .pf-hero::after {
+    content:'';position:absolute;left:-40px;bottom:-80px;
+    width:200px;height:200px;border-radius:50%;
+    background:rgba(255,255,255,.04);pointer-events:none;
+  }
+
+  /* ── Profile card (overlaps hero) ── */
+  .pf-card-wrap {
+    max-width: 860px;
+    margin: -56px auto 0;
+    padding: 0 16px;
+    position: relative;
+    z-index: 2;
+  }
+  .pf-card {
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.10);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+  }
+
+  /* ── Top strip: avatar + name ── */
+  .pf-top {
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    padding: 20px 24px 0;
+    flex-wrap: wrap;
+  }
+  .pf-avatar-wrap { position: relative; flex-shrink: 0; }
+  .pf-avatar {
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #fff;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    display: block;
+  }
+  .pf-avatar-edit {
+    position: absolute;
+    bottom: 2px; right: 2px;
+    width: 28px; height: 28px;
+    background: #4f46e5;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .7rem;
+    text-decoration: none;
+    transition: background .15s;
+  }
+  .pf-avatar-edit:hover { background: #4338ca; color: #fff; }
+  .pf-name-block { flex: 1; padding-bottom: 12px; }
+  .pf-name { font-size: 1.4rem; font-weight: 800; color: #1e293b; margin: 0 0 2px; }
+  .pf-email { font-size: .88rem; color: #64748b; margin: 0 0 6px; }
+  .pf-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pf-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: .7rem; font-weight: 700;
+  }
+  .pf-badge.role { background: #ede9fe; color: #7c3aed; }
+  .pf-badge.verified { background: #d1fae5; color: #065f46; }
+  .pf-badge.unverified { background: #fef3c7; color: #92400e; }
+
+  /* ── Divider ── */
+  .pf-divider { height: 1px; background: #f1f5f9; margin: 16px 0; }
+
+  /* ── Info grid ── */
+  .pf-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid #f1f5f9;
+  }
+  @media(max-width:600px){ .pf-info-grid { grid-template-columns: 1fr 1fr; } }
+  .pf-info-item {
+    padding: 14px 20px;
+    border-right: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .pf-info-item:last-child { border-right: none; }
+  .pf-info-lbl { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; margin-bottom: 3px; }
+  .pf-info-val { font-size: .88rem; font-weight: 600; color: #1e293b; word-break: break-all; }
+  .pf-id-row { display: flex; align-items: center; gap: 6px; }
+  .pf-copy-btn {
+    background: none; border: none; color: #94a3b8; cursor: pointer;
+    padding: 2px 4px; border-radius: 4px; font-size: .75rem;
+    transition: all .15s;
+  }
+  .pf-copy-btn:hover { background: #ede9fe; color: #4f46e5; }
+
+  /* ── Action grid ── */
+  .pf-actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    max-width: 860px;
+    margin: 20px auto 0;
+    padding: 0 16px;
+  }
+  @media(max-width:700px){ .pf-actions { grid-template-columns: repeat(2,1fr); } }
+  @media(max-width:360px){ .pf-actions { grid-template-columns: 1fr; } }
+  .pf-action {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    padding: 18px 14px;
+    text-align: center;
+    text-decoration: none;
+    transition: all .2s;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    cursor: pointer;
+  }
+  .pf-action:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(79,70,229,.15);
+    border-color: #c7d2fe;
+  }
+  .pf-action-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: grid; place-items: center;
+    font-size: 1.1rem;
+  }
+  .pf-action-lbl { font-size: .78rem; font-weight: 700; color: #374151; }
+  .pf-action-sub { font-size: .68rem; color: #94a3b8; }
+
+  /* ── Orders quick card ── */
+  .pf-orders-card {
+    max-width: 860px;
+    margin: 16px auto 0;
+    padding: 0 16px;
+  }
+  .pf-orders-inner {
+    background: linear-gradient(135deg,#4f46e5,#7c3aed);
+    border-radius: 16px;
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .pf-orders-text h4 { color: #fff; font-weight: 800; margin: 0 0 2px; font-size: 1rem; }
+  .pf-orders-text p { color: rgba(255,255,255,.7); font-size: .82rem; margin: 0; }
+  .pf-orders-btn {
+    background: rgba(255,255,255,.2);
+    color: #fff;
+    border: 1.5px solid rgba(255,255,255,.35);
+    border-radius: 10px;
+    padding: 8px 18px;
+    font-size: .82rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background .15s;
+    backdrop-filter: blur(6px);
+  }
+  .pf-orders-btn:hover { background: rgba(255,255,255,.32); color: #fff; }
+`;
+
+export default function Profile() {
   const navigate = useNavigate();
   const { user, loading } = useSelector((state) => state.auth || {});
   const [copied, setCopied] = useState(false);
 
   if (loading) return <Loader />;
 
-  if (!user) {
-    return (
-      <>
-        <MetaData title={'ໂປຣຟາຍ'} />
-        <Userlayout>
-          <div className="container py-5 text-center">
-            <div className="alert alert-warning">
-              ບໍ່ພົບຂໍ້ມູນຜູ້ໃຊ້ — <Link to="/login">ເຂົ້າລະບົບ</Link>
-            </div>
-          </div>
-        </Userlayout>
-      </>
-    );
-  }
+  if (!user) return (
+    <>
+      <MetaData title="ໂປຣຟາຍ" />
+      <div style={{ textAlign: 'center', padding: '80px 20px', color: '#64748b' }}>
+        <div style={{ fontSize: '3rem', marginBottom: 16 }}>🔒</div>
+        <p>ກະລຸນາ <Link to="/login">ເຂົ້າລະບົບ</Link> ກ່ອນ</p>
+      </div>
+    </>
+  );
 
-  const registeredDate = new Date(user.createdAt).toLocaleDateString('lo-LA', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const avatarSrc = user?.avatar?.url || 'https://cdn-icons-png.flaticon.com/512/3607/3607444.png';
 
-  const avatarSrc =
-    user?.avatar?.url ||
-    'https://cdn-icons-png.flaticon.com/512/3607/3607444.png';
+  const registeredDate = user.createdAt
+    ? new Date(user.createdAt).toLocaleDateString('lo-LA', { year: 'numeric', month: 'long', day: 'numeric' })
+    : '—';
 
-  const handleCopyId = async () => {
-    await navigator.clipboard.writeText(user?._id || '');
+  const copyId = async () => {
+    await navigator.clipboard.writeText(user._id || '');
     setCopied(true);
-    toast.success('Copied!');
-    setTimeout(() => setCopied(false), 1800);
+    toast.success('ຄັດລອກ ID ແລ້ວ');
+    setTimeout(() => setCopied(false), 2000);
   };
+
+  const ACTIONS = [
+    { icon: '✏️', bg: '#ede9fe', label: 'ແກ້ໄຂໂປຣຟາຍ', sub: 'ຊື່, ທີ່ຢູ່', to: '/me/update_profile' },
+    { icon: '📷', bg: '#dbeafe', label: 'ປ່ຽນຮູບ', sub: 'Avatar', to: '/me/upload_avatar' },
+    { icon: '🔑', bg: '#fef3c7', label: 'ລະຫັດຜ່ານ', sub: 'ປ່ຽນ password', action: () => navigate('/me/update_password') },
+    { icon: '📦', bg: '#dcfce7', label: 'ຄຳສັ່ງຊື້', sub: 'ປະຫວັດ order', to: '/me/orders' },
+  ];
 
   return (
     <>
-      <MetaData title={'ໂປຣຟາຍ'} />
+      <MetaData title="ໂປຣຟາຍ — IT HUBB" />
+      <style>{CSS}</style>
 
-      <style>{`
-        .profile-wrapper {
-          background: #fff;
-          padding: 30px;
-          border-radius: 16px;
-          box-shadow: 0 10px 24px rgba(0,0,0,0.06);
-          max-width: 900px;
-          margin: auto;
-        }
-        .profile-avatar {
-          width: 150px;
-          height: 150px;
-          border-radius: 12px;
-          object-fit: cover;
-          box-shadow: 0 4px 18px rgba(0,0,0,0.12);
-        }
-        .profile-label {
-          font-weight: 600;
-          margin-bottom: 4px;
-          color: #374151;
-        }
-        .copy-box {
-          background: #fde2e4;
-          padding: 5px 10px;
-          border-radius: 6px;
-          font-family: monospace;
-          user-select: all;
-        }
-        @media(max-width: 768px){
-          .action-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-          }
-        }
-      `}</style>
+      <div className="pf-root">
+        {/* Hero banner */}
+        <div className="pf-hero" />
 
-      <Userlayout>
-        <div className="container my-4">
-          <div className="profile-wrapper">
-
-            {/* Title */}
-            <h3 className="text-center mb-4">ຂໍ້ມູນຜູ້ໃຊ້</h3>
-
-            <div className="row align-items-start">
-
-              {/* LEFT — Avatar + Buttons */}
-              <div className="col-12 col-md-4 text-center">
-
-                <img
-                  src={avatarSrc}
-                  alt="avatar"
-                  className="profile-avatar mb-3"
-                />
-
-                <div className="action-buttons d-flex justify-content-center gap-2">
-                  <Link to="/me/Upload_Avatar" className="btn btn-outline-primary btn-sm">
-                    ປ່ຽນຮູບໂປຣຟາຍ
-                  </Link>
-
-                  <Link to="/me/Update_Profile" className="btn btn-outline-secondary btn-sm">
-                    ແກ້ໄຂຂໍ້ມູນ
-                  </Link>
-                </div>
-
+        {/* Profile card */}
+        <div className="pf-card-wrap">
+          <div className="pf-card">
+            {/* Top: avatar + name */}
+            <div className="pf-top">
+              <div className="pf-avatar-wrap">
+                <img src={avatarSrc} alt={user.name} className="pf-avatar"
+                  onError={(e) => { e.currentTarget.src = 'https://cdn-icons-png.flaticon.com/512/3607/3607444.png'; }} />
+                <Link to="/me/upload_avatar" className="pf-avatar-edit" title="ປ່ຽນຮູບ">
+                  <i className="fas fa-camera" />
+                </Link>
               </div>
-
-              {/* RIGHT — Info */}
-              <div className="col-12 col-md-8 mt-4 mt-md-0">
-
-                <h4 className="text-capitalize">{user?.name}</h4>
-                <div className="text-muted">{user?.email}</div>
-
-                {/* Email Verify */}
-                {user?.emailVerified ? (
-                  <span className="badge bg-success mt-2">ອີເມວໄດ້ຮັບການຢືນຢັນ</span>
-                ) : (
-                  <span className="badge bg-warning text-dark mt-2">ອີເມວຍັງບໍ່ໄດ້ຮັບການຢືນຢັນ</span>
-                )}
-
-                <hr />
-
-                <div className="mt-2">
-                  <div className="profile-label">ວັນທີລົງທະບຽນ</div>
-                  <div>{registeredDate}</div>
+              <div className="pf-name-block">
+                <div className="pf-name">{user.name}</div>
+                <div className="pf-email">{user.email}</div>
+                <div className="pf-badges">
+                  <span className="pf-badge role">
+                    {user.role === 'admin' ? '🛡️ Admin' : user.role === 'superAdmin' ? '👑 Super Admin' : '👤 User'}
+                  </span>
+                  {user.emailVerified
+                    ? <span className="pf-badge verified">✅ ອີເມວຢືນຢັນ</span>
+                    : <span className="pf-badge unverified">⚠️ ຍັງບໍ່ຢືນຢັນ</span>
+                  }
                 </div>
-
-                <div className="mt-3">
-                  <div className="profile-label">User ID</div>
-
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="copy-box">{user?._id}</span>
-
-                    <button className="btn btn-outline-dark btn-sm" onClick={handleCopyId}>
-                      {copied ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <div className="profile-label">ລາຍລະອຽດເພີ່ມເຕີມ</div>
-                  <ul>
-                    <li>Role: <strong>{user?.role}</strong></li>
-                  </ul>
-                </div>
-
-                <div className="mt-4">
-                  <button
-                    className="btn btn-outline-warning me-2"
-                    onClick={() => navigate('/me/Update_Password')}
-                  >
-                    ປ່ຽນລະຫັດຜ່ານ
-                  </button>
-
-                  <Link to="/me/orders" className="btn btn-primary">
-                    ຄຳສັ່ງຊື້ຂອງຂ້ອຍ
-                  </Link>
-                </div>
-
               </div>
             </div>
 
-          </div>
-
-          <div className="text-center text-muted mt-3 small">
-            ຖ້າທ່ານຕ້ອງການຄວາມຊ່ວຍເຫຼືອ <a href="mailto:info@ithubb.com">info@ithubb.com</a>
+            {/* Info grid */}
+            <div className="pf-info-grid">
+              <div className="pf-info-item">
+                <div className="pf-info-lbl">ວັນລົງທະບຽນ</div>
+                <div className="pf-info-val">{registeredDate}</div>
+              </div>
+              <div className="pf-info-item">
+                <div className="pf-info-lbl">ສິດທິ</div>
+                <div className="pf-info-val" style={{ textTransform: 'capitalize' }}>{user.role}</div>
+              </div>
+              <div className="pf-info-item">
+                <div className="pf-info-lbl">User ID</div>
+                <div className="pf-id-row">
+                  <div className="pf-info-val" style={{ fontSize: '.72rem', fontFamily: 'monospace' }}>
+                    {user._id?.substring(0, 16)}…
+                  </div>
+                  <button className="pf-copy-btn" onClick={copyId} title="ຄັດລອກ">
+                    <i className={`fas fa-${copied ? 'check' : 'copy'}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </Userlayout>
+
+        {/* Action cards */}
+        <div className="pf-actions">
+          {ACTIONS.map((a, i) =>
+            a.to ? (
+              <Link key={i} to={a.to} className="pf-action">
+                <div className="pf-action-icon" style={{ background: a.bg }}>{a.icon}</div>
+                <div className="pf-action-lbl">{a.label}</div>
+                <div className="pf-action-sub">{a.sub}</div>
+              </Link>
+            ) : (
+              <div key={i} className="pf-action" onClick={a.action}>
+                <div className="pf-action-icon" style={{ background: a.bg }}>{a.icon}</div>
+                <div className="pf-action-lbl">{a.label}</div>
+                <div className="pf-action-sub">{a.sub}</div>
+              </div>
+            )
+          )}
+        </div>
+
+        {/* Orders banner */}
+        <div className="pf-orders-card">
+          <div className="pf-orders-inner">
+            <div className="pf-orders-text">
+              <h4>📦 ຄຳສັ່ງຊື້ຂອງຂ້ອຍ</h4>
+              <p>ຕິດຕາມ ແລະ ຈັດການ order ທັງໝົດ</p>
+            </div>
+            <Link to="/me/orders" className="pf-orders-btn">ເບິ່ງທັງໝົດ →</Link>
+          </div>
+        </div>
+      </div>
     </>
   );
 }
-
-export default Profile;

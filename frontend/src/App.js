@@ -26,12 +26,16 @@ function AppWrapper() {
     location.pathname === "/recommended" ||
     location.pathname === "/me/orders" ||
     location.pathname.startsWith("/me/orders/") ||
+    location.pathname.startsWith("/me/profile") ||
     location.pathname.startsWith("/invoice/orders/") ||
     location.pathname === "/cart" ||
     location.pathname === "/shipping" ||
     location.pathname === "/confirm_order" ||
     location.pathname === "/payment_method" ||
-    location.pathname.startsWith("/orders/");
+    location.pathname.startsWith("/orders/") ||
+    location.pathname.startsWith("/category/") ||
+    location.pathname === "/blog" ||
+    location.pathname.startsWith("/blog/");
 
   // Header: ซ่อนเฉพาะ auth pages (admin ให้แสดงด้วย)
   const showHeader = !isAuthPage;
