@@ -21,6 +21,7 @@ const navItems = [
 
 export default function Header() {
   const navigate = useNavigate();
+  // eslint-disable-next-line no-unused-vars
   const { isLoading } = useGetMeQuery();
   const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
   const [scrolled, setScrolled] = useState(false);

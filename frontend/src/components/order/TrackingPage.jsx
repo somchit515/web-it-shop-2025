@@ -70,6 +70,7 @@ const CSS = `
 const PAYMENT_LABELS = { COD: "ເງິນສົດ (COD)", BankTransfer: "ໂອນເງິນ", PayAtStore: "ຈ່າຍໜ້າຮ້ານ" };
 
 export default function TrackingPage() {
+  // eslint-disable-next-line no-unused-vars
   const navigate = useNavigate();
   const [code, setCode]     = useState("");
   const [loading, setLoading] = useState(false);

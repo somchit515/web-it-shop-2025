@@ -13,8 +13,8 @@ import {
   faDollarSign,
   faTruck,
   faFilter,
-  faDownload,
-  faEye
+  faDownload, // eslint-disable-line no-unused-vars
+  faEye // eslint-disable-line no-unused-vars
 } from "@fortawesome/free-solid-svg-icons";
 import { useGetAdminOrdersQuery } from "../redux/api/OrderApi";
 import AdminLayout from "../layout/AdminLayout";

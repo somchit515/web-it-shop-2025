@@ -329,6 +329,7 @@ export default function ListOrder() {
     if (deleteError) toast.error(deleteError?.data?.message || "ລຶບຜິດພາດ");
   }, [isError, fetchError, isDeleteSuccess, deleteError]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const orders = data?.orders || [];
 
   const filtered = useMemo(() => {

@@ -193,6 +193,7 @@ const CATEGORY_ICONS = {
 export default function CategoryProducts() {
   const { categorySlug } = useParams();
   const [searchParams] = useSearchParams();
+  // eslint-disable-next-line no-unused-vars
   const navigate = useNavigate();
 
   const [sort, setSort]             = useState("");

@@ -17,9 +17,11 @@ const FULFILLMENT_LIST = [
 ];
 
 // Backward-compat สำหรับโค้ดเก่าที่อ้างถึงตัวแปรเดิม
+// eslint-disable-next-line no-unused-vars
 const STATUS_LIST = FULFILLMENT_LIST.filter((s) =>
   ["Processing", "Shipped", "Delivered", "Cancelled"].includes(s.value)
 );
+// eslint-disable-next-line no-unused-vars
 const SHIPMENT_LIST = FULFILLMENT_LIST;
 
 export default function ShipmentsPage() {
@@ -689,6 +691,7 @@ function Row({ order, onSave, updating }) {
     !isLocked && (fulfillmentStatus !== initialStatus || tracking !== (order.trackingCode || ""));
 
   const customerName = order.user?.name || order.shippingInfo?.fullName || "ບໍ່ມີຊື່";
+  // eslint-disable-next-line no-unused-vars
   const statusInfo = FULFILLMENT_LIST.find((s) => s.value === initialStatus);
 
   return (

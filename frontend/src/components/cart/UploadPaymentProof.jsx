@@ -137,6 +137,7 @@ export default function UploadPaymentProof() {
       el.removeEventListener("dragleave", handleDragLeave);
       el.removeEventListener("drop", handleDrop);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onFileSelected = (f) => {

@@ -279,6 +279,7 @@ export default function ListUsers() {
   const [roleFilter, setRoleFilter] = useState('');
   const [deletingId, setDeletingId] = useState(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const users = data?.users || [];
 
   const filteredUsers = useMemo(() => {

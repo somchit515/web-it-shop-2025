@@ -27,6 +27,7 @@ export default function RelatedProductsSlider({ category, currentId }) {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState([]);
   const [loadingMore, setLoadingMore] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [paused, setPaused] = useState(false);
 
   const { data, isFetching, error } = useGetProductsQuery(

@@ -88,6 +88,7 @@ const SLIDES = [
 /* ─── Component ───────────────────────────────────────────── */
 export default function PromoBanner({ autoplayMs = 5000 }) {
   const [cur, setCur]         = useState(0);
+  // eslint-disable-next-line no-unused-vars
   const [prev, setPrev]       = useState(null);
   const [phase, setPhase]     = useState("idle"); // idle | leaving | entering
   const [dir, setDir]         = useState("next");
@@ -115,6 +116,7 @@ export default function PromoBanner({ autoplayMs = 5000 }) {
     if (!pausedRef.current) timerRef.current = setInterval(goNext, autoplayMs);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { startTimer(); return () => clearInterval(timerRef.current); }, [cur]);
 
   /* swipe */

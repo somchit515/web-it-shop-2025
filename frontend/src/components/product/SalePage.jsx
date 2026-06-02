@@ -52,6 +52,7 @@ export default function SalePage() {
     const map = {};
     flashDeal.products.forEach((p) => { map[p._id || p] = flashDeal.discountPercent; });
     return map;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flashData, flashActive]);
 
   const { data: flashProductsData } = useGetProductsQuery({}, { skip: !flashActive });

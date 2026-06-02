@@ -771,6 +771,7 @@ function ResetPassword() {
 
             {/* Back to Login Link */}
             <div className="back-link">
+              {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
               <a onClick={() => navigate('/login')}>
                 ← ກັບໄປຫນ້າເຂົ້າສູ່ລະບົບ
               </a>

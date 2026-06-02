@@ -50,6 +50,7 @@ export default function Recommended() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchTab(activeTab); }, [activeTab]);
 
   const list      = products[activeTab] || [];

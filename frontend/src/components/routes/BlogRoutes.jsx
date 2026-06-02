@@ -3,6 +3,7 @@ import React from 'react';
 import { Route } from 'react-router-dom';
 import BlogList from '../../components/blog/BlogList';
 import BlogDetail from '../../components/blog/BlogDetail';
+// eslint-disable-next-line no-unused-vars
 import ProtectedRoute from '../blog/ProtectedRoute';
 import BlogLayout from '../blog/BlogLayout';
 

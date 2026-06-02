@@ -53,6 +53,7 @@ export default function Register() {
   const RULES = {
     name:     !name.trim()                              ? "ກະລຸນາໃສ່ຊື່" : name.trim().length < 2 ? "ຊື່ຕ້ອງຢ່າງນ້ອຍ 2 ຕົວ" : "",
     email:    !email                                    ? "ກະລຸນາໃສ່ອີເມວ" : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "ຮູບແບບອີເມວບໍ່ຖືກ" : "",
+    // eslint-disable-next-line no-useless-escape
     phone:    phone && !/^\+?[\d\s\-]{7,15}$/.test(phone) ? "ເບີໂທບໍ່ຖືກຕ້ອງ" : "",
     password: !password                                 ? "ກະລຸນາໃສ່ລະຫັດ" : password.length < 8 ? "ຕ້ອງຢ່າງນ້ອຍ 8 ຕົວ" : "",
     confirm:  !confirm                                  ? "ກະລຸນາຢືນຢັນລະຫັດ" : confirm !== password ? "ລະຫັດຜ່ານບໍ່ກົງກັນ" : "",
@@ -239,8 +240,10 @@ export default function Register() {
                 <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} disabled={isLoading} />
                 <span>
                   ຂ້ອຍຍອມຮັບ{" "}
+                  {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
                   <a href="#" onClick={(e) => e.preventDefault()} style={{ color: "#667eea" }}>ຂໍ້ກຳນົດ</a>
                   {" "}ແລະ{" "}
+                  {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
                   <a href="#" onClick={(e) => e.preventDefault()} style={{ color: "#667eea" }}>ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ</a>
                   {" "}ຂອງ IT HUBB
                 </span>

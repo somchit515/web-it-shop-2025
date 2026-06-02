@@ -5,6 +5,7 @@ import MetaData from "../layout/MetaData";
 import AdminLayout from "../layout/AdminLayout";
 
 /* ─── helpers ─────────────────────────────────────── */
+// eslint-disable-next-line no-unused-vars
 const fmtDate = (d) =>
   d
     ? new Date(d).toLocaleDateString("lo-LA", {

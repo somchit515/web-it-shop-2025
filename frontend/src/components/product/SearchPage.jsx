@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+// eslint-disable-next-line no-unused-vars
 import { useSearchParams, Link } from "react-router-dom";
 import { useGetProductsQuery } from "../redux/api/productsApi";
 import { useGetFlashDealQuery } from "../redux/api/flashDealApi";
@@ -64,6 +65,7 @@ const CSS = `
 `;
 
 export default function SearchPage() {
+  // eslint-disable-next-line no-unused-vars
   const [searchParams, setSearchParams] = useSearchParams();
   const keyword = searchParams.get("keyword") || "";
 

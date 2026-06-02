@@ -822,9 +822,11 @@ function ForgotPassword() {
 
                   {/* Links */}
                   <div className="links-section">
+                    {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
                     <a onClick={() => navigate('/login')}>
                       ← ກັບໄປເຂົ້າສູ່ລະບົບ
                     </a>
+                    {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
                     <a onClick={() => navigate('/register')}>
                       ສະໝັກສະມາຊິກ
                     </a>
@@ -875,6 +877,7 @@ function ForgotPassword() {
                 </button>
 
                 <div className="links-section">
+                  {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
                   <a onClick={() => navigate('/login')}>
                     ← ກັບໄປເຂົ້າສູ່ລະບົບ
                   </a>

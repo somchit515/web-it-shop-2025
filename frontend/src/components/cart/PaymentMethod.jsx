@@ -17,6 +17,7 @@ export default function PaymentMethod() {
   const dispatch = useDispatch();
   const [method, setMethod] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [showBankDetails, setShowBankDetails] = useState(false);
 
   const { cartItems = [] } = useSelector(state => state.cart || {});

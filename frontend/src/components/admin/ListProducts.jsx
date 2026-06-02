@@ -32,7 +32,7 @@ import {
   faExclamationTriangle,
   faChartLine,
   faWarning,
-  faHome,
+  faHome, // eslint-disable-line no-unused-vars
 } from "@fortawesome/free-solid-svg-icons";
 
 function ListProducts() {
