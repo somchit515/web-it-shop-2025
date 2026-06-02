@@ -33,7 +33,7 @@ const CSS = `
 
   /* ── Profile card (overlaps hero) ── */
   .pf-card-wrap {
-    max-width: 860px;
+    max-width: 1400px;
     margin: -56px auto 0;
     padding: 0 16px;
     position: relative;
@@ -96,9 +96,10 @@ const CSS = `
   /* ── Info grid ── */
   .pf-info-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     border-top: 1px solid #f1f5f9;
   }
+  @media(max-width:900px){ .pf-info-grid { grid-template-columns: repeat(3,1fr); } }
   @media(max-width:600px){ .pf-info-grid { grid-template-columns: 1fr 1fr; } }
   .pf-info-item {
     padding: 14px 20px;
@@ -120,13 +121,16 @@ const CSS = `
   .pf-actions {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    max-width: 860px;
+    gap: 16px;
+    max-width: 1400px;
     margin: 20px auto 0;
     padding: 0 16px;
   }
   @media(max-width:700px){ .pf-actions { grid-template-columns: repeat(2,1fr); } }
   @media(max-width:360px){ .pf-actions { grid-template-columns: 1fr; } }
+
+  .pf-action-icon { width: 52px; height: 52px; border-radius: 14px; font-size: 1.3rem; }
+  .pf-action { padding: 24px 16px; }
   .pf-action {
     background: #fff;
     border-radius: 16px;
@@ -155,7 +159,7 @@ const CSS = `
 
   /* ── Orders quick card ── */
   .pf-orders-card {
-    max-width: 860px;
+    max-width: 1400px;
     margin: 16px auto 0;
     padding: 0 16px;
   }
@@ -269,6 +273,10 @@ export default function Profile() {
               <div className="pf-info-item">
                 <div className="pf-info-lbl">ສິດທິ</div>
                 <div className="pf-info-val" style={{ textTransform: 'capitalize' }}>{user.role}</div>
+              </div>
+              <div className="pf-info-item">
+                <div className="pf-info-lbl">ອີເມວ</div>
+                <div className="pf-info-val" style={{ fontSize: '.82rem' }}>{user.email}</div>
               </div>
               <div className="pf-info-item">
                 <div className="pf-info-lbl">User ID</div>
