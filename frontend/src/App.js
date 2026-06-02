@@ -27,6 +27,12 @@ function AppWrapper() {
     location.pathname === "/me/orders" ||
     location.pathname.startsWith("/me/orders/") ||
     location.pathname.startsWith("/me/profile") ||
+    location.pathname.startsWith("/me/update_profile") ||
+    location.pathname.startsWith("/me/upload_avatar") ||
+    location.pathname.startsWith("/me/update_password") ||
+    location.pathname.startsWith("/me/Update_Profile") ||
+    location.pathname.startsWith("/me/Upload_Avatar") ||
+    location.pathname.startsWith("/me/Update_Password") ||
     location.pathname.startsWith("/invoice/orders/") ||
     location.pathname === "/cart" ||
     location.pathname === "/shipping" ||
