@@ -5,7 +5,7 @@ services:
     region: singapore
     plan: free
 
-    buildCommand: CI=false npm run build
+    buildCommand: npm install && CI=false npm run build
     startCommand: node backend/index.js
 
     envVars:
