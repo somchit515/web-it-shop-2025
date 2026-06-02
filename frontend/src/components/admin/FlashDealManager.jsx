@@ -236,7 +236,7 @@ const CSS = `
 
 /* ─── Component ───────────────────────────────────────────── */
 export default function FlashDealManager() {
-  const { data: flashData, isLoading: loadingDeal } = useGetFlashDealQuery();
+  const { data: flashData } = useGetFlashDealQuery();
   const { data: productsData, isLoading: loadingProducts } = useGetAdminProductsQuery();
   const [updateFlashDeal, { isLoading: saving }] = useUpdateFlashDealMutation();
 
@@ -258,15 +258,14 @@ export default function FlashDealManager() {
     setSelected(deal.products || []);
   }, [flashData]);
 
-  const allProducts = productsData?.products || [];
-
   const filtered = useMemo(() => {
+    const allProducts = productsData?.products || [];
     if (!search) return allProducts;
     const q = search.toLowerCase();
     return allProducts.filter((p) =>
       (p.name || "").toLowerCase().includes(q)
     );
-  }, [allProducts, search]);
+  }, [productsData, search]);
 
   const selectedIds = useMemo(() => new Set(selected.map((p) => p._id)), [selected]);
 
