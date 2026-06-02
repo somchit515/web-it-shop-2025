@@ -9,16 +9,15 @@ import Loader from "../layout/Loader";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Currency formatter -> ₭ 7,000,000.00
 const formatLAK = (val) => {
   const n = Number(val ?? 0);
-  return `₭ ${n.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return new Intl.NumberFormat("lo-LA", {
+    style: "currency",
+    currency: "LAK",
+    maximumFractionDigits: 0,
+  }).format(n);
 };
 
-// safe URL helper
 const resolveFileUrl = (urlOrPath) => {
   if (!urlOrPath) return "";
   if (/^https?:\/\//i.test(urlOrPath)) return urlOrPath;
@@ -26,1274 +25,20 @@ const resolveFileUrl = (urlOrPath) => {
   return `/uploads/payment_proofs/${urlOrPath}`;
 };
 
-export default function OrderDetail() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { data, isLoading, error, refetch } = useGetOrderDetailsQuery(id);
-  const order = data?.order || null;
+const STATUS_MAP = {
+  delivered:  { color: "#10b981", bg: "#d1fae5", border: "#6ee7b7", label: "ສຳເລັດ",         icon: "✅" },
+  processing: { color: "#3b82f6", bg: "#dbeafe", border: "#93c5fd", label: "ກຳລັງດຳເນີນ",   icon: "⏳" },
+  shipped:    { color: "#06b6d4", bg: "#cffafe", border: "#67e8f9", label: "ກຳລັງສົ່ງ",      icon: "🚚" },
+  cancelled:  { color: "#ef4444", bg: "#fee2e2", border: "#fca5a5", label: "ຍົກເລີກ",         icon: "🚫" },
+  unfulfilled:{ color: "#f59e0b", bg: "#fef3c7", border: "#fcd34d", label: "ລໍຖ້າດຳເນີນ",   icon: "⏳" },
+};
+
+const getStatus = (s) =>
+  STATUS_MAP[(s || "").toLowerCase()] || { color: "#f59e0b", bg: "#fef3c7", border: "#fcd34d", label: s || "ລໍຖ້າ", icon: "⏳" };
+
+const PAYMENT_ICONS = { COD: "💵", BankTransfer: "🏦", PayAtStore: "🏪" };
+const PAYMENT_LABELS = { COD: "ເງິນສົດ (COD)", BankTransfer: "ໂອນເງິນ", PayAtStore: "ຈ່າຍໜ້າຮ້ານ" };
 
-  const [cancelOrder, { isLoading: cancelling }] = useCancelMyOrderMutation();
-
-  // Local state for lightbox modal
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [lightboxSrc, setLightboxSrc] = useState(null);
-  const [copiedId, setCopiedId] = useState(false);
-
-  // Cancel modal state
-  const [cancelModalOpen, setCancelModalOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
-
-  // ✅ ตรวจว่า order นี้ยกเลิกได้หรือไม่
-  const currentStatus = order?.fulfillmentStatus || order?.status || order?.orderStatus;
-  const canCancel =
-    order &&
-    ["Unfulfilled", "Processing"].includes(currentStatus) &&
-    order.paymentStatus !== "Paid";
-
-  const handleCancelOrder = async () => {
-    if (!cancelReason.trim()) {
-      return toast.error("ກະລຸນາລະບຸເຫດຜົນການຍົກເລີກ");
-    }
-    try {
-      await cancelOrder({ id, reason: cancelReason.trim() }).unwrap();
-      toast.success("ຍົກເລີກອໍເດີສຳເລັດ ສິນຄ້າຄືນສາງແລ້ວ");
-      setCancelModalOpen(false);
-      setCancelReason("");
-      refetch();
-    } catch (err) {
-      toast.error(err?.data?.message || "ການຍົກເລີກລົ້ມເຫລວ");
-    }
-  };
-
-  useEffect(() => {
-    if (error) {
-      // ✅ จัดการ 403 (ไม่ใช่เจ้าของ order) แบบเจาะจง
-      if (error?.status === 403) {
-        toast.error("ທ່ານບໍ່ມີສິດເບິ່ງອໍເດີນີ້");
-        setTimeout(() => navigate('/me/orders', { replace: true }), 1200);
-      } else if (error?.status === 404) {
-        toast.error("ບໍ່ພົບອໍເດີນີ້");
-      } else {
-        toast.error(
-          error?.data?.message || "เกิดข้อผิดพลาดขณะดึงข้อมูลออร์เดอร์"
-        );
-      }
-    }
-  }, [error, navigate]);
-
-  if (isLoading) return <Loader />;
-
-  if (!order) {
-    return (
-      <>
-        <MetaData title="Order Details" />
-        <div className="container mt-5">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="text-center">
-              <div className="empty-icon mb-4">❌</div>
-              <h3>ບໍ່ພົບອໍເດີນີ້</h3>
-              <p className="text-muted mb-4">ບໍ່ພົບອໍເດີນີ້ຫຼືເກີດຂໍ້ຜິດພາດ</p>
-              <button className="btn btn-primary" onClick={() => navigate(-1)}>
-                <i className="fas fa-arrow-left me-2"></i>ຍົກກັບຄືນ
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      </>
-    );
-  }
-
-  const {
-    shippingInfo = {},
-    paymentInfo = {},
-    orderItems = [],
-    user = {},
-    totalAmount = 0,
-    orderStatus = "Pending",
-    createdAt,
-    paymentMethod = order.paymentMethod || "N/A",
-    paymentProof = [],
-    shippingCarrier = shippingInfo.shippingCarrier || "N/A",
-    branch = shippingInfo.branch || "N/A",
-  } = order;
-
-  const isPaid =
-    (paymentInfo?.status || "").toString().toLowerCase() === "paid" ||
-    (order.paymentStatus || "").toString().toLowerCase() === "paid";
-
-  const openLightbox = (src) => {
-    setLightboxSrc(src);
-    setLightboxOpen(true);
-  };
-
-  const closeLightbox = () => {
-    setLightboxSrc(null);
-    setLightboxOpen(false);
-  };
-
-  const downloadAllProofsZip = async () => {
-    try {
-      const res = await fetch(`/api/v1/orders/${order._id}/download-proofs`, {
-        method: "GET",
-        credentials: "include", // ✅ ส่ง cookie auth
-      });
-      if (!res.ok) {
-        const err = await res
-          .json()
-          .catch(() => ({ message: "Download failed" }));
-        return toast.error(err.message || "ດາວໂຫຼດລົ້ມເຫຼວ");
-      }
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `order-${order._id}-proofs.zip`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success("ເລີ່ມດາວໂຫຼດໄຟລ໌ ZIP");
-    } catch (err) {
-      console.error(err);
-      toast.error("ເກີດຂໍ້ຜິດພາດລະຫວ່າງດາວໂຫຼດ");
-    }
-  };
-
-  const formatDate = (d) => {
-    if (!d) return "N/A";
-    try {
-      return new Date(d).toLocaleString("lo-LA", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return d;
-    }
-  };
-
-  // copy order id
-  const copyOrderId = async () => {
-    try {
-      await navigator.clipboard.writeText(order._id);
-      setCopiedId(true);
-      toast.success("ຄັດລອກ Order ID ແລ້ວ");
-      setTimeout(() => setCopiedId(false), 2000);
-    } catch (err) {
-      console.error("copy failed", err);
-      toast.error("ຄັດລອກບໍ່ສຳເລັດ");
-    }
-  };
-
-  // Get status badge info
-  const getStatusInfo = (status) => {
-    const statusLower = status?.toLowerCase() || "";
-    switch (statusLower) {
-      case "delivered":
-        return {
-          color: "#10b981",
-          label: "ສຳເລັດ",
-          icon: "✅",
-          bgColor: "#d1fae5",
-        };
-      case "processing":
-        return {
-          color: "#3b82f6",
-          label: "ກຳລັງດຳເນີນ",
-          icon: "⏳",
-          bgColor: "#dbeafe",
-        };
-      case "shipped":
-        return {
-          color: "#06b6d4",
-          label: "ກຳລັງສົ່ງ",
-          icon: "🚚",
-          bgColor: "#cffafe",
-        };
-      case "cancelled":
-        return {
-          color: "#ef4444",
-          label: "ຍົກເລີກ",
-          icon: "❌",
-          bgColor: "#fee2e2",
-        };
-      default:
-        return {
-          color: "#f59e0b",
-          label: status || "ລໍຖ້າ",
-          icon: "⏳",
-          bgColor: "#fef3c7",
-        };
-    }
-  };
-
-  const statusInfo = getStatusInfo(orderStatus);
-
-  return (
-    <>
-      <MetaData title="Order Details" />
-      <div className="order-detail-container">
-        <style>{`
-          .order-detail-container {
-            background: linear-gradient(135deg, #f6f8fb 0%, #eef2f6 100%);
-            min-height: 100vh;
-            padding: 20px 0;
-            font-family: "Noto Sans Lao", "Phetsarath OT", "Segoe UI", Roboto, sans-serif;
-          }
-
-          .order-detail-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-          }
-
-          .page-header {
-            background: white;
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            border: 1px solid #e5e7eb;
-          }
-
-          .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-          }
-
-          .header-title h1 {
-            margin: 0;
-            color: #1f2937;
-            font-size: 2rem;
-            font-weight: 700;
-          }
-
-          .header-subtitle {
-            color: #6b7280;
-            margin: 4px 0 0 0;
-          }
-
-          .header-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-          }
-
-          .btn-icon {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-          }
-
-          .info-card {
-            background: white;
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            border: 1px solid #e5e7eb;
-          }
-
-          .card-header {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 20px;
-            padding-bottom: 16px;
-            border-bottom: 2px solid #f3f4f6;
-          }
-
-          .card-icon {
-            font-size: 1.5rem;
-          }
-
-          .card-title {
-            margin: 0;
-            color: #374151;
-            font-size: 1.25rem;
-            font-weight: 600;
-          }
-
-          .info-table {
-            margin: 0;
-          }
-
-          .info-table th {
-            background: #f9fafb;
-            color: #374151;
-            font-weight: 600;
-            border: none;
-            padding: 12px 16px;
-            width: 30%;
-          }
-
-          .info-table td {
-            padding: 12px 16px;
-            border-color: #f3f4f6;
-            color: #6b7280;
-          }
-
-          .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 0.9rem;
-          }
-
-          .shipping-info {
-            background: #f9fafb;
-            padding: 16px;
-            border-radius: 8px;
-            margin-top: 16px;
-          }
-
-          .shipping-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid #e5e7eb;
-          }
-
-          .shipping-row:last-child {
-            border-bottom: none;
-          }
-
-          .shipping-label {
-            font-weight: 600;
-            color: #374151;
-          }
-
-          .shipping-value {
-            color: #6b7280;
-            text-align: right;
-          }
-
-          .payment-proofs {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 16px;
-            margin-bottom: 20px;
-          }
-
-          .proof-card {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            overflow: hidden;
-            transition: all 0.3s ease;
-          }
-
-          .proof-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          }
-
-          .proof-image {
-            width: 100%;
-            height: 120px;
-            object-fit: cover;
-            cursor: pointer;
-            transition: transform 0.3s ease;
-          }
-
-          .proof-image:hover {
-            transform: scale(1.05);
-          }
-
-          .proof-info {
-            padding: 12px;
-          }
-
-          .proof-filename {
-            font-size: 0.8rem;
-            color: #6b7280;
-            margin-bottom: 8px;
-            word-break: break-word;
-          }
-
-          .proof-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          }
-
-          .lightbox-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            padding: 20px;
-            backdrop-filter: blur(4px);
-          }
-
-          .lightbox-content {
-            max-width: 90%;
-            max-height: 90%;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-          }
-
-          .lightbox-image {
-            width: 100%;
-            height: auto;
-            max-height: 70vh;
-            object-fit: contain;
-          }
-
-          .lightbox-footer {
-            padding: 16px;
-            background: #f9fafb;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          }
-
-          .order-items {
-            margin-top: 32px;
-          }
-
-          .item-card {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 16px;
-            transition: all 0.3s ease;
-          }
-
-          .item-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          }
-
-          .item-image {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-          }
-
-          .item-details h5 {
-            margin: 0 0 8px 0;
-            color: #374151;
-            font-size: 1rem;
-            font-weight: 600;
-          }
-
-          .item-details h5 a {
-            color: inherit;
-            text-decoration: none;
-          }
-
-          .item-details h5 a:hover {
-            color: #0f63ff;
-          }
-
-          .item-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-          }
-
-          .item-price {
-            color: #0f63ff;
-            font-weight: 600;
-            font-size: 1.1rem;
-          }
-
-          .item-quantity {
-            color: #6b7280;
-            font-size: 0.9rem;
-          }
-
-          .item-total {
-            text-align: right;
-          }
-
-          .total-label {
-            color: #6b7280;
-            font-size: 0.8rem;
-            margin-bottom: 4px;
-          }
-
-          .total-amount {
-            color: #0f63ff;
-            font-weight: 700;
-            font-size: 1.2rem;
-          }
-
-          .back-button {
-            background: #f3f4f6;
-            color: #374151;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-          }
-
-          .back-button:hover {
-            background: #e5e7eb;
-            transform: translateY(-1px);
-          }
-
-          .copy-button {
-            background: linear-gradient(135deg, #0f63ff 0%, #1977ff 100%);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-          }
-
-          .copy-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(15,99,255,0.3);
-          }
-
-          .copy-button.copied {
-            background: #10b981;
-          }
-
-          .invoice-button {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-          }
-
-          .invoice-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(16,185,129,0.3);
-          }
-
-          .download-button {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-          }
-
-          .download-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(245,158,11,0.3);
-          }
-
-          .empty-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-          }
-
-          @media (max-width: 768px) {
-            .header-content {
-              flex-direction: column;
-              align-items: flex-start;
-            }
-
-            .payment-proofs {
-              grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            }
-
-            .item-card .row {
-              text-align: center;
-            }
-
-            .item-total {
-              text-align: center;
-              margin-top: 10px;
-            }
-
-            .lightbox-footer {
-              flex-direction: column;
-              gap: 10px;
-            }
-          }
-        `}</style>
-
-        <div className="order-detail-content">
-          {/* Page Header */}
-          <motion.div
-            className="page-header"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="header-content">
-              <div className="header-title">
-                <h1>ລາຍລະອຽດອໍເດີ</h1>
-                <p className="header-subtitle">
-                  ຂໍ້ມູນລາຍລະອຽດຂອງຄໍາສັ່ງຊື້ #{order._id.substring(0, 8)}
-                </p>
-              </div>
-
-              <div className="header-actions">
-                {/* ✅ ປຸ່ມຍົກເລີກ — ສະແດງສະເພາະອໍເດີທີ່ຍົກເລີກໄດ້ */}
-                {canCancel && (
-                  <motion.button
-                    className="btn btn-icon"
-                    onClick={() => setCancelModalOpen(true)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    style={{
-                      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                      color: 'white',
-                      border: 'none',
-                    }}
-                    disabled={cancelling}
-                  >
-                    <i className="fas fa-ban"></i>
-                    ຍົກເລີກອໍເດີ
-                  </motion.button>
-                )}
-
-                <motion.button
-                  className={`btn btn-icon ${copiedId ? "copied" : ""}`}
-                  onClick={copyOrderId}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <i className={`fas fa-${copiedId ? "check" : "copy"}`}></i>
-                  {copiedId ? "ຄັດລອກແລ້ວ" : "ຄັດລອກ ID"}
-                </motion.button>
-                
-                <motion.a
-                  className="btn btn-icon invoice-button"
-                  // 💡 Note: ถ้าคุณใช้ href ใน motion.a ไม่จำเป็นต้องมี onClick
-                  href={`/invoice/orders/${order._id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <i className="fas fa-file-invoice"></i>
-                  ໃບບິນ
-                </motion.a>
-                <motion.button
-                  className="btn btn-icon back-button"
-                  onClick={() => navigate(-1)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <i className="fas fa-arrow-left"></i>
-                  ກັບຄືນ
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* ✅ Order Timeline */}
-          {Array.isArray(order.events) && order.events.length > 0 && (
-            <motion.div
-              className="info-card"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.05 }}
-            >
-              <div className="card-header">
-                <div className="card-icon">🕓</div>
-                <h3 className="card-title">ປະຫວັດອໍເດີ</h3>
-              </div>
-              <OrderTimeline events={order.events} />
-            </motion.div>
-          )}
-
-          {/* Order Info Card */}
-          <motion.div
-            className="info-card"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-          >
-            <div className="card-header">
-              <div className="card-icon">📋</div>
-              <h3 className="card-title">ຂໍ້ມູນທົ່ວໄປ</h3>
-            </div>
-
-            <div className="row">
-              <div className="col-md-6">
-                <table className="table info-table">
-                  <tbody>
-                    <tr>
-                      <th>ລະຫັດອໍເດີ</th>
-                      <td className="font-monospace">{order._id}</td>
-                    </tr>
-                    <tr>
-                      <th>ວັນທີສັ່ງຊື້</th>
-                      <td>{formatDate(createdAt)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div className="col-md-6">
-                <table className="table info-table">
-                  <tbody>
-                    <tr>
-                      <th>ສະຖານະ</th>
-                      <td>
-                        <span
-                          className="status-badge"
-                          style={{
-                            backgroundColor: statusInfo.bgColor,
-                            color: statusInfo.color,
-                            border: `2px solid ${statusInfo.color}`,
-                          }}
-                        >
-                          <span className="status-icon">{statusInfo.icon}</span>
-                          <span>{statusInfo.label}</span>
-                        </span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <th>ວິທີການຊຳລະ</th>
-                      <td>
-                        {paymentMethod === "COD" ? "💵 ເງິນສົດ (COD)" :
-                         paymentMethod === "BankTransfer" ? "🏦 ໂອນເງິນ" :
-                         paymentMethod === "PayAtStore" ? "🏪 ຈ່າຍທີ່ໜ້າຮ້ານ" :
-                         paymentMethod}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Shipping Info Card */}
-          <motion.div
-            className="info-card"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-          >
-            <div className="card-header">
-              <div className="card-icon">📍</div>
-              <h3 className="card-title">ຂໍ້ມູນການຂົນສົ່ງ</h3>
-            </div>
-
-            <div className="row">
-              <div className="col-md-6">
-                <table className="table info-table">
-                  <tbody>
-                    <tr>
-                      <th>ຊື່ຜູ້ຮັບ</th>
-                      <td>{user?.name || shippingInfo?.fullName || "N/A"}</td>
-                    </tr>
-                    <tr>
-                      <th>ເບີໂທ</th>
-                      <td>{shippingInfo?.phoneNo || "N/A"}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div className="col-md-6">
-                <table className="table info-table">
-                  <tbody>
-                    <tr>
-                      <th>ຜູ້ຂົນສົ່ງ</th>
-                      <td>{shippingCarrier}</td>
-                    </tr>
-                    <tr>
-                      <th>ສາຂາ</th>
-                      <td>{branch}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="shipping-info">
-              <div className="shipping-row">
-                <span className="shipping-label">ທີ່ຢູ່:</span>
-                <span className="shipping-value">
-                  {shippingInfo?.address || ""}
-                  {shippingInfo?.city ? `, ${shippingInfo.city}` : ""}
-                  {shippingInfo?.province ? `, ${shippingInfo.province}` : ""}
-                  {shippingInfo?.zipCode ? ` ${shippingInfo.zipCode}` : ""}
-                  {shippingInfo?.country ? `, ${shippingInfo.country}` : ""}
-                </span>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Payment Info Card */}
-          <motion.div
-            className="info-card"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-          >
-            <div className="card-header">
-              <div className="card-icon">💳</div>
-              <h3 className="card-title">ຂໍ້ມູນການຊຳລະ</h3>
-            </div>
-
-            <div className="row">
-              <div className="col-md-6">
-                <table className="table info-table">
-                  <tbody>
-                    <tr>
-                      <th>ສະຖານະການຊຳລະ</th>
-                      <td
-                        className={
-                          isPaid
-                            ? "text-success fw-bold"
-                            : "text-danger fw-bold"
-                        }
-                      >
-                        {isPaid
-                          ? "ຊຳລະແລ້ວ"
-                          : order.paymentStatus || "ຍັງບໍ່ທັນຊຳລະ"}
-                      </td>
-                    </tr>
-                    {isPaid && paymentInfo?.id && (
-                      <tr>
-                        <th>Transaction ID</th>
-                        <td className="font-monospace">{paymentInfo.id}</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div className="col-md-6">
-                <table className="table info-table">
-                  <tbody>
-                    <tr>
-                      <th>ຍອດທັງໝົດ</th>
-                      <td
-                        className="fw-bold text-primary"
-                        style={{ fontSize: "1.2rem" }}
-                      >
-                        {formatLAK(totalAmount)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Payment Proofs Section */}
-          {paymentProof && paymentProof.length > 0 && (
-            <motion.div
-              className="info-card"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.4 }}
-            >
-              <div className="card-header">
-                <div className="card-icon">📄</div>
-                <h3 className="card-title">ຫຼັກຖານການຊຳລະ</h3>
-              </div>
-
-              <div className="payment-proofs">
-                {paymentProof.map((p, idx) => {
-                  const url = resolveFileUrl(p.url || p.filename || "");
-                  const isImage = /\.(png|jpe?g|webp|gif)$/i.test(url);
-                  return (
-                    <motion.div
-                      key={idx}
-                      className="proof-card"
-                      whileHover={{ scale: 1.02 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {isImage ? (
-                        <img
-                          src={url}
-                          alt={`proof-${idx}`}
-                          className="proof-image"
-                          onClick={() => openLightbox(url)}
-                        />
-                      ) : (
-                        <div className="proof-file">
-                          <div className="file-icon">
-                            <i className="fas fa-file-pdf fa-3x"></i>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="proof-info">
-                        <div className="proof-filename">
-                          {p.filename || `file-${idx + 1}`}
-                        </div>
-                        <div className="proof-actions">
-                          <button
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => window.open(url, "_blank")}
-                          >
-                            <i className="fas fa-eye"></i>
-                          </button>
-                          <a
-                            href={url}
-                            download
-                            className="btn btn-sm btn-outline-success"
-                          >
-                            <i className="fas fa-download"></i>
-                          </a>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-
-              <div className="mt-3">
-                <motion.button
-                  className="btn download-button"
-                  onClick={downloadAllProofsZip}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <i className="fas fa-file-archive"></i>
-                  ດາວໂຫຼດທັງໝົດ (.zip)
-                </motion.button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Order Items Section */}
-          <motion.div
-            className="order-items"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.5 }}
-          >
-            <div className="card-header mb-4">
-              <div className="card-icon">🛒</div>
-              <h3 className="card-title">
-                ລາຍການທີ່ສັ່ງ ({orderItems.length} ລາຍການ)
-              </h3>
-            </div>
-
-            <AnimatePresence>
-              {orderItems.map((item, i) => (
-                <motion.div
-                  key={i}
-                  className="item-card"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: i * 0.1 }}
-                >
-                  <div className="row align-items-center">
-                    <div className="col-md-2">
-                      <Link to={`/product/${item.product}`}>
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="item-image"
-                        />
-                      </Link>
-                    </div>
-
-                    <div className="col-md-5">
-                      <div className="item-details">
-                        <h5>
-                          <Link to={`/product/${item.product}`}>
-                            {item.name}
-                          </Link>
-                        </h5>
-                        <div className="item-meta">
-                          <span className="item-price">
-                            {formatLAK(item.price)}
-                          </span>
-                          <span className="item-quantity">
-                            ຈຳນວນ: {item.quantity}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="col-md-3 text-center">
-                      <div className="item-subtotal">
-                        <div style={{ color: "#6b7280", fontSize: "0.8rem" }}>
-                          ລວມ
-                        </div>
-                        <div className="item-price">
-                          {formatLAK(item.price * item.quantity)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="col-md-2 text-center">
-                      <Link
-                        to={`/product/${item.product}`}
-                        className="btn btn-outline-primary btn-sm"
-                      >
-                        <i className="fas fa-eye"></i> ເບິ່ງ
-                      </Link>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
-
-          {/* Summary Card */}
-          <motion.div
-            className="info-card"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.6 }}
-          >
-            <div className="card-header">
-              <div className="card-icon">📊</div>
-              <h3 className="card-title">ສະຫຼຸບການສັ່ງຊື້</h3>
-            </div>
-
-            <div className="row">
-              <div className="col-md-6">
-                <table className="table info-table">
-                  <tbody>
-                    <tr>
-                      <th>ລວມລາຍການ</th>
-                      <td>{orderItems.length} ລາຍການ</td>
-                    </tr>
-                    <tr>
-                      <th>ຈຳນວນສິນຄ້າ</th>
-                      <td>
-                        {orderItems.reduce(
-                          (sum, item) => sum + item.quantity,
-                          0
-                        )}{" "}
-                        ຊິ້ນ
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div className="col-md-6">
-                <table className="table info-table">
-                  <tbody>
-                    <tr>
-                      <th>ລວມລາຄາ</th>
-                      <td>
-                        {formatLAK(
-                          orderItems.reduce(
-                            (sum, item) => sum + item.price * item.quantity,
-                            0
-                          )
-                        )}
-                      </td>
-                    </tr>
-                    <tr>
-                      <th>ລວມທັງໝົດ</th>
-                      <td
-                        className="fw-bold text-primary"
-                        style={{ fontSize: "1.2rem" }}
-                      >
-                        {formatLAK(totalAmount)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* ✅ Cancel Order Modal */}
-        <AnimatePresence>
-          {cancelModalOpen && (
-            <motion.div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(15, 23, 42, 0.6)',
-                backdropFilter: 'blur(4px)',
-                zIndex: 9999,
-                display: 'grid',
-                placeItems: 'center',
-                padding: 16,
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => !cancelling && setCancelModalOpen(false)}
-            >
-              <motion.div
-                onClick={(e) => e.stopPropagation()}
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                style={{
-                  background: 'white',
-                  borderRadius: 16,
-                  padding: '28px 24px 20px',
-                  maxWidth: 460,
-                  width: '100%',
-                  boxShadow: '0 24px 60px rgba(0,0,0,0.25)',
-                }}
-              >
-                <div
-                  style={{
-                    width: 64,
-                    height: 64,
-                    margin: '0 auto 16px',
-                    background: '#fee2e2',
-                    color: '#dc2626',
-                    borderRadius: '50%',
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontSize: 28,
-                  }}
-                >
-                  <i className="fas fa-ban"></i>
-                </div>
-                <h4 style={{ textAlign: 'center', margin: '0 0 8px', color: '#1e293b' }}>
-                  ຍົກເລີກອໍເດີ?
-                </h4>
-                <p style={{ textAlign: 'center', color: '#64748b', fontSize: '0.92rem', marginBottom: 16 }}>
-                  ສິນຄ້າຈະຄືນກັບສາງ ການກະທຳນີ້ບໍ່ສາມາດຢ້ອນກັບໄດ້
-                </p>
-
-                <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                  ເຫດຜົນ <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <textarea
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  rows={3}
-                  placeholder="ເຊັ່ນ: ສັ່ງຜິດ, ບໍ່ຕ້ອງການແລ້ວ, ໄດ້ສິນຄ້າທີ່ອື່ນແລ້ວ..."
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '2px solid #e2e8f0',
-                    borderRadius: 10,
-                    fontSize: '0.95rem',
-                    fontFamily: 'inherit',
-                    outline: 'none',
-                    resize: 'vertical',
-                    marginBottom: 18,
-                  }}
-                  disabled={cancelling}
-                  autoFocus
-                />
-
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button
-                    onClick={() => {
-                      setCancelModalOpen(false);
-                      setCancelReason('');
-                    }}
-                    disabled={cancelling}
-                    style={{
-                      flex: 1,
-                      padding: '12px 18px',
-                      border: '2px solid #e2e8f0',
-                      background: 'white',
-                      color: '#64748b',
-                      borderRadius: 10,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    ກັບຄືນ
-                  </button>
-                  <button
-                    onClick={handleCancelOrder}
-                    disabled={cancelling || !cancelReason.trim()}
-                    style={{
-                      flex: 1,
-                      padding: '12px 18px',
-                      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 10,
-                      fontWeight: 700,
-                      cursor: cancelling || !cancelReason.trim() ? 'not-allowed' : 'pointer',
-                      opacity: cancelling || !cancelReason.trim() ? 0.6 : 1,
-                    }}
-                  >
-                    {cancelling ? 'ກຳລັງຍົກເລີກ...' : 'ຢືນຢັນຍົກເລີກ'}
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Lightbox Modal */}
-        <AnimatePresence>
-          {lightboxOpen && (
-            <motion.div
-              className="lightbox-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              onClick={closeLightbox}
-            >
-              <motion.div
-                className="lightbox-content"
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.8, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <img
-                  src={lightboxSrc}
-                  alt="preview"
-                  className="lightbox-image"
-                />
-                <div className="lightbox-footer">
-                  <span style={{ color: "#6b7280" }}>ກົດພາຍນອກຮູບເພື່ອປິດ</span>
-                  <button className="btn btn-light" onClick={closeLightbox}>
-                    <i className="fas fa-times"></i> ປິດ
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </>
-  );
-}
-
-// ✅ Order Timeline sub-component
 const EVENT_CONFIG = {
   created:           { icon: "🛒", color: "#667eea", label: "ສ້າງອໍເດີ" },
   proof_uploaded:    { icon: "📤", color: "#0ea5e9", label: "ອັບໂຫຼດສະຫຼິບ" },
@@ -1311,7 +56,7 @@ const EVENT_CONFIG = {
 function formatRelativeTime(date) {
   const diff = Date.now() - new Date(date).getTime();
   const sec = Math.floor(diff / 1000);
-  if (sec < 60) return "ໜ້ອຍກວ່າ 1 ນາທີຜ່ານມາ";
+  if (sec < 60) return "ໜ້ອຍກວ່າ 1 ນາທີ";
   const min = Math.floor(sec / 60);
   if (min < 60) return `${min} ນາທີຜ່ານມາ`;
   const hr = Math.floor(min / 60);
@@ -1321,80 +66,899 @@ function formatRelativeTime(date) {
   return new Date(date).toLocaleDateString("lo-LA");
 }
 
-function OrderTimeline({ events = [] }) {
-  // เรียงจากเก่า → ใหม่ (timeline ลำดับเหตุการณ์)
-  const sorted = [...events].sort(
-    (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-  );
+const formatDate = (d) => {
+  if (!d) return "N/A";
+  try {
+    return new Date(d).toLocaleString("en-GB", {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+  } catch { return d; }
+};
+
+/* ─── CSS ─────────────────────────────────────────────── */
+const CSS = `
+  :root {
+    --od-primary: #4f46e5;
+    --od-primary-light: #e0e7ff;
+    --od-surface: #ffffff;
+    --od-bg: #f1f5f9;
+    --od-border: #e2e8f0;
+    --od-text: #1e293b;
+    --od-muted: #64748b;
+    --od-radius: 16px;
+    --od-shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
+    --od-shadow-lg: 0 4px 6px rgba(0,0,0,.05), 0 10px 30px rgba(0,0,0,.10);
+    --od-font: "Noto Sans Lao","Phetsarath OT","Inter",sans-serif;
+  }
+
+  .od-wrap {
+    background: var(--od-bg);
+    min-height: 100vh;
+    font-family: var(--od-font);
+    padding: 24px 16px 48px;
+  }
+
+  /* ── max-width container ── */
+  .od-inner {
+    max-width: 1360px;
+    margin: 0 auto;
+  }
+
+  /* ── Hero header ── */
+  .od-hero {
+    background: linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);
+    border-radius: var(--od-radius);
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    color: #fff;
+    box-shadow: 0 8px 32px rgba(79,70,229,.35);
+    position: relative;
+    overflow: hidden;
+  }
+  .od-hero::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.06);
+  }
+  .od-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: 30%;
+    width: 240px; height: 240px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.04);
+  }
+  .od-hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+  }
+  .od-hero-eyebrow {
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    opacity: .75;
+    margin-bottom: 6px;
+  }
+  .od-hero-title {
+    font-size: 1.65rem;
+    font-weight: 800;
+    margin: 0 0 4px;
+    line-height: 1.2;
+  }
+  .od-hero-sub {
+    font-size: .82rem;
+    opacity: .72;
+    font-family: monospace;
+    letter-spacing: .04em;
+  }
+  .od-hero-date {
+    font-size: .8rem;
+    opacity: .65;
+    margin-top: 6px;
+  }
+  .od-hero-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .od-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: transform .15s, box-shadow .15s, opacity .15s;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .od-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+  .od-btn:active { transform: translateY(0); }
+  .od-btn-ghost { background: rgba(255,255,255,.15); color: #fff; backdrop-filter: blur(6px); }
+  .od-btn-ghost:hover { background: rgba(255,255,255,.25); color: #fff; }
+  .od-btn-white { background: #fff; color: var(--od-primary); }
+  .od-btn-white:hover { color: var(--od-primary); }
+  .od-btn-green { background: #10b981; color: #fff; }
+  .od-btn-red { background: #ef4444; color: #fff; }
+
+  /* status pill in hero */
+  .od-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 700;
+    border: 1.5px solid;
+    margin-top: 10px;
+  }
+
+  /* ── Two-column grid ── */
+  .od-grid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 1024px) {
+    .od-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── Card ── */
+  .od-card {
+    background: var(--od-surface);
+    border-radius: var(--od-radius);
+    border: 1px solid var(--od-border);
+    box-shadow: var(--od-shadow);
+    overflow: hidden;
+  }
+  .od-card + .od-card { margin-top: 20px; }
+  .od-card-head {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--od-border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fafbfc;
+  }
+  .od-card-head-icon {
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    background: var(--od-primary-light);
+    display: grid;
+    place-items: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .od-card-head-title {
+    font-size: .98rem;
+    font-weight: 700;
+    color: var(--od-text);
+    margin: 0;
+  }
+  .od-card-body { padding: 20px; }
+
+  /* ── Sidebar sticky ── */
+  .od-sidebar { position: sticky; top: 88px; }
+  @media (max-width: 1024px) { .od-sidebar { position: static; } }
+
+  /* ── Summary rows ── */
+  .od-sum-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--od-border);
+    font-size: .88rem;
+  }
+  .od-sum-row:last-child { border-bottom: none; }
+  .od-sum-label { color: var(--od-muted); }
+  .od-sum-val { font-weight: 600; color: var(--od-text); }
+  .od-sum-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0 0;
+    margin-top: 4px;
+    font-size: 1.05rem;
+  }
+  .od-sum-total-label { font-weight: 700; color: var(--od-text); }
+  .od-sum-total-val { font-weight: 800; font-size: 1.3rem; color: var(--od-primary); }
+
+  /* ── Info grid ── */
+  .od-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  @media (max-width: 640px) { .od-info-grid { grid-template-columns: 1fr; } }
+  .od-info-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--od-border);
+    border-right: 1px solid var(--od-border);
+  }
+  .od-info-item:nth-child(even) { border-right: none; }
+  .od-info-item:last-child,
+  .od-info-item:nth-last-child(2):nth-child(odd) { border-bottom: none; }
+  @media (max-width: 640px) {
+    .od-info-item { border-right: none; }
+    .od-info-item:last-child { border-bottom: none; }
+  }
+  .od-info-lbl {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--od-muted);
+    margin-bottom: 3px;
+  }
+  .od-info-val {
+    font-size: .9rem;
+    font-weight: 600;
+    color: var(--od-text);
+    word-break: break-word;
+  }
+
+  /* address banner */
+  .od-address-bar {
+    margin: 0;
+    padding: 12px 20px;
+    background: linear-gradient(90deg,#f0fdf4,#ecfdf5);
+    border-top: 1px solid var(--od-border);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: .88rem;
+    color: #065f46;
+  }
+
+  /* ── Payment status chip ── */
+  .od-pay-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 700;
+  }
+  .od-pay-chip.paid { background: #d1fae5; color: #065f46; }
+  .od-pay-chip.pending { background: #fef3c7; color: #92400e; }
+
+  /* ── Order item row ── */
+  .od-item {
+    display: grid;
+    grid-template-columns: 72px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--od-border);
+    transition: background .15s;
+  }
+  .od-item:last-child { border-bottom: none; }
+  .od-item:hover { background: #fafbff; }
+  .od-item-img {
+    width: 72px; height: 72px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid var(--od-border);
+    background: #f8fafc;
+  }
+  .od-item-name {
+    font-size: .9rem;
+    font-weight: 700;
+    color: var(--od-text);
+    text-decoration: none;
+    display: block;
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+  .od-item-name:hover { color: var(--od-primary); }
+  .od-item-price {
+    font-size: .82rem;
+    color: var(--od-muted);
+  }
+  .od-item-qty {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: .78rem;
+    background: var(--od-primary-light);
+    color: var(--od-primary);
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-top: 4px;
+  }
+  .od-item-sub {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .od-item-sub-val {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--od-primary);
+  }
+  .od-item-sub-lbl {
+    font-size: .7rem;
+    color: var(--od-muted);
+    margin-bottom: 2px;
+  }
+
+  /* ── Timeline ── */
+  .od-tl { padding: 4px 0 0 40px; position: relative; }
+  .od-tl::before {
+    content: ''; position: absolute;
+    left: 14px; top: 18px; bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg,#c7d2fe,#e2e8f0 90%);
+  }
+  .od-tl-item {
+    position: relative;
+    margin-bottom: 18px;
+  }
+  .od-tl-item:last-child { margin-bottom: 0; }
+  .od-tl-dot {
+    position: absolute;
+    left: -40px; top: 2px;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 13px;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  }
+  .od-tl-body {
+    background: #f8fafc;
+    border-left: 3px solid;
+    border-radius: 0 10px 10px 0;
+    padding: 8px 14px;
+    margin-left: 2px;
+  }
+  .od-tl-label { font-weight: 700; font-size: .9rem; color: var(--od-text); }
+  .od-tl-note { font-size: .8rem; color: var(--od-muted); margin-top: 2px; }
+  .od-tl-time { font-size: .73rem; color: #94a3b8; margin-top: 3px; display: flex; align-items: center; gap: 4px; }
+
+  /* ── Proof grid ── */
+  .od-proofs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    padding: 20px;
+  }
+  .od-proof-card {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--od-border);
+    transition: all .2s;
+  }
+  .od-proof-card:hover { transform: translateY(-3px); box-shadow: var(--od-shadow-lg); }
+  .od-proof-img { width: 100%; height: 110px; object-fit: cover; cursor: zoom-in; display: block; }
+  .od-proof-foot { padding: 8px; display: flex; gap: 6px; justify-content: center; }
+
+  /* ── Lightbox ── */
+  .od-lb {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.82);
+    display: grid; place-items: center;
+    z-index: 9999;
+    backdrop-filter: blur(6px);
+    padding: 20px;
+  }
+  .od-lb-box {
+    max-width: 90vw; max-height: 90vh;
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 32px 64px rgba(0,0,0,.4);
+  }
+  .od-lb-img { width: 100%; height: auto; max-height: 75vh; object-fit: contain; display: block; }
+  .od-lb-bar {
+    padding: 12px 16px;
+    background: #f8fafc;
+    display: flex; justify-content: space-between; align-items: center;
+    border-top: 1px solid var(--od-border);
+  }
+
+  /* ── Cancel modal ── */
+  .od-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15,23,42,.65);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: grid; place-items: center; padding: 16px;
+  }
+  .od-modal {
+    background: #fff; border-radius: 18px;
+    padding: 28px 24px 22px;
+    max-width: 440px; width: 100%;
+    box-shadow: 0 24px 60px rgba(0,0,0,.25);
+  }
+  .od-modal-icon {
+    width: 60px; height: 60px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 26px;
+  }
+
+  /* small btn */
+  .od-sm-btn {
+    padding: 5px 10px;
+    border-radius: 7px;
+    font-size: .72rem;
+    font-weight: 600;
+    border: 1.5px solid var(--od-border);
+    background: #fff;
+    color: var(--od-muted);
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px;
+    transition: all .15s;
+    text-decoration: none;
+  }
+  .od-sm-btn:hover { border-color: var(--od-primary); color: var(--od-primary); }
+
+  @media (max-width: 600px) {
+    .od-hero { padding: 20px; }
+    .od-hero-title { font-size: 1.3rem; }
+    .od-item { grid-template-columns: 56px 1fr; }
+    .od-item-sub { display: none; }
+    .od-hero-actions { gap: 6px; }
+    .od-btn { padding: 7px 12px; font-size: .75rem; }
+  }
+`;
+
+export default function OrderDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { data, isLoading, error, refetch } = useGetOrderDetailsQuery(id);
+  const order = data?.order || null;
+
+  const [cancelOrder, { isLoading: cancelling }] = useCancelMyOrderMutation();
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [copiedId, setCopiedId] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+
+  const currentStatus = order?.fulfillmentStatus || order?.status || order?.orderStatus;
+  const canCancel =
+    order &&
+    ["Unfulfilled", "Processing"].includes(currentStatus) &&
+    order.paymentStatus !== "Paid";
+
+  const handleCancelOrder = async () => {
+    if (!cancelReason.trim()) return toast.error("ກະລຸນາລະບຸເຫດຜົນ");
+    try {
+      await cancelOrder({ id, reason: cancelReason.trim() }).unwrap();
+      toast.success("ຍົກເລີກອໍເດີສຳເລັດ");
+      setCancelModalOpen(false);
+      setCancelReason("");
+      refetch();
+    } catch (err) {
+      toast.error(err?.data?.message || "ການຍົກເລີກລົ້ມເຫລວ");
+    }
+  };
+
+  const copyOrderId = async () => {
+    try {
+      await navigator.clipboard.writeText(order._id);
+      setCopiedId(true);
+      toast.success("ຄັດລອກ ID ແລ້ວ");
+      setTimeout(() => setCopiedId(false), 2000);
+    } catch { toast.error("ຄັດລອກບໍ່ສຳເລັດ"); }
+  };
+
+  useEffect(() => {
+    if (!error) return;
+    if (error?.status === 403) {
+      toast.error("ທ່ານບໍ່ມີສິດເບິ່ງອໍເດີນີ້");
+      setTimeout(() => navigate("/me/orders", { replace: true }), 1200);
+    } else if (error?.status === 404) {
+      toast.error("ບໍ່ພົບອໍເດີນີ້");
+    } else {
+      toast.error(error?.data?.message || "ເກີດຂໍ້ຜິດພາດ");
+    }
+  }, [error, navigate]);
+
+  if (isLoading) return <Loader />;
+
+  if (!order) {
+    return (
+      <>
+        <MetaData title="Order Details" />
+        <div className="od-wrap"><style>{CSS}</style>
+          <div className="od-inner" style={{ textAlign: "center", paddingTop: 80 }}>
+            <div style={{ fontSize: "4rem", marginBottom: 16 }}>📦</div>
+            <h3>ບໍ່ພົບອໍເດີນີ້</h3>
+            <p style={{ color: "#64748b" }}>ກະລຸນາກວດເບິ່ງ ID ຫຼື ກັບໄປໜ້າ My Orders</p>
+            <button className="od-btn od-btn-white" style={{ marginTop: 20, background: "#4f46e5", color: "#fff" }} onClick={() => navigate(-1)}>
+              ← ກັບຄືນ
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  const {
+    shippingInfo = {}, paymentInfo = {}, orderItems = [],
+    user = {}, totalAmount = 0, orderStatus = "Pending",
+    createdAt, paymentMethod = order.paymentMethod || "N/A",
+    paymentProof = [],
+    shippingCarrier = shippingInfo.shippingCarrier || shippingInfo.carrier || "N/A",
+    branch = shippingInfo.branch || "N/A",
+    shippingAmount = order.shippingAmount || 0,
+    discountAmount = order.discountAmount || 0,
+  } = order;
+
+  const statusInfo = getStatus(currentStatus || orderStatus);
+  const isPaid =
+    (paymentInfo?.status || "").toLowerCase() === "paid" ||
+    (order.paymentStatus || "").toLowerCase() === "paid";
+
+  const itemsTotal = orderItems.reduce((s, i) => s + i.price * i.quantity, 0);
+
+  const address = [
+    shippingInfo?.address,
+    shippingInfo?.city,
+    shippingInfo?.province,
+    shippingInfo?.zipCode,
+    shippingInfo?.country,
+  ].filter(Boolean).join(", ");
 
   return (
     <>
-      <style>{`
-        .timeline { position: relative; padding-left: 32px; padding-top: 8px; }
-        .timeline::before {
-          content: ''; position: absolute;
-          left: 14px; top: 16px; bottom: 8px;
-          width: 2px; background: linear-gradient(180deg, #e2e8f0, #f1f5f9);
-        }
-        .timeline-event {
-          position: relative; margin-bottom: 20px;
-        }
-        .timeline-event:last-child { margin-bottom: 0; }
-        .timeline-dot {
-          position: absolute; left: -32px; top: 0;
-          width: 30px; height: 30px;
-          border-radius: 50%;
-          display: grid; place-items: center;
-          font-size: 14px;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-          border: 3px solid white;
-        }
-        .timeline-content {
-          background: #f8fafc;
-          border-left: 3px solid;
-          padding: 10px 14px;
-          border-radius: 0 10px 10px 0;
-          margin-left: 4px;
-        }
-        .timeline-label {
-          font-weight: 700; color: #1e293b; font-size: 0.95rem;
-        }
-        .timeline-note {
-          color: #64748b; font-size: 0.85rem; margin-top: 2px;
-        }
-        .timeline-time {
-          color: #94a3b8; font-size: 0.78rem; margin-top: 4px;
-          display: flex; align-items: center; gap: 4px;
-        }
-      `}</style>
-      <div className="timeline">
-        {sorted.map((event, idx) => {
-          const cfg = EVENT_CONFIG[event.type] || EVENT_CONFIG.note;
-          return (
-            <div className="timeline-event" key={event._id || idx}>
-              <div
-                className="timeline-dot"
-                style={{ background: cfg.color, color: "white" }}
-              >
-                {cfg.icon}
+      <MetaData title={`Order #${order._id.substring(0, 8)}`} />
+      <style>{CSS}</style>
+
+      <div className="od-wrap">
+        <div className="od-inner">
+
+          {/* ── Hero ── */}
+          <motion.div className="od-hero"
+            initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .4 }}
+          >
+            <div className="od-hero-top">
+              <div>
+                <div className="od-hero-eyebrow">IT HUBB · Order Details</div>
+                <div className="od-hero-title">ລາຍລະອຽດອໍເດີ</div>
+                <div className="od-hero-sub">#{order._id}</div>
+                <div className="od-hero-date">📅 {formatDate(createdAt)}</div>
+                <span
+                  className="od-status-pill"
+                  style={{ background: statusInfo.bg, color: statusInfo.color, borderColor: statusInfo.border }}
+                >
+                  {statusInfo.icon} {statusInfo.label}
+                </span>
               </div>
-              <div
-                className="timeline-content"
-                style={{ borderLeftColor: cfg.color }}
-              >
-                <div className="timeline-label">{cfg.label}</div>
-                {event.note && (
-                  <div className="timeline-note">{event.note}</div>
+
+              <div className="od-hero-actions">
+                {canCancel && (
+                  <button className="od-btn od-btn-red" onClick={() => setCancelModalOpen(true)} disabled={cancelling}>
+                    <i className="fas fa-ban" /> ຍົກເລີກ
+                  </button>
                 )}
-                <div className="timeline-time" title={new Date(event.timestamp).toLocaleString()}>
-                  <i className="far fa-clock"></i>
-                  {formatRelativeTime(event.timestamp)}
-                </div>
+                <button className="od-btn od-btn-ghost" onClick={copyOrderId}>
+                  <i className={`fas fa-${copiedId ? "check" : "copy"}`} />
+                  {copiedId ? "ຄັດລອກແລ້ວ" : "ຄັດລອກ ID"}
+                </button>
+                <a className="od-btn od-btn-green" href={`/invoice/orders/${order._id}`} target="_blank" rel="noreferrer">
+                  <i className="fas fa-file-invoice" /> ໃບບິນ
+                </a>
+                <button className="od-btn od-btn-ghost" onClick={() => navigate(-1)}>
+                  ← ກັບຄືນ
+                </button>
               </div>
             </div>
-          );
-        })}
+          </motion.div>
+
+          {/* ── Timeline (full width) ── */}
+          {Array.isArray(order.events) && order.events.length > 0 && (
+            <motion.div className="od-card" style={{ marginBottom: 24 }}
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .4, delay: .05 }}
+            >
+              <div className="od-card-head">
+                <div className="od-card-head-icon">🕓</div>
+                <h3 className="od-card-head-title">ປະຫວັດອໍເດີ</h3>
+              </div>
+              <div className="od-card-body">
+                <OrderTimeline events={order.events} />
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── 2-column grid ── */}
+          <div className="od-grid">
+
+            {/* ── LEFT: items ── */}
+            <div>
+              {/* Order items */}
+              <motion.div className="od-card"
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .4, delay: .1 }}
+              >
+                <div className="od-card-head">
+                  <div className="od-card-head-icon">🛒</div>
+                  <h3 className="od-card-head-title">ລາຍການສິນຄ້າ ({orderItems.length} ລາຍການ)</h3>
+                </div>
+                {orderItems.map((item, i) => (
+                  <div className="od-item" key={i}>
+                    <Link to={`/product/${item.product}`}>
+                      <img src={item.image} alt={item.name} className="od-item-img"
+                        onError={(e) => { e.currentTarget.src = "/images/default_product.png"; }} />
+                    </Link>
+                    <div>
+                      <Link to={`/product/${item.product}`} className="od-item-name">{item.name}</Link>
+                      <div className="od-item-price">{formatLAK(item.price)} / ຊິ້ນ</div>
+                      <span className="od-item-qty">× {item.quantity} ຊິ້ນ</span>
+                    </div>
+                    <div className="od-item-sub">
+                      <div className="od-item-sub-lbl">ລວມ</div>
+                      <div className="od-item-sub-val">{formatLAK(item.price * item.quantity)}</div>
+                    </div>
+                  </div>
+                ))}
+              </motion.div>
+
+              {/* Shipping info */}
+              <motion.div className="od-card" style={{ marginTop: 20 }}
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .4, delay: .15 }}
+              >
+                <div className="od-card-head">
+                  <div className="od-card-head-icon">📍</div>
+                  <h3 className="od-card-head-title">ຂໍ້ມູນການຈັດສົ່ງ</h3>
+                </div>
+                <div className="od-info-grid">
+                  <div className="od-info-item">
+                    <div className="od-info-lbl">ຊື່ຜູ້ຮັບ</div>
+                    <div className="od-info-val">{user?.name || shippingInfo?.fullName || "N/A"}</div>
+                  </div>
+                  <div className="od-info-item">
+                    <div className="od-info-lbl">ເບີໂທ</div>
+                    <div className="od-info-val">{shippingInfo?.phoneNo || "N/A"}</div>
+                  </div>
+                  <div className="od-info-item">
+                    <div className="od-info-lbl">ຜູ້ຂົນສົ່ງ</div>
+                    <div className="od-info-val">{shippingCarrier}</div>
+                  </div>
+                  <div className="od-info-item">
+                    <div className="od-info-lbl">ສາຂາ / ຈຸດຮັບ</div>
+                    <div className="od-info-val">{branch}</div>
+                  </div>
+                </div>
+                {address && (
+                  <div className="od-address-bar">
+                    <i className="fas fa-map-marker-alt" style={{ marginTop: 2 }} />
+                    <span>{address}</span>
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Payment proofs */}
+              {paymentProof && paymentProof.length > 0 && (
+                <motion.div className="od-card" style={{ marginTop: 20 }}
+                  initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .4, delay: .2 }}
+                >
+                  <div className="od-card-head">
+                    <div className="od-card-head-icon">📄</div>
+                    <h3 className="od-card-head-title">ຫຼັກຖານການໂອນ</h3>
+                  </div>
+                  <div className="od-proofs">
+                    {paymentProof.map((p, idx) => {
+                      const url = resolveFileUrl(p.url || p.filename || "");
+                      const isImg = /\.(png|jpe?g|webp|gif)$/i.test(url);
+                      return (
+                        <div className="od-proof-card" key={idx}>
+                          {isImg
+                            ? <img src={url} alt={`proof-${idx}`} className="od-proof-img" onClick={() => { setLightboxSrc(url); setLightboxOpen(true); }} />
+                            : <div style={{ height: 110, display: "grid", placeItems: "center", color: "#64748b" }}><i className="fas fa-file-pdf fa-2x" /></div>
+                          }
+                          <div className="od-proof-foot">
+                            <button className="od-sm-btn" onClick={() => window.open(url, "_blank")}><i className="fas fa-eye" /> ເບິ່ງ</button>
+                            <a href={url} download className="od-sm-btn"><i className="fas fa-download" /></a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* ── RIGHT: Sidebar ── */}
+            <div className="od-sidebar">
+              {/* Order summary */}
+              <motion.div className="od-card"
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .4, delay: .12 }}
+              >
+                <div className="od-card-head">
+                  <div className="od-card-head-icon">📊</div>
+                  <h3 className="od-card-head-title">ສະຫຼຸບການສັ່ງຊື້</h3>
+                </div>
+                <div className="od-card-body">
+                  <div className="od-sum-row">
+                    <span className="od-sum-label">ລາຄາສິນຄ້າ</span>
+                    <span className="od-sum-val">{formatLAK(itemsTotal)}</span>
+                  </div>
+                  <div className="od-sum-row">
+                    <span className="od-sum-label">ຄ່າຂົນສົ່ງ</span>
+                    <span className="od-sum-val" style={{ color: shippingAmount === 0 ? "#10b981" : undefined }}>
+                      {shippingAmount === 0 ? "ຟຣີ" : formatLAK(shippingAmount)}
+                    </span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="od-sum-row">
+                      <span className="od-sum-label">ສ່ວນຫຼຸດ</span>
+                      <span className="od-sum-val" style={{ color: "#ef4444" }}>-{formatLAK(discountAmount)}</span>
+                    </div>
+                  )}
+                  <div className="od-sum-total">
+                    <span className="od-sum-total-label">ຍອດທັງໝົດ</span>
+                    <span className="od-sum-total-val">{formatLAK(totalAmount)}</span>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Payment status */}
+              <motion.div className="od-card" style={{ marginTop: 20 }}
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .4, delay: .17 }}
+              >
+                <div className="od-card-head">
+                  <div className="od-card-head-icon">💳</div>
+                  <h3 className="od-card-head-title">ການຊຳລະ</h3>
+                </div>
+                <div className="od-card-body">
+                  <div className="od-sum-row">
+                    <span className="od-sum-label">ວິທີ</span>
+                    <span className="od-sum-val">
+                      {PAYMENT_ICONS[paymentMethod] || "💰"} {PAYMENT_LABELS[paymentMethod] || paymentMethod}
+                    </span>
+                  </div>
+                  <div className="od-sum-row">
+                    <span className="od-sum-label">ສະຖານະ</span>
+                    <span className={`od-pay-chip ${isPaid ? "paid" : "pending"}`}>
+                      {isPaid ? "✅ ຊຳລະແລ້ວ" : `⏳ ${order.paymentStatus || "ລໍຖ້າ"}`}
+                    </span>
+                  </div>
+                  {paymentInfo?.id && (
+                    <div className="od-sum-row">
+                      <span className="od-sum-label">Ref.</span>
+                      <span className="od-sum-val" style={{ fontSize: ".78rem", fontFamily: "monospace" }}>{paymentInfo.id}</span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+
+              {/* Order meta */}
+              <motion.div className="od-card" style={{ marginTop: 20 }}
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .4, delay: .22 }}
+              >
+                <div className="od-card-head">
+                  <div className="od-card-head-icon">🔖</div>
+                  <h3 className="od-card-head-title">ຂໍ້ມູນທົ່ວໄປ</h3>
+                </div>
+                <div className="od-card-body">
+                  <div className="od-sum-row">
+                    <span className="od-sum-label">ລະຫັດ</span>
+                    <span className="od-sum-val" style={{ fontSize: ".78rem", fontFamily: "monospace", wordBreak: "break-all" }}>{order._id}</span>
+                  </div>
+                  <div className="od-sum-row">
+                    <span className="od-sum-label">ວັນທີ</span>
+                    <span className="od-sum-val" style={{ fontSize: ".82rem" }}>{formatDate(createdAt)}</span>
+                  </div>
+                  <div className="od-sum-row" style={{ borderBottom: "none" }}>
+                    <span className="od-sum-label">ສະຖານະ</span>
+                    <span className="od-pay-chip" style={{ background: statusInfo.bg, color: statusInfo.color }}>
+                      {statusInfo.icon} {statusInfo.label}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Cancel Modal ── */}
+        <AnimatePresence>
+          {cancelModalOpen && (
+            <motion.div className="od-modal-overlay"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => !cancelling && setCancelModalOpen(false)}
+            >
+              <motion.div className="od-modal"
+                onClick={(e) => e.stopPropagation()}
+                initial={{ scale: .9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: .9, opacity: 0 }}
+              >
+                <div className="od-modal-icon" style={{ background: "#fee2e2", color: "#dc2626" }}>
+                  <i className="fas fa-ban" />
+                </div>
+                <h4 style={{ textAlign: "center", margin: "0 0 8px", color: "#1e293b" }}>ຢືນຢັນຍົກເລີກ?</h4>
+                <p style={{ textAlign: "center", color: "#64748b", fontSize: ".88rem", marginBottom: 16 }}>
+                  ສິນຄ້າຈະຄືນກັບສາງ — ການກະທຳນີ້ບໍ່ສາມາດຢ້ອນຄືນ
+                </p>
+                <label style={{ fontSize: ".85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>
+                  ເຫດຜົນ <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <textarea
+                  value={cancelReason} onChange={(e) => setCancelReason(e.target.value)}
+                  rows={3} disabled={cancelling} autoFocus
+                  placeholder="ສັ່ງຜິດ, ບໍ່ຕ້ອງການ, ໄດ້ທີ່ອື່ນແລ້ວ..."
+                  style={{ width: "100%", padding: "10px 12px", border: "2px solid #e2e8f0", borderRadius: 10, fontSize: ".9rem", fontFamily: "inherit", resize: "vertical", marginBottom: 16, outline: "none" }}
+                />
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => { setCancelModalOpen(false); setCancelReason(""); }} disabled={cancelling}
+                    style={{ flex: 1, padding: "11px", border: "2px solid #e2e8f0", background: "#fff", color: "#64748b", borderRadius: 10, fontWeight: 700, cursor: "pointer" }}>
+                    ກັບຄືນ
+                  </button>
+                  <button onClick={handleCancelOrder} disabled={cancelling || !cancelReason.trim()}
+                    style={{ flex: 1, padding: "11px", background: "linear-gradient(135deg,#ef4444,#dc2626)", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: !cancelReason.trim() ? "not-allowed" : "pointer", opacity: !cancelReason.trim() ? .6 : 1 }}>
+                    {cancelling ? "ກຳລັງຍົກເລີກ..." : "ຢືນຢັນ"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Lightbox ── */}
+        <AnimatePresence>
+          {lightboxOpen && (
+            <motion.div className="od-lb"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setLightboxOpen(false)}
+            >
+              <motion.div className="od-lb-box"
+                onClick={(e) => e.stopPropagation()}
+                initial={{ scale: .85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: .85, opacity: 0 }}
+              >
+                <img src={lightboxSrc} alt="preview" className="od-lb-img" />
+                <div className="od-lb-bar">
+                  <span style={{ color: "#64748b", fontSize: ".82rem" }}>ກົດພາຍນອກເພື່ອປິດ</span>
+                  <button className="od-sm-btn" onClick={() => setLightboxOpen(false)}><i className="fas fa-times" /> ປິດ</button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </>
+  );
+}
+
+/* ── Timeline sub-component ── */
+function OrderTimeline({ events = [] }) {
+  const sorted = [...events].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  return (
+    <div className="od-tl">
+      {sorted.map((ev, idx) => {
+        const cfg = EVENT_CONFIG[ev.type] || EVENT_CONFIG.note;
+        return (
+          <div className="od-tl-item" key={ev._id || idx}>
+            <div className="od-tl-dot" style={{ background: cfg.color }}>{cfg.icon}</div>
+            <div className="od-tl-body" style={{ borderLeftColor: cfg.color }}>
+              <div className="od-tl-label">{cfg.label}</div>
+              {ev.note && <div className="od-tl-note">{ev.note}</div>}
+              <div className="od-tl-time" title={new Date(ev.timestamp).toLocaleString()}>
+                <i className="far fa-clock" /> {formatRelativeTime(ev.timestamp)}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
