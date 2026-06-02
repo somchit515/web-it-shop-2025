@@ -23,7 +23,15 @@ function AppWrapper() {
   const isFullWidthPage =
     location.pathname === "/about" ||
     location.pathname === "/contact" ||
-    location.pathname === "/recommended";
+    location.pathname === "/recommended" ||
+    location.pathname === "/me/orders" ||
+    location.pathname.startsWith("/me/orders/") ||
+    location.pathname.startsWith("/invoice/orders/") ||
+    location.pathname === "/cart" ||
+    location.pathname === "/shipping" ||
+    location.pathname === "/confirm_order" ||
+    location.pathname === "/payment_method" ||
+    location.pathname.startsWith("/orders/");
 
   // Header: ซ่อนเฉพาะ auth pages (admin ให้แสดงด้วย)
   const showHeader = !isAuthPage;
