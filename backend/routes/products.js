@@ -14,14 +14,14 @@ import {
   deleteProductImage,
   getBestSellingProducts,
   getProductsByCategory,
-  checkStock
+  checkStock,
+  getProductBrands,
 } from "../controllers/productControllers.js";
 import { authorizeRoles, isAuthenticatedUser } from "../middlewares/auth.js";
 const router = express.Router();
 
-router
-  .route("/products")
-  .get(getProducts);
+router.route("/products").get(getProducts);
+router.route("/products/brands").get(getProductBrands);
 router
   .route("/admin/products")
   .post(isAuthenticatedUser, authorizeRoles("admin", "superAdmin"), newProduct);

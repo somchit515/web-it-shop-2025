@@ -10,31 +10,51 @@ import { delete_file, upload_file } from "../utils/cloudinary.js"
 
 // Get all products => /api/v1/products
 export const getProducts = catchAsyncErrors(async (req, res, next) => {
-  const resPerPage = 8; // Products per page for pagination
+  const resPerPage = 8;
 
-  // Initialize API filters with search and filters
-  const apiFilters = new APIFilters(Product.find(), req.query)
-    .search() // Handles search functionality (e.g., search by name)
-    .filters(); // Apply any additional filters (e.g., category, price range)
+  // Base query — apply onSale / brand filters before APIFilters
+  let baseFind = {};
+  if (req.query.onSale === "true") {
+    baseFind.salePrice = { $exists: true, $ne: null, $gt: 0 };
+  }
+  if (req.query.brand) {
+    baseFind.brand = { $regex: req.query.brand, $options: "i" };
+  }
 
-  // Fetch products after applying search and filters
+  const apiFilters = new APIFilters(Product.find(baseFind), req.query)
+    .search()
+    .filters();
+
+  // Sort support
+  const sort = req.query.sort;
+  if (sort === "newest")     apiFilters.query = apiFilters.query.sort({ createdAt: -1 });
+  else if (sort === "price_asc")  apiFilters.query = apiFilters.query.sort({ price: 1 });
+  else if (sort === "price_desc") apiFilters.query = apiFilters.query.sort({ price: -1 });
+  else if (sort === "rating")     apiFilters.query = apiFilters.query.sort({ ratings: -1 });
+  else if (sort === "popular")    apiFilters.query = apiFilters.query.sort({ numOfReviews: -1 });
+
   let products = await apiFilters.query;
   let filteredProductsCount = products.length;
 
-  
-  // Apply pagination (for current page)
   apiFilters.pagination(resPerPage);
-
-  // Clone the query to avoid any side effects during pagination
   products = await apiFilters.query.clone();
 
-  // Send response with products and pagination info
   res.status(200).json({
-    success: true, // Indicate successful request
-    resPerPage, // Number of products per page
-    filteredProductsCount, // Total number of products after filters (before pagination)
-    products, // Array of final products (after filters and pagination)
+    success: true,
+    resPerPage,
+    filteredProductsCount,
+    products,
   });
+});
+
+// Get distinct sellers (brands) => /api/v1/products/brands
+export const getProductBrands = catchAsyncErrors(async (req, res, next) => {
+  const sellers = await Product.aggregate([
+    { $group: { _id: "$seller", count: { $sum: 1 }, avgRating: { $avg: "$ratings" } } },
+    { $sort: { count: -1 } },
+    { $project: { seller: "$_id", count: 1, avgRating: 1, _id: 0 } },
+  ]);
+  res.status(200).json({ success: true, brands: sellers });
 });
 
 // Create new Product  => api/v1/admin/products

@@ -43,6 +43,17 @@ const productSchema = new mongoose.Schema({
     required: [true, "ກະລຸນາໃສ່ຊື່ຜູ້ຂາຍ"]
   },
 
+  brand: {
+    type: String,
+    default: "",
+    trim: true,
+  },
+
+  salePrice: {
+    type: Number,
+    default: null,
+  },
+
   stock: {
     type: Number,
     required: [true, "ກະລຸນາລະບຸຈຳນວນສິນຄ້າ"],

@@ -1,10 +1,11 @@
 import React, { useMemo, useCallback, useState } from "react";
 import { Link } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import StarRatings from "react-star-ratings";
 import PropTypes from "prop-types";
 import toast from "react-hot-toast";
 import { setcartItems } from "../redux/features/cartSlice";
+import { addToCompare } from "../redux/features/compareSlice";
 
 /* ─── helpers ─────────────────────────────────────────────── */
 const DEFAULT_IMG = "/images/default_product.png";
@@ -270,8 +271,17 @@ if (typeof document !== "undefined" && !document.getElementById("pi-styles")) {
 /* ─── Component ───────────────────────────────────────────── */
 const ProductItem = ({ product, columnSize, flashDiscount = 0 }) => {
   const dispatch = useDispatch();
+  const compareItems = useSelector((state) => state.compare?.items || []);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError]   = useState(false);
+
+  const isInCompare = compareItems.some((p) => p._id === product?._id);
+
+  const handleCompare = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dispatch(addToCompare(product));
+  };
 
   const imgSrc = useMemo(() => {
     if (!product) return DEFAULT_IMG;
@@ -387,6 +397,20 @@ const ProductItem = ({ product, columnSize, flashDiscount = 0 }) => {
                 <span className="pi-price-main no-sale">{formatLAK(displayPrice)}</span>
               )}
             </div>
+            <button
+              type="button"
+              onClick={handleCompare}
+              title="ເພີ່ມໃສ່ປຽບທຽບ"
+              style={{
+                flexShrink: 0,
+                background: isInCompare ? "#4f46e5" : "#f1f0fe",
+                color: isInCompare ? "#fff" : "#4f46e5",
+                border: "none", borderRadius: 10,
+                padding: "7px 10px", fontSize: ".72rem",
+                fontWeight: 800, cursor: "pointer",
+                transition: "all .16s",
+              }}
+            >⚖️</button>
             <Link to={`/product/${productId}`} className="pi-btn-view">ເບິ່ງ <span style={{fontSize:".8em",opacity:.7}}>→</span></Link>
           </div>
         </div>

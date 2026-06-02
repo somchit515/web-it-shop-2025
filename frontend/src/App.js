@@ -35,7 +35,12 @@ function AppWrapper() {
     location.pathname.startsWith("/orders/") ||
     location.pathname.startsWith("/category/") ||
     location.pathname === "/blog" ||
-    location.pathname.startsWith("/blog/");
+    location.pathname.startsWith("/blog/") ||
+    location.pathname === "/new-arrivals" ||
+    location.pathname === "/sale" ||
+    location.pathname === "/brands" ||
+    location.pathname.startsWith("/brand/") ||
+    location.pathname === "/compare";
 
   // Header: ซ่อนเฉพาะ auth pages (admin ให้แสดงด้วย)
   const showHeader = !isAuthPage;

@@ -7,6 +7,10 @@ import Home from "../Home";
 import ProductDetails from "../product/ProductDetails";
 import CategoryProducts from "../product/CategoryProducts";
 import CategoryOverview from "../category/CategoryOverview";
+import NewArrivals from "../product/NewArrivals";
+import SalePage from "../product/SalePage";
+import BrandsPage from "../product/BrandsPage";
+import ComparePage from "../product/ComparePage";
 
 // AUTH PAGES
 import Login from "../auth/Login";
@@ -160,6 +164,11 @@ function UserRoutes() {
       <Route path="/blog" element={<Blog />} />
       <Route path="/blog/:id" element={<BlogDetail />} />
       <Route path="/recommended" element={<Recommended />} />
+      <Route path="/new-arrivals" element={<NewArrivals />} />
+      <Route path="/sale" element={<SalePage />} />
+      <Route path="/brands" element={<BrandsPage />} />
+      <Route path="/brand/:brandName" element={<BrandsPage />} />
+      <Route path="/compare" element={<ComparePage />} />
 
     </>
   );

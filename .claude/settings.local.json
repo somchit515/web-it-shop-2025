@@ -14,7 +14,23 @@
       "Bash(ls backend/config/)",
       "Bash(del \"d:\\\\program\\\\web-it-shop-2025\\\\frontend\\\\src\\\\components\\\\blog\\\\Blog.css\")",
       "Bash(xargs grep -l \"AdminNotification\\\\|admin.*notification\")",
-      "Bash(xargs grep -l \"socket\\\\.io\\\\|Socket\\\\.io\\\\|emit.*order\\\\|on.*order\")"
+      "Bash(xargs grep -l \"socket\\\\.io\\\\|Socket\\\\.io\\\\|emit.*order\\\\|on.*order\")",
+      "Bash(git commit -m ' *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Add railway.json deployment config *)",
+      "Bash(git push *)",
+      "Bash(git commit -m 'Fix Railway build: set CI=false to ignore ESLint warnings *)",
+      "Bash(git pull *)",
+      "Bash(git commit *)",
+      "Bash(powershell -Command \"\\(Get-Content src/components/redux/api/productsApi.js -Raw\\) -replace 'http://localhost:8000/api/v1', '/api/v1' | Set-Content src/components/redux/api/productsApi.js -NoNewline\")",
+      "Bash(powershell -Command \"\\(Get-Content src/components/redux/api/OrderApi.js -Raw\\) -replace 'http://localhost:8000/api/v1', '/api/v1' | Set-Content src/components/redux/api/OrderApi.js -NoNewline\")",
+      "Bash(powershell -Command \"\\(Get-Content src/components/redux/api/userApi.js -Raw\\) -replace 'http://localhost:8000/api/v1', '/api/v1' | Set-Content src/components/redux/api/userApi.js -NoNewline\")",
+      "Bash(powershell -Command \"\\(Get-Content src/components/redux/api/blogApi.js -Raw\\) -replace 'http://localhost:8000/api/v1', '/api/v1' | Set-Content src/components/redux/api/blogApi.js -NoNewline\")",
+      "Bash(powershell -Command \"\\(Get-Content src/components/redux/authApi.js -Raw\\) -replace 'http://localhost:8000/api/v1', '/api/v1' | Set-Content src/components/redux/authApi.js -NoNewline\")",
+      "Bash(mongodump --version)",
+      "Bash(node migrate.js)",
+      "Bash(ls \"C:\\\\Users\\\\GIGABYTE\\\\.claude\\\\projects\\\\d--program-web-it-shop-2025\\\\\" 2>/dev/null || echo \"Directory empty or not found\")",
+      "Read(//c/Users/GIGABYTE/.claude/projects/d--program-web-it-shop-2025\" 2>/dev/**)"
     ]
   }
 }

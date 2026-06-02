@@ -14,19 +14,25 @@ export const productApi = createApi({
   endpoints: (builder) => ({
     // ດຶງລາຍຊື່ສິນຄ້າທັງໝົດ
     getProducts: builder.query({
-      query: (params = {}) => {
-        return {
-          url: "/products",
-          params: {
-            page: params.page,
-            keyword: params.keyword,
-            category: params.category,
-            ratings: params.ratings ?? params.rating,
-            "price[gte]": params.min,
-            "price[lte]": params.max,
-          },
-        };
-      },
+      query: (params = {}) => ({
+        url: "/products",
+        params: {
+          page: params.page,
+          keyword: params.keyword,
+          category: params.category,
+          ratings: params.ratings ?? params.rating,
+          "price[gte]": params.min,
+          "price[lte]": params.max,
+          sort: params.sort,
+          onSale: params.onSale,
+          brand: params.brand,
+        },
+      }),
+      providesTags: ["Products"],
+    }),
+
+    getProductBrands: builder.query({
+      query: () => "/products/brands",
       providesTags: ["Products"],
     }),
 
@@ -187,4 +193,5 @@ export const {
   useGetSalesReportQuery,
   useGetReturnsReportQuery,
   useGetIncomeExpenseReportQuery,
+  useGetProductBrandsQuery,
 } = productApi;
