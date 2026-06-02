@@ -7,8 +7,10 @@ import path from "path"; // 🚀 ເພີ່ມເພື່ອຈັດກາ�
 import { connectDatabase } from "./config/dbConnect.js";
 import errorsMiddleware from "./middlewares/errors.js";
 
-// 1. Load environment variables
-dotenv.config({ path: "backend/config/config.env" });
+// 1. Load environment variables (local dev only — production uses platform env vars)
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config({ path: "backend/config/config.env" });
+}
 
 // 2. Handle Uncaught Exception
 process.on("uncaughtException", (err) => {

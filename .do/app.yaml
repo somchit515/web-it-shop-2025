@@ -1,0 +1,143 @@
+name: it-hubb
+region: sgp  # Singapore — closest to Laos
+
+services:
+  - name: web
+    github:
+      repo: somchit515/web-it-shop-2025
+      branch: master
+      deploy_on_push: true
+
+    # Build React frontend + install backend deps
+    build_command: CI=false npm run build
+
+    # Start backend (which serves React build as static files)
+    run_command: node backend/index.js
+
+    # 1 GB RAM — required because of puppeteer + Node.js
+    instance_size_slug: basic-xs
+    instance_count: 1
+
+    # DigitalOcean sets PORT env var automatically — app reads process.env.PORT
+    http_port: 8080
+
+    health_check:
+      http_path: /api/v1/products
+      initial_delay_seconds: 30
+      period_seconds: 30
+      timeout_seconds: 10
+      failure_threshold: 3
+
+    envs:
+      # ── Core ──────────────────────────────────────────
+      - key: NODE_ENV
+        value: "production"
+        scope: RUN_AND_BUILD_TIME
+
+      # ── Database (MongoDB Atlas) ───────────────────────
+      - key: DB_URI
+        value: "REPLACE_WITH_MONGODB_ATLAS_URI"
+        type: SECRET
+        scope: RUN_TIME
+
+      # ── Auth & Cookie ─────────────────────────────────
+      - key: JWT_SECRET
+        value: "REPLACE_WITH_STRONG_RANDOM_SECRET_MIN_32_CHARS"
+        type: SECRET
+        scope: RUN_TIME
+
+      - key: JWT_EXPIRES_TIME
+        value: "7d"
+        scope: RUN_TIME
+
+      - key: COOKIE_EXPIRES_TIME
+        value: "7"
+        scope: RUN_TIME
+
+      # ── CORS (update after first deploy) ──────────────
+      - key: FRONTEND_URL
+        value: "REPLACE_WITH_YOUR_APP_URL"
+        scope: RUN_TIME
+
+      # ── Cloudinary ────────────────────────────────────
+      - key: CLOUDINARY_CLOUD_NAME
+        value: "dwnmbbwjk"
+        scope: RUN_TIME
+
+      - key: CLOUDINARY_API_KEY
+        value: "REPLACE_WITH_CLOUDINARY_API_KEY"
+        type: SECRET
+        scope: RUN_TIME
+
+      - key: CLOUDINARY_API_SECRET
+        value: "REPLACE_WITH_CLOUDINARY_API_SECRET"
+        type: SECRET
+        scope: RUN_TIME
+
+      # ── Email (SMTP) ───────────────────────────────────
+      - key: SMTP_HOST
+        value: "sandbox.smtp.mailtrap.io"
+        scope: RUN_TIME
+
+      - key: SMTP_PORT
+        value: "2525"
+        scope: RUN_TIME
+
+      - key: SMTP_EMAIL
+        value: "REPLACE_WITH_SMTP_EMAIL"
+        type: SECRET
+        scope: RUN_TIME
+
+      - key: SMTP_PASSWORD
+        value: "REPLACE_WITH_SMTP_PASSWORD"
+        type: SECRET
+        scope: RUN_TIME
+
+      - key: SMTP_FROM_EMAIL
+        value: "noreply@itshop.com"
+        scope: RUN_TIME
+
+      - key: SMTP_FROM_NAME
+        value: "IT HUBB"
+        scope: RUN_TIME
+
+      # ── Google OAuth ──────────────────────────────────
+      - key: GOOGLE_CLIENT_ID
+        value: "380365298782-rcvtvom4t2r8irtn3mpggeocco018t9m.apps.googleusercontent.com"
+        scope: RUN_TIME
+
+      # ── Web Push (VAPID) ──────────────────────────────
+      - key: VAPID_PUBLIC_KEY
+        value: "BN9DT5T3wxL8TyI6mAygCsZfBaZKJxmi0M6KKspRU6qQuJnLN_DpNYsUDn8_vxCWsKabKW6UryTDQ8NNzIWShRk"
+        scope: RUN_TIME
+
+      - key: VAPID_PRIVATE_KEY
+        value: "REPLACE_WITH_VAPID_PRIVATE_KEY"
+        type: SECRET
+        scope: RUN_TIME
+
+      - key: VAPID_SUBJECT
+        value: "mailto:noreply@itshop.com"
+        scope: RUN_TIME
+
+      # ── Bank Transfer ─────────────────────────────────
+      - key: BANK_NAME
+        value: "REPLACE_WITH_BANK_NAME"
+        scope: RUN_TIME
+
+      - key: BANK_ACCOUNT_NUMBER
+        value: "REPLACE_WITH_ACCOUNT_NUMBER"
+        scope: RUN_TIME
+
+      - key: BANK_ACCOUNT_NAME
+        value: "REPLACE_WITH_ACCOUNT_NAME"
+        scope: RUN_TIME
+
+      - key: BANK_TRANSFER_EXPIRY_MINUTES
+        value: "15"
+        scope: RUN_TIME
+
+      # ── Puppeteer (skip download to save build time) ──
+      - key: PUPPETEER_SKIP_DOWNLOAD
+        value: "true"
+        scope: BUILD_TIME
