@@ -23,6 +23,14 @@ export default function PaymentMethod() {
   const { cartItems = [] } = useSelector(state => state.cart || {});
   const { shippingInfo = {} } = useSelector(state => state.shipping || {});
 
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      navigate('/cart', { replace: true });
+    }
+    // deps [] = ກວດສະເພາະຕອນ mount, ບໍ່ trigger ຫຼັງ clearCart
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const isPickup = shippingInfo.shippingCarrierCode === 'PICKUP';
   const [checkStock] = useCheckStockMutation();
   const [validateCouponApi, { isLoading: validatingCoupon }] = useValidateCouponMutation();
