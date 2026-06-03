@@ -147,7 +147,7 @@ function ProductReviews() {
 
     return (
         <AdminLayout>
-            <MetaData title={"Product Reviews"} />
+            <MetaData title="ລີວິວສິນຄ້າ — Admin" />
             <div className="row justify-content-center my-5">
                 <div className="col-6">
                     <form onSubmit={submitHandler}>

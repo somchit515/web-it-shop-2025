@@ -400,7 +400,7 @@ const NewUser = () => {
       `}</style>
 
       <AdminLayout>
-        <MetaData title={"Create New User"} />
+        <MetaData title="ສ້າງຜູ້ໃຊ້ໃໝ່ — Admin" />
         
         <div className="new-user-container">
           {/* Page Header */}

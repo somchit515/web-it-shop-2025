@@ -145,7 +145,7 @@ function ProductDetails() {
   if (!product) {
     return (
       <>
-        <MetaData title="Product" />
+        <MetaData title="ກຳລັງໂຫຼດສິນຄ້າ..." />
         <div className="home-wrapper pt-4 pb-5">
           <span className="home-side-accent left" aria-hidden="true" />
           <span className="home-side-accent right" aria-hidden="true" />

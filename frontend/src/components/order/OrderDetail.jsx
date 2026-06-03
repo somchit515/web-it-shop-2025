@@ -580,7 +580,7 @@ export default function OrderDetail() {
   if (!order) {
     return (
       <>
-        <MetaData title="Order Details" />
+        <MetaData title="ລາຍລະອຽດອໍເດີ" />
         <div className="od-wrap"><style>{CSS}</style>
           <div className="od-inner" style={{ textAlign: "center", paddingTop: 80 }}>
             <div style={{ fontSize: "4rem", marginBottom: 16 }}>📦</div>

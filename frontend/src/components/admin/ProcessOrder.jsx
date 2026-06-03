@@ -124,7 +124,7 @@ function ProcessOrder() {
 
   return (
     <AdminLayout>
-      <MetaData title="Process Order" />
+      <MetaData title="ຈັດການອໍເດີ — Admin" />
       <style>{`
         .refund-panel {
           background: #fff;

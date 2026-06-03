@@ -266,7 +266,7 @@ export default function PaymentMethod() {
   
   return (
     <>
-      <MetaData title="Payment Method" />
+      <MetaData title="ວິທີຊຳລະເງິນ" />
       <CheckoutStep shipping={true} confirmOrder={true} payment={true} currentStep="payment" />
 
       <div className="payment-container">

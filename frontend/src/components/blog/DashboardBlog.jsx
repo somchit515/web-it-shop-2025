@@ -94,7 +94,7 @@ export default function BlogDashboardOverview() {
   return (
     <AdminLayout>
       <style>{css}</style>
-      <MetaData title="Blog Dashboard" />
+      <MetaData title="ຈັດການບລັອກ — Admin" />
 
       {/* ── Header ── */}
       <div className="bd-header">
