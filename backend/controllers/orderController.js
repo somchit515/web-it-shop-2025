@@ -97,11 +97,19 @@ export const newOrder = catchAsyncErrors(async (req, res, next) => {
 export const myOrder = catchAsyncErrors(async (req, res, next) => {
   const filter = { user: req.user._id };
 
-  const { status } = req.query;
+  const { status, q } = req.query;
+
   if (status && status !== "all") {
-    // Capitalize first letter: "processing" → "Processing" ໃຫ້ match DB
     const normalized = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
     filter.fulfillmentStatus = normalized;
+  }
+
+  if (q && q.trim()) {
+    const regex = new RegExp(q.trim(), "i");
+    filter.$or = [
+      { _id: { $regex: regex } },
+      { "orderItems.name": { $regex: regex } },
+    ];
   }
 
   const orders = await Order.find(filter)

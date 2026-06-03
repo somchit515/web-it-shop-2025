@@ -404,13 +404,21 @@ export default function MyOrders() {
   const [copiedId,     setCopiedId]     = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm,   setSearchTerm]   = useState("");
+  const [debouncedQ,   setDebouncedQ]   = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(searchTerm), 400);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
   const { data: allData, isLoading, error, isError, refetch } = useGetMyOrdersQuery({});
-  const { data: filteredData } = useGetMyOrdersQuery({ status: statusFilter });
+  const { data: filteredData, isFetching } = useGetMyOrdersQuery(
+    { status: statusFilter, q: debouncedQ || undefined }
+  );
 
-  const allOrders     = Array.isArray(allData?.orders)      ? allData.orders      : [];
-  const serverFiltered = Array.isArray(filteredData?.orders) ? filteredData.orders : [];
-  const orderSuccess  = searchParams.get("order_success");
+  const allOrders      = Array.isArray(allData?.orders)      ? allData.orders      : [];
+  const filteredOrders = Array.isArray(filteredData?.orders) ? filteredData.orders : [];
+  const orderSuccess   = searchParams.get("order_success");
 
   useEffect(() => {
     if (isError) toast.error(error?.data?.message || "ເກີດຂໍ້ຜິດພາດ");
@@ -439,13 +447,6 @@ export default function MyOrders() {
     if (method === "COD")        return PAYMENT_BADGE.COD;
     return PAYMENT_BADGE[status] || PAYMENT_BADGE.default;
   };
-
-  const q = searchTerm.toLowerCase();
-  const filteredOrders = serverFiltered.filter((o) =>
-    !searchTerm ||
-    o._id?.toLowerCase().includes(q) ||
-    o.user?.name?.toLowerCase().includes(q)
-  );
 
   const countBy = (s) => allOrders.filter((o) =>
     (o.fulfillmentStatus || o.orderStatus)?.toLowerCase() === s).length;
@@ -542,15 +543,17 @@ export default function MyOrders() {
             <div className="mo-search">
               <i className="fas fa-search" />
               <input
-                placeholder="ຄົ້ນຫາ Order ID..."
+                placeholder="ຄົ້ນຫາ Order ID ຫຼື ຊື່ສິນຄ້າ..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              {searchTerm && (
+              {isFetching && searchTerm ? (
+                <span style={{ fontSize: 12, color: "#94a3b8" }}>⏳</span>
+              ) : searchTerm ? (
                 <button className="mo-search-x" onClick={() => setSearchTerm("")}>
                   <i className="fas fa-times" />
                 </button>
-              )}
+              ) : null}
             </div>
             <p className="mo-count">ສະແດງ <strong>{filteredOrders.length}</strong> ລາຍການ</p>
           </div>

@@ -19,12 +19,14 @@ export const orderApi = createApi({
       invalidatesTags: ["Orders"],
     }),
 
-    // My orders (user) — optional: status filter (server-side), q filter (client-side)
+    // My orders (user) — optional: status + q filter (server-side)
     getMyOrders: builder.query({
-      query: ({ status } = {}) => ({
-        url: `me/orders`,
-        params: status && status !== "all" ? { status } : undefined,
-      }),
+      query: ({ status, q } = {}) => {
+        const params = {};
+        if (status && status !== "all") params.status = status;
+        if (q && q.trim()) params.q = q.trim();
+        return { url: `me/orders`, params: Object.keys(params).length ? params : undefined };
+      },
       providesTags: (result) =>
         result ? [...(result.orders || []).map((o) => ({ type: "Orders", id: o._id })), "Orders"] : ["Orders"],
     }),
