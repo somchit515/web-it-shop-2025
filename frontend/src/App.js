@@ -1,6 +1,6 @@
 // App.js - ปรับปรุงให้รองรับ Blog Routes
 import "./App.css";
-import { BrowserRouter as Router, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import Footer from "./components/layout/Footer";
 import Header from "./components/layout/Header";
 import { Toaster } from "react-hot-toast";
@@ -8,6 +8,7 @@ import useUserRoutes from "./components/routes/UserRoutes";
 import useAdminRoutes from "./components/routes/AdminRoutes";
 import BlogRoutes from "./components/routes/BlogRoutes"; // ✅ เพิ่มตรงนี้
 import ConfirmDialog from "./components/admin/_shared/ConfirmDialog.jsx";
+import NotFound from "./components/layout/NotFound.jsx";
 
 function AppWrapper() {
   const location = useLocation();
@@ -69,6 +70,7 @@ function AppWrapper() {
           {useUserRoutes()}
           {useAdminRoutes()}
           {BlogRoutes()}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
 
